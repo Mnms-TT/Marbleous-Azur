@@ -1,6 +1,6 @@
 import { GameLogic } from './gameLogic.js';
 import { Game } from './game.js';
-import { UI } from './ui.js';
+import { UI } from './ui.js'; // LA CORRECTION EST ICI
 
 export class Player {
     constructor(id, data) {

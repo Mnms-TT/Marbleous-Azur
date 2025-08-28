@@ -4,7 +4,8 @@ import { Config } from './config.js';
 
 export const Drawing = {
     drawAll() {
-        if (!Game.localPlayer) return;
+        if (!Game.localPlayer) return; // LA CORRECTION EST ICI
+
         const mainCanvas = document.getElementById('gameCanvas');
         if (!mainCanvas) return;
         this.drawPlayer(Game.localPlayer, mainCanvas.getContext('2d'), true);
@@ -13,7 +14,7 @@ export const Drawing = {
 
     drawPlayer(player, ctx, isMain) {
         const canvas = ctx.canvas;
-        if (!canvas || canvas.width === 0) return;
+        if (!canvas || canvas.width === 0 || !player) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         const rad = canvas.width / (Config.GRID_COLS * 2 + 1) * 0.95;
@@ -30,13 +31,13 @@ export const Drawing = {
             player.effects.forEach(e => this.drawEffect(ctx, e));
             
             if (isMain && player.isAlive) {
-                const baseX = canvas.width / 2;
-                const baseY = canvas.height - rad; // Position de la base du canon
-                this.drawCannonBase(ctx, baseX, baseY, rad);
-                this.drawCannonNeedle(ctx, player, { x: baseX, y: baseY }, gameOverLineY);
+                const launcherX = canvas.width / 2;
+                const baseY = canvas.height - rad;
+                this.drawCannonBase(ctx, launcherX, baseY, rad);
+                this.drawCannonNeedle(ctx, player, { x: launcherX, y: baseY }, gameOverLineY);
 
-                if (player.launcherBubble) this.drawBubble(ctx, player.launcherBubble, rad, baseX, baseY, true);
-                if (player.nextBubble) this.drawBubble(ctx, player.nextBubble, rad * 0.7, baseX + rad * 3, baseY);
+                if (player.launcherBubble) this.drawBubble(ctx, player.launcherBubble, rad, launcherX, baseY, true);
+                if (player.nextBubble) this.drawBubble(ctx, player.nextBubble, rad * 0.7, launcherX + rad * 3, baseY);
                 if (player.shotBubble) this.drawBubble(ctx, player.shotBubble, rad, player.shotBubble.x, player.shotBubble.y);
             }
 
@@ -52,14 +53,45 @@ export const Drawing = {
     },
 
     drawLobbyAnimation(ctx, canvas) {
-        // ... (Code inchangé)
+        Game.lobbyMarbles.forEach(marble => {
+            ctx.fillStyle = marble.color.main;
+            ctx.beginPath();
+            ctx.arc(marble.x, marble.y, marble.r, 0, Math.PI * 2);
+            ctx.fill();
+        });
+
+        ctx.textAlign = 'center';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.font = `bold ${canvas.width / 7}px Inter`;
+        ctx.fillText('Marbleous', canvas.width / 2, canvas.height / 2);
+        ctx.font = `normal ${canvas.width / 20}px Inter`;
+        ctx.fillText("Cliquez pour être prêt", canvas.width / 2, canvas.height / 2 + 40);
     },
 
     drawBubble(ctx, b, rad, x, y, isLauncher = false) {
-        // ... (Code inchangé)
+        if (!isFinite(x) || !isFinite(y) || !isFinite(rad) || rad <= 0 || !b || !b.color) return;
+        
+        ctx.fillStyle = b.color.shadow; ctx.beginPath(); ctx.arc(x, y, rad, 0, 2 * Math.PI); ctx.fill();
+        ctx.fillStyle = b.color.main; ctx.beginPath(); ctx.arc(x, y, rad * 0.9, 0, 2 * Math.PI); ctx.fill();
+        if (!isLauncher) {
+            const grad = ctx.createRadialGradient(x - rad * 0.4, y - rad * 0.4, 0, x, y, rad);
+            grad.addColorStop(0, 'rgba(255,255,255,0.2)'); grad.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(x, y, rad * 0.9, 0, 2 * Math.PI); ctx.fill();
+        }
+        
+        if (b.isSpellBubble && Game.spellIcons[b.spell]) {
+            const icon = Game.spellIcons[b.spell];
+            if (icon && icon.complete && icon.naturalWidth !== 0) {
+                const size = rad * 1.4;
+                ctx.drawImage(icon, x - size / 2, y - size / 2, size, size);
+            }
+        }
     },
     drawEffect(ctx, e) {
-        // ... (Code inchangé)
+        if (e.type === 'pop') {
+            ctx.beginPath(); ctx.strokeStyle = e.color || `rgba(255, 255, 224, ${e.life / 10})`;
+            ctx.lineWidth = 3; ctx.arc(e.x, e.y, e.radius, 0, 2 * Math.PI); ctx.stroke();
+        }
     },
 
     drawGameOverLine(ctx, w, y) {
@@ -71,24 +103,12 @@ export const Drawing = {
         ctx.stroke();
     },
     
-    drawCannonBase(ctx, x, y, rad) {
-        ctx.fillStyle = '#E5E7EB';
-        ctx.beginPath();
-        ctx.arc(x, y, rad * 1.5, Math.PI, 0);
-        ctx.fill();
-    },
-
-    drawCannonNeedle(ctx, player, basePos, lineY) {
-        ctx.save();
-        ctx.translate(basePos.x, basePos.y);
-        ctx.rotate(player.launcher.angle + Math.PI / 2);
-        
-        // Calcule la longueur de l'aiguille pour qu'elle atteigne la ligne
-        const length = basePos.y - lineY;
-
-        ctx.fillStyle = '#374151'; // Couleur gris foncé pour l'aiguille
-        ctx.fillRect(-2, 0, 4, -length); // Dessine une aiguille de 4px de large
-
-        ctx.restore();
+    drawLauncher(ctx, p, rad, x, y) { 
+        ctx.save(); 
+        ctx.translate(x, y); 
+        ctx.rotate(p.launcher.angle + Math.PI / 2); 
+        ctx.fillStyle = p.statusEffects.canonEndommage ? Config.SPELLS.canonEndommage.color : '#E5E7EB'; 
+        ctx.fillRect(-2, 0, 4, -(y - GameLogic.getBubbleCoords(Config.GAME_OVER_ROW, 0, rad).y + rad));
+        ctx.restore(); 
     }
 };

@@ -20,6 +20,8 @@ export const Drawing = {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     const rad = (canvas.width / (Config.GRID_COLS * 2 + 1)) * 0.95;
+    const gameOverLineY =
+      GameLogic.getBubbleCoords(Config.GAME_OVER_ROW, 0, rad).y - rad;
 
     if (isMain && Game.state === "waiting") {
       this.drawLobbyAnimation(ctx, canvas);
@@ -41,15 +43,22 @@ export const Drawing = {
 
         if (isMain && player.isAlive) {
           const launcherX = canvas.width / 2;
-          const launcherY = canvas.height - rad * 2; // Position stable en bas
-          this.drawLauncher(ctx, player, rad, launcherX, launcherY);
+          const baseY = canvas.height - rad;
+          this.drawCannonBase(ctx, launcherX, baseY, rad);
+          this.drawCannonNeedle(
+            ctx,
+            player,
+            { x: launcherX, y: baseY },
+            gameOverLineY
+          );
+
           if (player.launcherBubble)
             this.drawBubble(
               ctx,
               player.launcherBubble,
               rad,
               launcherX,
-              launcherY,
+              baseY,
               true
             );
           if (player.nextBubble)
@@ -58,7 +67,7 @@ export const Drawing = {
               player.nextBubble,
               rad * 0.7,
               launcherX + rad * 3,
-              launcherY
+              baseY
             );
           if (player.shotBubble)
             this.drawBubble(
@@ -71,8 +80,7 @@ export const Drawing = {
         }
       }
       if (isMain) {
-        const { y } = GameLogic.getBubbleCoords(Config.GAME_OVER_ROW, 0, rad);
-        this.drawGameOverLine(ctx, canvas.width, y - rad);
+        this.drawGameOverLine(ctx, canvas.width, gameOverLineY);
       }
     }
 
@@ -166,12 +174,20 @@ export const Drawing = {
     ctx.stroke();
   },
 
-  drawLauncher(ctx, p, rad, x, y) {
+  drawCannonBase(ctx, x, y, rad) {
+    ctx.fillStyle = "#E5E7EB";
+    ctx.beginPath();
+    ctx.arc(x, y, rad * 1.5, Math.PI, 0);
+    ctx.fill();
+  },
+
+  drawCannonNeedle(ctx, player, basePos, lineY) {
     ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(p.launcher.angle + Math.PI / 2);
-    ctx.fillStyle = "#374151"; // Gris foncé
-    ctx.fillRect(-2, 0, 4, -rad * 3); // Aiguille simple
+    ctx.translate(basePos.x, basePos.y);
+    ctx.rotate(player.launcher.angle + Math.PI / 2);
+    const length = basePos.y - lineY;
+    ctx.fillStyle = "#374151";
+    ctx.fillRect(-2, 0, 4, -length);
     ctx.restore();
   },
 };

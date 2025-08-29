@@ -58,7 +58,7 @@ export const Config = {
   MAX_SPELLS: 8,
   GRID_ROWS: 14,
   GRID_COLS: 8,
-  GAME_OVER_ROW: 11, // Règle finale : 11 rangées jouables (0-10), on perd sur la 12ème (index 11).
+  GAME_OVER_ROW: 11,
   GRID_VERTICAL_OFFSET: 0,
   SPELL_SPAWN_CHANCE: 0.5,
   FPS: 60,

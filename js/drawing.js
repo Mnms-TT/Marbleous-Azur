@@ -43,7 +43,8 @@ export const Drawing = {
 
         if (isMain && player.isAlive) {
           const launcherX = canvas.width / 2;
-          const baseY = canvas.height - rad;
+          // CHANGEMENT ICI: La base du canon est maintenant tout en bas du canvas.
+          const baseY = canvas.height;
           this.drawCannonBase(ctx, launcherX, baseY, rad);
           this.drawCannonNeedle(
             ctx,
@@ -58,7 +59,7 @@ export const Drawing = {
               player.launcherBubble,
               rad,
               launcherX,
-              baseY,
+              baseY - rad, // On remonte la bulle pour qu'elle soit sur la base
               true
             );
           if (player.nextBubble)
@@ -67,7 +68,7 @@ export const Drawing = {
               player.nextBubble,
               rad * 0.7,
               launcherX + rad * 3,
-              baseY
+              baseY - rad // On aligne verticalement avec la bulle du lanceur
             );
           if (player.shotBubble)
             this.drawBubble(

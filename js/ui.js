@@ -263,23 +263,39 @@ export const UI = {
   resizeAllCanvases() {
     const mainCanvasCont = document.getElementById("canvas-container");
     const mainCanvas = document.getElementById("gameCanvas");
-
+  
     if (mainCanvas && mainCanvasCont) {
-      const bubbleRadius =
-        (mainCanvasCont.clientWidth / (Config.GRID_COLS * 2 + 1)) * 0.95;
+      // ----- CHANGEMENT PRINCIPAL ICI -----
+      // L'ancienne méthode calculait le rayon des bulles à partir de la largeur.
+      // Nous allons maintenant le calculer à partir de la hauteur pour garantir que la grille ait toujours la bonne proportion verticale.
+  
+      // La hauteur d'une ligne de bulles hexagonales est `rayon * 2 * 0.866`.
+      const rowHeightFactor = 2 * 0.866; 
+      // Nous réservons l'équivalent de la hauteur de 3 bulles pour la zone du canon en bas.
+      const cannonHeightInRows = 3; 
+      
+      // On calcule la hauteur totale en "unités de rayon de bulle".
+      // (Config.GRID_ROWS - 1) car la première rangée n'ajoute pas de hauteur supplémentaire au-delà de son rayon.
+      const totalHeightInBubbleRadii = ((Config.GRID_ROWS - 1) * rowHeightFactor) + cannonHeightInRows;
+  
+      // On calcule le rayon idéal en divisant la hauteur disponible par ce facteur.
+      const bubbleRadius = mainCanvasCont.clientHeight / totalHeightInBubbleRadii;
       Game.bubbleRadius = bubbleRadius;
-
-      const gridHeight =
-        (Config.GAME_OVER_ROW + 1) * (bubbleRadius * 2 * 0.866);
-      const cannonHeight = bubbleRadius * 3;
-      const totalHeight = gridHeight + cannonHeight;
-
-      mainCanvasCont.style.height = `${totalHeight}px`;
-
+  
+      // La hauteur du canvas correspond maintenant à celle de son conteneur.
+      // On ajuste la largeur du canvas pour correspondre à la largeur de la grille + un peu de marge.
+      const requiredWidth = (Config.GRID_COLS * 2 + 1) * bubbleRadius;
+      
       mainCanvas.width = mainCanvasCont.clientWidth;
       mainCanvas.height = mainCanvasCont.clientHeight;
+      
+      // On peut optionnellement centrer la zone de jeu si le conteneur est plus large que nécessaire.
+      if(mainCanvasCont.clientWidth > requiredWidth){
+          // Cette partie est une amélioration pour le futur, pour l'instant on garde la largeur complète.
+      }
+      // ----- FIN DU CHANGEMENT PRINCIPAL -----
     }
-
+  
     Game.players.forEach((p) => {
       if (p.id !== Game.localPlayer?.id && p.canvas) {
         const oppCont = p.canvas.parentElement;

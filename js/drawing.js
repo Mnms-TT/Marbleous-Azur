@@ -49,7 +49,34 @@ export const Drawing = {
           const launcherX = canvas.width / 2;
           const baseY = canvas.height;
 
+          const launcherBubbleY = baseY - rad;
+
+          // --- CHANGEMENT ORDRE DE DESSIN ET POSITION ---
+          // 1. On dessine la bulle principale un peu plus grosse et "derrière"
+          if (player.launcherBubble)
+            this.drawBubble(
+              ctx,
+              player.launcherBubble,
+              rad * 1.05, // Légèrement plus grosse
+              launcherX,
+              launcherBubbleY,
+              true
+            );
+
+          // 2. On dessine la base du canon par-dessus
           this.drawCannonBase(ctx, launcherX, baseY, rad);
+
+          // 3. On dessine la prochaine bulle, petite et à l'intérieur de la base
+          if (player.nextBubble)
+            this.drawBubble(
+              ctx,
+              player.nextBubble,
+              rad * 0.6, // Plus petite
+              launcherX + rad * 1.5,
+              baseY - rad * 0.5
+            );
+
+          // 4. On dessine l'aiguille en dernier
           this.drawCannonNeedle(
             ctx,
             player,
@@ -57,30 +84,7 @@ export const Drawing = {
             gameOverLineY
           );
 
-          // --- CORRECTION POSITION DES BULLES ---
-          // La bulle principale est positionnée pour être DANS le socle
-          const launcherBubbleY = baseY - rad;
-
-          if (player.launcherBubble)
-            this.drawBubble(
-              ctx,
-              player.launcherBubble,
-              rad,
-              launcherX,
-              launcherBubbleY,
-              true
-            );
-
-          // La prochaine bulle est plus petite et décalée sur le côté
-          if (player.nextBubble)
-            this.drawBubble(
-              ctx,
-              player.nextBubble,
-              rad * 0.7,
-              launcherX + rad * 1.8, // Plus proche du centre
-              baseY - rad * 0.6 // Un peu plus bas
-            );
-
+          // 5. La bulle tirée est toujours au premier plan
           if (player.shotBubble)
             this.drawBubble(
               ctx,
@@ -189,8 +193,8 @@ export const Drawing = {
   drawCannonBase(ctx, x, y, rad) {
     ctx.fillStyle = "#E5E7EB";
     ctx.beginPath();
-    // --- CORRECTION : Réduction de la taille de la base ---
-    ctx.arc(x, y, rad * 1.2, Math.PI, 0);
+    // On garde un rayon plus petit pour la base
+    ctx.arc(x, y, rad * 1.1, Math.PI, 0);
     ctx.fill();
   },
 

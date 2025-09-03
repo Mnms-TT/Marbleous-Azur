@@ -49,6 +49,11 @@
         cursor: pointer;
         transition: all 0.2s;
         border: 2px solid #ffffff;
+        /* --- LA CORRECTION PRINCIPALE EST ICI --- */
+        /* On force le ratio pour correspondre à celui du jeu.
+           8 colonnes de large pour environ 14 rangées de haut.
+           Ce ratio (8 / 14) va forcer les miniatures à être plus hautes que larges. */
+        aspect-ratio: 8 / 14;
       }
       .opponent-view.empty-slot {
         background: #0c1445;
@@ -145,11 +150,9 @@
   </head>
   <body>
     <div id="game-wrapper">
-      <!-- On ajoute "relative" pour pouvoir positionner l'ID par rapport à ce conteneur -->
       <div
         class="w-full max-w-screen-2xl mx-auto p-4 flex flex-col h-full relative"
       >
-        <!-- CHANGEMENT 1 : On réintroduit l'affichage de l'ID ici, en position absolue -->
         <div class="absolute top-4 right-4 text-sm z-10">
           Votre ID:
           <span
@@ -174,6 +177,7 @@
           </div>
 
           <div class="w-2/3 flex flex-col">
+            <!-- On ne change rien ici, la grille reste une 2x5 -->
             <div
               id="opponents-grid"
               class="grid grid-cols-5 grid-rows-2 gap-2 flex-grow"

@@ -21,29 +21,38 @@ export const UI = {
       (p) => p.id !== FirebaseController.auth?.currentUser?.uid
     );
 
-    const announcement = document.createElement("div");
-    announcement.id = "spell-announcement";
-    announcement.className =
-      "opponent-view flex items-center justify-center text-center";
-    announcement.innerHTML = "<span>Annonces</span>";
+    // --- CHANGEMENT DE LA LOGIQUE D'AFFICHAGE ---
+    // On va remplir une grille de 10 slots (2x5)
+    const totalSlots = 10;
+    let opponentIndex = 0;
 
-    for (let i = 0; i < 5; i++) {
-      const p = opponents[i];
-      const slot = p ? p.container : this.createEmptySlot();
-      if (p) p.canvas.dataset.playerId = p.id;
-      grid.appendChild(slot);
-    }
+    for (let i = 0; i < totalSlots; i++) {
+      // Le 5ème slot (index 4) est réservé pour les annonces
+      if (i === 4) {
+        const announcement = document.createElement("div");
+        announcement.id = "spell-announcement";
+        announcement.className =
+          "opponent-view flex items-center justify-center text-center";
+        announcement.innerHTML = "<span>Annonces</span>";
+        grid.appendChild(announcement);
+        continue; // On passe au slot suivant
+      }
 
-    grid.appendChild(announcement);
-    for (let i = 5; i < 9; i++) {
-      const p = opponents[i];
-      const slot = p ? p.container : this.createEmptySlot();
-      if (p) p.canvas.dataset.playerId = p.id;
-      grid.appendChild(slot);
+      const p = opponents[opponentIndex];
+      if (p) {
+        // Il y a un adversaire à afficher
+        p.canvas.dataset.playerId = p.id;
+        grid.appendChild(p.container);
+        opponentIndex++;
+      } else {
+        // Plus d'adversaires, on remplit avec des slots vides
+        grid.appendChild(this.createEmptySlot());
+      }
     }
 
     this.resizeAllCanvases();
   },
+
   createEmptySlot: () => {
     const s = document.createElement("div");
     s.className = "opponent-view empty-slot flex items-center justify-center";
@@ -188,18 +197,15 @@ export const UI = {
       inv.appendChild(slot);
     }
 
-    // --- NOUVELLE LOGIQUE ICI ---
-    // On redimensionne les slots de sorts après les avoir créés
     if (Game.bubbleRadius > 0) {
-      const slotSize = Game.bubbleRadius * 1.8; // Un peu plus petit qu'une bulle
-      inv.style.height = `${slotSize * 1.2}px`; // Hauteur du conteneur
+      const slotSize = Game.bubbleRadius * 1.8;
+      inv.style.height = `${slotSize * 1.2}px`;
       const slots = inv.querySelectorAll(".spell-slot");
       slots.forEach((slot) => {
         slot.style.width = `${slotSize}px`;
         slot.style.height = `${slotSize}px`;
       });
     }
-    // --- FIN DE LA NOUVELLE LOGIQUE ---
 
     this.updateBoardEffects();
     this.updateTargetingUI();
@@ -210,7 +216,6 @@ export const UI = {
   },
 
   updateBoardEffects() {
-    const cont = document.getElementById("canvas-container");
     let transform = "";
     if (Game.localPlayer?.statusEffects.plateauIncline)
       transform += ` rotate(${
@@ -225,7 +230,6 @@ export const UI = {
       Game.shakeUntil = 0;
       Game.shakeIntensity = 0;
     }
-    // On applique la transformation sur le canvas, pas sur le conteneur
     const canvas = document.getElementById("gameCanvas");
     if (canvas) canvas.style.transform = transform.trim();
   },
@@ -304,7 +308,6 @@ export const UI = {
 
       Game.bubbleRadius = (newW / (Config.GRID_COLS * 2 + 1)) * 0.95;
 
-      // On appelle updatePlayerStats pour redimensionner les sorts en même temps
       this.updatePlayerStats();
     }
 
@@ -322,12 +325,12 @@ export const UI = {
   preloadSpellIcons: () => {
     const spellIcons = {
       plateauIncline: "icons/sort_tilt.png",
-      canonEndommage: "icons-old/sort_canon.png",
-      sabotageSorts: "icons-old/sort_cancel.png",
-      canonArcEnCiel: "icons-old/sort_rainbow.png",
-      monteeLignes: "icons-old/sort_addline.png",
-      nukeBomb: "icons-old/sort_nuke.png",
-      colonneMonochrome: "icons-old/sort_monocolor.png",
+      canonEndommage: "icons/sort_canon.png",
+      sabotageSorts: "icons/sort_cancel.png",
+      canonArcEnCiel: "icons/sort_rainbow.png",
+      monteeLignes: "icons/sort_addline.png",
+      nukeBomb: "icons/sort_nuke.png",
+      colonneMonochrome: "icons/sort_monocolor.png",
     };
 
     for (const key in spellIcons) {

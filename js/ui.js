@@ -265,39 +265,39 @@ export const UI = {
     const mainCanvas = document.getElementById("gameCanvas");
 
     if (mainCanvas && mainCanvasCont) {
-      // --- LOGIQUE DE REDIMENSIONNEMENT CORRIGÉE ---
-      const containerW = mainCanvasCont.clientWidth;
-      const containerH = mainCanvasCont.clientHeight;
+      const contW = mainCanvasCont.clientWidth;
+      const contH = mainCanvasCont.clientHeight;
 
-      // Ratio idéal de la zone de jeu (largeur / hauteur)
-      const idealRatio = (Config.GRID_COLS * 2) / (Config.GRID_ROWS * 1.732); // Ratio approximatif d'une grille hexagonale
-      const containerRatio = containerW / containerH;
+      // Définition d'un ratio cible pour la zone de jeu (plus haute que large)
+      // Un ratio de 8 colonnes sur 14 rangées est un bon point de départ
+      const idealRatio = (Config.GRID_COLS * 2) / (Config.GRID_ROWS * 1.8);
 
-      let canvasW, canvasH;
+      let newW, newH;
 
-      // On ajuste la taille du canvas pour qu'il remplisse le conteneur tout en gardant son ratio
-      if (containerRatio > idealRatio) {
-        // Le conteneur est plus large que le jeu -> la hauteur est la limite
-        canvasH = containerH;
-        canvasW = canvasH * idealRatio;
+      if (contW / contH > idealRatio) {
+        // Le conteneur est plus large que notre ratio idéal -> la hauteur est la contrainte
+        newH = contH;
+        newW = newH * idealRatio;
       } else {
-        // Le conteneur est plus haut que le jeu -> la largeur est la limite
-        canvasW = containerW;
-        canvasH = canvasW / idealRatio;
+        // Le conteneur est plus haut -> la largeur est la contrainte
+        newW = contW;
+        newH = newW / idealRatio;
       }
 
-      mainCanvas.width = canvasW;
-      mainCanvas.height = canvasH;
+      // Appliquer la taille à la fois aux attributs (pour la résolution du dessin)
+      mainCanvas.width = newW;
+      mainCanvas.height = newH;
 
-      // On centre le canvas dans son conteneur
-      mainCanvas.style.position = "absolute";
-      mainCanvas.style.top = `${(containerH - canvasH) / 2}px`;
-      mainCanvas.style.left = `${(containerW - canvasW) / 2}px`;
+      // ET au style (pour la taille d'affichage dans la page)
+      mainCanvas.style.width = `${newW}px`;
+      mainCanvas.style.height = `${newH}px`;
+      mainCanvas.style.position = ""; // On laisse le flexbox centrer
 
-      // La taille de la bulle est maintenant calculée à partir de la largeur du canvas final
-      Game.bubbleRadius = (canvasW / (Config.GRID_COLS * 2 + 1)) * 0.95;
+      // Mettre à jour la variable globale pour le rayon des bulles
+      Game.bubbleRadius = (newW / (Config.GRID_COLS * 2 + 1)) * 0.95;
     }
 
+    // Redimensionner les canvas des adversaires (logique simple pour l'instant)
     Game.players.forEach((p) => {
       if (p.id !== Game.localPlayer?.id && p.canvas) {
         const oppCont = p.canvas.parentElement;

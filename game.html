@@ -90,11 +90,8 @@
       }
       #gameCanvas {
         cursor: default;
-        position: absolute;
-        width: 100%;
-        height: 100%;
-        top: 0;
-        left: 0;
+        /* On retire les styles de positionnement et de taille ici, 
+           car JavaScript va les gérer entièrement */
       }
       #gameCanvas.aiming,
       .opponent-view.aiming {
@@ -176,8 +173,9 @@
             <div class="w-1/3 flex flex-col gap-2">
               <div
                 id="canvas-container"
-                class="relative w-full game-area-bg flex-grow"
+                class="relative w-full game-area-bg flex-grow flex items-center justify-center"
               >
+                <!-- ↑↑↑ ON AJOUTE "flex items-center justify-center" ICI ↑↑↑ -->
                 <canvas id="gameCanvas"></canvas>
                 <div
                   id="main-player-team-indicator"

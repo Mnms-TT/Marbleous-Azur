@@ -19,7 +19,9 @@ export const Drawing = {
     if (!canvas || canvas.width === 0 || !player) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const rad = isMain ? Game.bubbleRadius : (canvas.width / (Config.GRID_COLS * 2 + 1)) * 0.95;
+    const rad = isMain
+      ? Game.bubbleRadius
+      : (canvas.width / (Config.GRID_COLS * 2 + 1)) * 0.95;
     if (rad <= 0) return;
 
     const gameOverLineY =
@@ -45,37 +47,34 @@ export const Drawing = {
 
         if (isMain && player.isAlive) {
           const launcherX = canvas.width / 2;
-          const baseY = canvas.height;
-          
-          // CHANGEMENT 1 : On descend la bulle pour réduire la zone du canon
-          const launcherBubbleY = baseY - rad * 0.8; 
+
+          // CHANGEMENT 1 : La bulle est plus basse, réduisant l'espace sous la ligne noire
+          const launcherBubbleY = canvas.height - rad;
 
           if (player.launcherBubble)
             this.drawBubble(
               ctx,
               player.launcherBubble,
-              rad, // Taille normale
+              rad,
               launcherX,
               launcherBubbleY,
               true
             );
 
-          // CHANGEMENT 2 : On NE DESSINE PLUS la base du canon
-          // this.drawCannonBase(ctx, launcherX, baseY, rad); 
-
           if (player.nextBubble)
             this.drawBubble(
               ctx,
               player.nextBubble,
-              rad * 0.7, // Plus petite
+              rad * 0.7,
               launcherX + rad * 2,
-              baseY - rad * 0.6
+              launcherBubbleY
             );
-            
+
+          // L'aiguille part de la position de la bulle
           this.drawCannonNeedle(
             ctx,
             player,
-            { x: launcherX, y: launcherBubbleY }, // Le pivot est la bulle elle-même
+            { x: launcherX, y: launcherBubbleY },
             gameOverLineY
           );
 
@@ -184,18 +183,16 @@ export const Drawing = {
     ctx.stroke();
   },
 
-  drawCannonBase(ctx, x, y, rad) {
-    // Cette fonction n'est plus appelée
-  },
+  // CHANGEMENT 3 : Cette fonction est maintenant inutile.
+  drawCannonBase(ctx, x, y, rad) {},
 
   drawCannonNeedle(ctx, player, basePos, lineY) {
     ctx.save();
     ctx.translate(basePos.x, basePos.y);
     ctx.rotate(player.launcher.angle + Math.PI / 2);
-    // On dessine l'aiguille pour qu'elle semble sortir de la bulle
     const length = basePos.y - lineY;
     ctx.fillStyle = "#374151";
     ctx.fillRect(-2, -length, 4, length);
     ctx.restore();
   },
-};```
+};

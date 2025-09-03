@@ -37,14 +37,12 @@
       .game-area-bg {
         background-color: #fb923c;
         border: 2px solid #ffffff;
-        transition: transform 0.1s ease-out;
         border-radius: 0.5rem;
       }
       .opponent-view {
         position: relative;
         border-radius: 0.5rem;
         cursor: pointer;
-        transition: all 0.2s;
         border: 2px solid #ffffff;
         aspect-ratio: 8 / 14;
       }
@@ -58,7 +56,9 @@
         object-fit: contain;
         border-radius: 0.5rem;
       }
+      /* CHANGEMENT 1 : On fixe la hauteur du chat pour garantir 4-5 lignes */
       .chat-container {
+        height: 140px; 
         overflow-y: scroll;
         background-color: #0c1445;
         border: 2px solid #4a5568;
@@ -75,30 +75,8 @@
         background-repeat: no-repeat;
         cursor: pointer;
       }
-      .spell-slot:hover {
-        border-color: #fde047;
-      }
-      .spell-slot.active {
-        border-color: #4caf50;
-        box-shadow: 0 0 10px #4caf50;
-        transform: scale: 1.1;
-      }
       #gameCanvas {
         cursor: default;
-      }
-      #gameCanvas.aiming,
-      .opponent-view.aiming {
-        cursor: crosshair;
-      }
-      #spell-announcement {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-        padding: 0.5rem;
-        font-size: 0.9rem;
-        transition: opacity 0.3s;
       }
     </style>
   </head>
@@ -113,9 +91,9 @@
           ></span>
         </div>
 
-        <!-- CHANGEMENT 1 : Cette section prendra toute la place SAUF celle du chat -->
         <main class="flex flex-row gap-4 flex-grow min-h-0">
-          <div class="w-1/3 flex flex-col gap-2 h-full">
+          <!-- Structure originale 1/3 - 2/3 qui était correcte -->
+          <div class="w-1/3 flex flex-col gap-2">
             <div
               id="canvas-container"
               class="relative w-full flex-grow flex items-center justify-center"
@@ -127,8 +105,8 @@
               class="w-full flex justify-center items-center gap-1 flex-shrink-0"
             ></div>
           </div>
-          <div class="w-2/3 flex flex-col h-full">
-            <!-- CHANGEMENT 2 : On réduit l'espacement à un minimum -->
+          <div class="w-2/3 flex flex-col">
+            <!-- CHANGEMENT 2 : On réduit l'espacement de la grille -->
             <div
               id="opponents-grid"
               class="grid grid-cols-5 grid-rows-2 gap-1 flex-grow"
@@ -136,20 +114,20 @@
           </div>
         </main>
 
-        <!-- CHANGEMENT 3 : Cette section a une HAUTEUR FIXE -->
-        <div class="flex-shrink-0 mt-2 flex flex-row items-end gap-4 h-48">
-          <div class="flex-grow flex flex-col gap-2 h-full">
-            <div class="chat-container h-full" id="chat-messages"></div>
+        <!-- CHANGEMENT 3 : On simplifie la structure du bas -->
+        <div class="flex-shrink-0 mt-2 flex items-end gap-4">
+          <div class="flex-grow">
+            <div class="chat-container" id="chat-messages"></div>
             <input
               type="text"
               id="chat-input"
-              class="w-full p-2 bg-gray-800 border-2 border-gray-600 rounded-lg"
+              class="w-full p-2 bg-gray-800 border-2 border-gray-600 rounded-lg mt-2"
               placeholder="Écrire un message..."
             />
           </div>
           <a
             href="index.html"
-            class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg text-lg flex-shrink-0"
+            class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg flex-shrink-0 mb-12"
             >Accueil</a
           >
         </div>

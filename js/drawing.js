@@ -19,12 +19,10 @@ export const Drawing = {
     if (!canvas || canvas.width === 0 || !player) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // --- CORRECTION MAJEURE : Utilisation de la bonne taille de bulle ---
-    // Pour le joueur principal, on utilise la taille globale. Pour les autres, on la calcule.
     const rad = isMain
       ? Game.bubbleRadius
       : (canvas.width / (Config.GRID_COLS * 2 + 1)) * 0.95;
-    if (rad <= 0) return; // Sécurité pour éviter les erreurs si le rayon est nul ou négatif
+    if (rad <= 0) return;
 
     const gameOverLineY =
       GameLogic.getBubbleCoords(Config.GAME_OVER_ROW, 0, rad).y - rad;
@@ -49,7 +47,7 @@ export const Drawing = {
 
         if (isMain && player.isAlive) {
           const launcherX = canvas.width / 2;
-          const baseY = canvas.height; // Le point de pivot est tout en bas
+          const baseY = canvas.height;
 
           this.drawCannonBase(ctx, launcherX, baseY, rad);
           this.drawCannonNeedle(
@@ -59,8 +57,9 @@ export const Drawing = {
             gameOverLineY
           );
 
-          // La position de la bulle du lanceur est juste au-dessus de la base.
-          const launcherBubbleY = baseY - rad * 2;
+          // --- CORRECTION POSITION DES BULLES ---
+          // La bulle principale est positionnée pour être DANS le socle
+          const launcherBubbleY = baseY - rad;
 
           if (player.launcherBubble)
             this.drawBubble(
@@ -71,14 +70,17 @@ export const Drawing = {
               launcherBubbleY,
               true
             );
+
+          // La prochaine bulle est plus petite et décalée sur le côté
           if (player.nextBubble)
             this.drawBubble(
               ctx,
               player.nextBubble,
               rad * 0.7,
-              launcherX + rad * 3,
-              launcherBubbleY
+              launcherX + rad * 1.8, // Plus proche du centre
+              baseY - rad * 0.6 // Un peu plus bas
             );
+
           if (player.shotBubble)
             this.drawBubble(
               ctx,
@@ -187,7 +189,8 @@ export const Drawing = {
   drawCannonBase(ctx, x, y, rad) {
     ctx.fillStyle = "#E5E7EB";
     ctx.beginPath();
-    ctx.arc(x, y, rad * 1.5, Math.PI, 0);
+    // --- CORRECTION : Réduction de la taille de la base ---
+    ctx.arc(x, y, rad * 1.2, Math.PI, 0);
     ctx.fill();
   },
 

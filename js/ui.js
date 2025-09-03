@@ -21,33 +21,26 @@ export const UI = {
       (p) => p.id !== FirebaseController.auth?.currentUser?.uid
     );
 
-    // --- CHANGEMENT DE LA LOGIQUE D'AFFICHAGE ---
-    // On va remplir une grille de 10 slots (2x5)
-    const totalSlots = 10;
-    let opponentIndex = 0;
+    // --- On rétablit la logique de rendu pour une grille 2x5 ---
+    const announcement = document.createElement("div");
+    announcement.id = "spell-announcement";
+    announcement.className =
+      "opponent-view flex items-center justify-center text-center";
+    announcement.innerHTML = "<span>Annonces</span>";
 
-    for (let i = 0; i < totalSlots; i++) {
-      // Le 5ème slot (index 4) est réservé pour les annonces
-      if (i === 4) {
-        const announcement = document.createElement("div");
-        announcement.id = "spell-announcement";
-        announcement.className =
-          "opponent-view flex items-center justify-center text-center";
-        announcement.innerHTML = "<span>Annonces</span>";
-        grid.appendChild(announcement);
-        continue; // On passe au slot suivant
-      }
+    for (let i = 0; i < 5; i++) {
+      const p = opponents[i];
+      const slot = p ? p.container : this.createEmptySlot();
+      if (p) p.canvas.dataset.playerId = p.id;
+      grid.appendChild(slot);
+    }
 
-      const p = opponents[opponentIndex];
-      if (p) {
-        // Il y a un adversaire à afficher
-        p.canvas.dataset.playerId = p.id;
-        grid.appendChild(p.container);
-        opponentIndex++;
-      } else {
-        // Plus d'adversaires, on remplit avec des slots vides
-        grid.appendChild(this.createEmptySlot());
-      }
+    grid.appendChild(announcement);
+    for (let i = 5; i < 9; i++) {
+      const p = opponents[i];
+      const slot = p ? p.container : this.createEmptySlot();
+      if (p) p.canvas.dataset.playerId = p.id;
+      grid.appendChild(slot);
     }
 
     this.resizeAllCanvases();

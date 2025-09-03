@@ -88,12 +88,11 @@ export const InputHandler = {
     const mainCanvas = document.getElementById("gameCanvas");
     if (!mainCanvas) return;
     const rect = mainCanvas.getBoundingClientRect();
-    // On ajuste les coordonnées de la souris pour qu'elles soient relatives au canvas lui-même
     const mouseX = e.clientX - rect.left,
       mouseY = e.clientY - rect.top;
 
-    // --- CORRECTION : Le point de pivot du canon est maintenant en bas du canvas ---
-    const launcherY = mainCanvas.height;
+    // Le point de pivot pour l'angle est la position de la bulle du lanceur
+    const launcherY = mainCanvas.height - Game.bubbleRadius * 0.8;
 
     Game.localPlayer.launcher.angle = Math.atan2(
       mouseY - launcherY,
@@ -120,9 +119,9 @@ export const InputHandler = {
     p.shotBubble.isStatic = false;
     p.shotBubble.vx = Math.cos(p.launcher.angle) * speed;
     p.shotBubble.vy = Math.sin(p.launcher.angle) * speed;
-
-    // --- CORRECTION : Le point de départ de la bulle correspond à sa position dessinée ---
-    const launcherBubbleY = mainCanvas.height - Game.bubbleRadius * 2;
+    
+    // Le point de départ est la position de la bulle du lanceur
+    const launcherBubbleY = mainCanvas.height - Game.bubbleRadius * 0.8;
     p.shotBubble.x = mainCanvas.width / 2;
     p.shotBubble.y = launcherBubbleY;
 

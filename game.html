@@ -49,15 +49,15 @@
         cursor: pointer;
         transition: all 0.2s;
         border: 2px solid #ffffff;
-        /* --- LA CORRECTION PRINCIPALE EST ICI --- */
-        /* On force le ratio pour correspondre à celui du jeu.
-           8 colonnes de large pour environ 14 rangées de haut.
-           Ce ratio (8 / 14) va forcer les miniatures à être plus hautes que larges. */
         aspect-ratio: 8 / 14;
       }
       .opponent-view.empty-slot {
         background: #0c1445;
         border-style: dashed;
+      }
+      /* CHANGEMENT 1 : On réduit l'espacement de la grille */
+      #opponents-grid {
+        gap: 0.25rem; /* 4px */
       }
       .opponent-canvas {
         width: 100%;
@@ -65,8 +65,9 @@
         object-fit: contain;
         border-radius: 0.5rem;
       }
+      /* CHANGEMENT 2 : On ré-augmente la hauteur du chat */
       .chat-container {
-        height: 120px;
+        height: 180px;
         overflow-y: scroll;
         background-color: #0c1445;
         border: 2px solid #4a5568;
@@ -177,10 +178,9 @@
           </div>
 
           <div class="w-2/3 flex flex-col">
-            <!-- On ne change rien ici, la grille reste une 2x5 -->
             <div
               id="opponents-grid"
-              class="grid grid-cols-5 grid-rows-2 gap-2 flex-grow"
+              class="grid grid-cols-5 grid-rows-2 flex-grow"
             ></div>
           </div>
         </main>

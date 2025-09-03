@@ -21,7 +21,6 @@ export const UI = {
       (p) => p.id !== FirebaseController.auth?.currentUser?.uid
     );
 
-    // --- On rétablit la logique de rendu pour une grille 2x5 ---
     const announcement = document.createElement("div");
     announcement.id = "spell-announcement";
     announcement.className =
@@ -191,8 +190,9 @@ export const UI = {
     }
 
     if (Game.bubbleRadius > 0) {
-      const slotSize = Game.bubbleRadius * 1.8;
-      inv.style.height = `${slotSize * 1.2}px`;
+      // CHANGEMENT : On réduit la taille des sorts
+      const slotSize = Game.bubbleRadius * 1.5; // Était 1.8
+      inv.style.height = `${slotSize * 1.1}px`;
       const slots = inv.querySelectorAll(".spell-slot");
       slots.forEach((slot) => {
         slot.style.width = `${slotSize}px`;

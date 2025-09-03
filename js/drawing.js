@@ -19,7 +19,9 @@ export const Drawing = {
     if (!canvas || canvas.width === 0 || !player) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const rad = isMain ? Game.bubbleRadius : (canvas.width / (Config.GRID_COLS * 2 + 1)) * 0.95;
+    const rad = isMain
+      ? Game.bubbleRadius
+      : (canvas.width / (Config.GRID_COLS * 2 + 1)) * 0.95;
     if (rad <= 0) return;
 
     const gameOverLineY =
@@ -46,35 +48,30 @@ export const Drawing = {
         if (isMain && player.isAlive) {
           const launcherX = canvas.width / 2;
           const baseY = canvas.height;
-          
+
           const launcherBubbleY = baseY - rad;
 
-          // --- CHANGEMENT ORDRE DE DESSIN ET POSITION ---
-          // 1. On dessine la bulle principale un peu plus grosse et "derrière"
           if (player.launcherBubble)
             this.drawBubble(
               ctx,
               player.launcherBubble,
-              rad * 1.05, // Légèrement plus grosse
+              rad * 1.05,
               launcherX,
               launcherBubbleY,
               true
             );
 
-          // 2. On dessine la base du canon par-dessus
           this.drawCannonBase(ctx, launcherX, baseY, rad);
 
-          // 3. On dessine la prochaine bulle, petite et à l'intérieur de la base
           if (player.nextBubble)
             this.drawBubble(
               ctx,
               player.nextBubble,
-              rad * 0.6, // Plus petite
+              rad * 0.6,
               launcherX + rad * 1.5,
               baseY - rad * 0.5
             );
-            
-          // 4. On dessine l'aiguille en dernier
+
           this.drawCannonNeedle(
             ctx,
             player,
@@ -82,7 +79,6 @@ export const Drawing = {
             gameOverLineY
           );
 
-          // 5. La bulle tirée est toujours au premier plan
           if (player.shotBubble)
             this.drawBubble(
               ctx,
@@ -191,8 +187,8 @@ export const Drawing = {
   drawCannonBase(ctx, x, y, rad) {
     ctx.fillStyle = "#E5E7EB";
     ctx.beginPath();
-    // On garde un rayon plus petit pour la base
-    ctx.arc(x, y, rad * 1.1, Math.PI, 0); 
+    // CHANGEMENT : On réduit encore la base du canon
+    ctx.arc(x, y, rad * 0.9, Math.PI, 0);
     ctx.fill();
   },
 

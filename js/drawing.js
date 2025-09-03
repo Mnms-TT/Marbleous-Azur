@@ -19,7 +19,13 @@ export const Drawing = {
     if (!canvas || canvas.width === 0 || !player) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const rad = (canvas.width / (Config.GRID_COLS * 2 + 1)) * 0.95;
+    // --- CORRECTION MAJEURE : Utilisation de la bonne taille de bulle ---
+    // Pour le joueur principal, on utilise la taille globale. Pour les autres, on la calcule.
+    const rad = isMain
+      ? Game.bubbleRadius
+      : (canvas.width / (Config.GRID_COLS * 2 + 1)) * 0.95;
+    if (rad <= 0) return; // Sécurité pour éviter les erreurs si le rayon est nul ou négatif
+
     const gameOverLineY =
       GameLogic.getBubbleCoords(Config.GAME_OVER_ROW, 0, rad).y - rad;
 
@@ -43,8 +49,8 @@ export const Drawing = {
 
         if (isMain && player.isAlive) {
           const launcherX = canvas.width / 2;
-          // CHANGEMENT ICI: La base du canon est maintenant tout en bas du canvas.
-          const baseY = canvas.height;
+          const baseY = canvas.height; // Le point de pivot est tout en bas
+
           this.drawCannonBase(ctx, launcherX, baseY, rad);
           this.drawCannonNeedle(
             ctx,
@@ -53,13 +59,16 @@ export const Drawing = {
             gameOverLineY
           );
 
+          // La position de la bulle du lanceur est juste au-dessus de la base.
+          const launcherBubbleY = baseY - rad * 2;
+
           if (player.launcherBubble)
             this.drawBubble(
               ctx,
               player.launcherBubble,
               rad,
               launcherX,
-              baseY - rad, // On remonte la bulle pour qu'elle soit sur la base
+              launcherBubbleY,
               true
             );
           if (player.nextBubble)
@@ -68,7 +77,7 @@ export const Drawing = {
               player.nextBubble,
               rad * 0.7,
               launcherX + rad * 3,
-              baseY - rad // On aligne verticalement avec la bulle du lanceur
+              launcherBubbleY
             );
           if (player.shotBubble)
             this.drawBubble(

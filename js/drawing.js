@@ -19,9 +19,7 @@ export const Drawing = {
     if (!canvas || canvas.width === 0 || !player) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const rad = isMain
-      ? Game.bubbleRadius
-      : (canvas.width / (Config.GRID_COLS * 2 + 1)) * 0.95;
+    const rad = isMain ? Game.bubbleRadius : (canvas.width / (Config.GRID_COLS * 2 + 1)) * 0.95;
     if (rad <= 0) return;
 
     const gameOverLineY =
@@ -48,7 +46,7 @@ export const Drawing = {
         if (isMain && player.isAlive) {
           const launcherX = canvas.width / 2;
           const baseY = canvas.height;
-
+          
           const launcherBubbleY = baseY - rad;
 
           // --- CHANGEMENT ORDRE DE DESSIN ET POSITION ---
@@ -75,7 +73,7 @@ export const Drawing = {
               launcherX + rad * 1.5,
               baseY - rad * 0.5
             );
-
+            
           // 4. On dessine l'aiguille en dernier
           this.drawCannonNeedle(
             ctx,
@@ -194,7 +192,7 @@ export const Drawing = {
     ctx.fillStyle = "#E5E7EB";
     ctx.beginPath();
     // On garde un rayon plus petit pour la base
-    ctx.arc(x, y, rad * 1.1, Math.PI, 0);
+    ctx.arc(x, y, rad * 1.1, Math.PI, 0); 
     ctx.fill();
   },
 

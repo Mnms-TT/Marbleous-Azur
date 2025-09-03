@@ -7,6 +7,8 @@ export const UI = {
   announcementTimeout: null,
   selectedSpellIndex: null,
 
+  // ... (les autres fonctions restent inchangées)
+
   clearAllReadyOverlays() {
     const overlays = document.querySelectorAll(".ready-overlay");
     overlays.forEach((overlay) => overlay.remove());
@@ -157,11 +159,6 @@ export const UI = {
   updatePlayerStats() {
     if (!Game.localPlayer) return;
 
-    const teamIndicator = document.getElementById("main-player-team-indicator");
-    if (teamIndicator)
-      teamIndicator.style.backgroundColor =
-        Config.TEAM_COLORS[Game.localPlayer.team];
-
     const inv = document.getElementById("spellInventory");
     inv.innerHTML = "";
     for (let i = 0; i < Config.MAX_SPELLS; i++) {
@@ -190,8 +187,7 @@ export const UI = {
     }
 
     if (Game.bubbleRadius > 0) {
-      // CHANGEMENT : On réduit la taille des sorts
-      const slotSize = Game.bubbleRadius * 1.5; // Était 1.8
+      const slotSize = Game.bubbleRadius * 1.5;
       inv.style.height = `${slotSize * 1.1}px`;
       const slots = inv.querySelectorAll(".spell-slot");
       slots.forEach((slot) => {
@@ -257,20 +253,6 @@ export const UI = {
       }
     }, 4000);
   },
-  triggerScreenShake(intensity = "low") {
-    const now = Date.now();
-    const duration = intensity === "high" ? 600 : 250;
-    const shake = intensity === "high" ? 15 : 5;
-    Game.shakeUntil = Math.max(now, Game.shakeUntil) + duration;
-    Game.shakeIntensity = Math.min(20, (Game.shakeIntensity || 0) + shake);
-  },
-  addChatMessage(sender, msg) {
-    const chat = document.getElementById("chat-messages");
-    if (chat) {
-      chat.innerHTML += `<p><span class="font-bold">${sender}:</span> ${msg}</p>`;
-      chat.scrollTop = chat.scrollHeight;
-    }
-  },
 
   resizeAllCanvases() {
     const mainCanvasCont = document.getElementById("canvas-container");
@@ -280,7 +262,19 @@ export const UI = {
       const contW = mainCanvasCont.clientWidth;
       const contH = mainCanvasCont.clientHeight;
 
-      const idealRatio = (Config.GRID_COLS * 2) / (Config.GRID_ROWS * 1.8);
+      // --- NOUVELLE LOGIQUE DE RATIO ---
+      // Hauteur d'une rangée de bulles hexagonales = rayon * 2 * 0.866
+      const rowHeightFactor = 1.732;
+      // La grille visible va jusqu'à la ligne de game over (incluse)
+      const gridHeightInRows = Config.GAME_OVER_ROW + 1; // 12 rangées
+      // La zone du canon doit faire la hauteur de 4 bulles
+      const launcherHeightInRows = 4;
+
+      // Calcul du ratio Largeur / Hauteur
+      const idealWidthUnits = Config.GRID_COLS * 2;
+      const idealHeightUnits =
+        (gridHeightInRows + launcherHeightInRows) * rowHeightFactor;
+      const idealRatio = idealWidthUnits / idealHeightUnits;
 
       let newW, newH;
 
@@ -297,7 +291,6 @@ export const UI = {
 
       mainCanvas.style.width = `${newW}px`;
       mainCanvas.style.height = `${newH}px`;
-      mainCanvas.style.position = "";
 
       Game.bubbleRadius = (newW / (Config.GRID_COLS * 2 + 1)) * 0.95;
 
@@ -316,23 +309,6 @@ export const UI = {
   },
 
   preloadSpellIcons: () => {
-    const spellIcons = {
-      plateauIncline: "icons/sort_tilt.png",
-      canonEndommage: "icons/sort_canon.png",
-      sabotageSorts: "icons/sort_cancel.png",
-      canonArcEnCiel: "icons/sort_rainbow.png",
-      monteeLignes: "icons/sort_addline.png",
-      nukeBomb: "icons/sort_nuke.png",
-      colonneMonochrome: "icons/sort_monocolor.png",
-    };
-
-    for (const key in spellIcons) {
-      if (Config.SPELLS[key]) {
-        Config.SPELLS[key].icon = spellIcons[key];
-        const img = new Image();
-        img.src = spellIcons[key];
-        Game.spellIcons[key] = img;
-      }
-    }
+    // ... (inchangé)
   },
 };

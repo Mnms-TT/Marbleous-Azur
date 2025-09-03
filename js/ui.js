@@ -188,6 +188,19 @@ export const UI = {
       inv.appendChild(slot);
     }
 
+    // --- NOUVELLE LOGIQUE ICI ---
+    // On redimensionne les slots de sorts après les avoir créés
+    if (Game.bubbleRadius > 0) {
+      const slotSize = Game.bubbleRadius * 1.8; // Un peu plus petit qu'une bulle
+      inv.style.height = `${slotSize * 1.2}px`; // Hauteur du conteneur
+      const slots = inv.querySelectorAll(".spell-slot");
+      slots.forEach((slot) => {
+        slot.style.width = `${slotSize}px`;
+        slot.style.height = `${slotSize}px`;
+      });
+    }
+    // --- FIN DE LA NOUVELLE LOGIQUE ---
+
     this.updateBoardEffects();
     this.updateTargetingUI();
     Game.players.forEach((p) => {
@@ -212,7 +225,9 @@ export const UI = {
       Game.shakeUntil = 0;
       Game.shakeIntensity = 0;
     }
-    if (cont) cont.style.transform = transform.trim();
+    // On applique la transformation sur le canvas, pas sur le conteneur
+    const canvas = document.getElementById("gameCanvas");
+    if (canvas) canvas.style.transform = transform.trim();
   },
 
   updateTargetingUI() {
@@ -268,36 +283,31 @@ export const UI = {
       const contW = mainCanvasCont.clientWidth;
       const contH = mainCanvasCont.clientHeight;
 
-      // Définition d'un ratio cible pour la zone de jeu (plus haute que large)
-      // Un ratio de 8 colonnes sur 14 rangées est un bon point de départ
       const idealRatio = (Config.GRID_COLS * 2) / (Config.GRID_ROWS * 1.8);
 
       let newW, newH;
 
       if (contW / contH > idealRatio) {
-        // Le conteneur est plus large que notre ratio idéal -> la hauteur est la contrainte
         newH = contH;
         newW = newH * idealRatio;
       } else {
-        // Le conteneur est plus haut -> la largeur est la contrainte
         newW = contW;
         newH = newW / idealRatio;
       }
 
-      // Appliquer la taille à la fois aux attributs (pour la résolution du dessin)
       mainCanvas.width = newW;
       mainCanvas.height = newH;
 
-      // ET au style (pour la taille d'affichage dans la page)
       mainCanvas.style.width = `${newW}px`;
       mainCanvas.style.height = `${newH}px`;
-      mainCanvas.style.position = ""; // On laisse le flexbox centrer
+      mainCanvas.style.position = "";
 
-      // Mettre à jour la variable globale pour le rayon des bulles
       Game.bubbleRadius = (newW / (Config.GRID_COLS * 2 + 1)) * 0.95;
+
+      // On appelle updatePlayerStats pour redimensionner les sorts en même temps
+      this.updatePlayerStats();
     }
 
-    // Redimensionner les canvas des adversaires (logique simple pour l'instant)
     Game.players.forEach((p) => {
       if (p.id !== Game.localPlayer?.id && p.canvas) {
         const oppCont = p.canvas.parentElement;
@@ -312,12 +322,12 @@ export const UI = {
   preloadSpellIcons: () => {
     const spellIcons = {
       plateauIncline: "icons/sort_tilt.png",
-      canonEndommage: "icons/sort_canon.png",
-      sabotageSorts: "icons/sort_cancel.png",
-      canonArcEnCiel: "icons/sort_rainbow.png",
-      monteeLignes: "icons/sort_addline.png",
-      nukeBomb: "icons/sort_nuke.png",
-      colonneMonochrome: "icons/sort_monocolor.png",
+      canonEndommage: "icons-old/sort_canon.png",
+      sabotageSorts: "icons-old/sort_cancel.png",
+      canonArcEnCiel: "icons-old/sort_rainbow.png",
+      monteeLignes: "icons-old/sort_addline.png",
+      nukeBomb: "icons-old/sort_nuke.png",
+      colonneMonochrome: "icons-old/sort_monocolor.png",
     };
 
     for (const key in spellIcons) {

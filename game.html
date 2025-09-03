@@ -69,8 +69,7 @@
         border-radius: 0.5rem;
       }
       .spell-slot {
-        width: 45px;
-        height: 45px;
+        /* On retire les tailles fixes, elles seront gérées par JS */
         background-color: #0c1445;
         border: 3px solid #4a5568;
         border-radius: 50%;
@@ -90,8 +89,6 @@
       }
       #gameCanvas {
         cursor: default;
-        /* On retire les styles de positionnement et de taille ici, 
-           car JavaScript va les gérer entièrement */
       }
       #gameCanvas.aiming,
       .opponent-view.aiming {
@@ -171,20 +168,22 @@
         <main class="flex flex-col gap-2 flex-grow min-h-0">
           <div class="flex flex-row gap-4 flex-grow min-h-0">
             <div class="w-1/3 flex flex-col gap-2">
+              <!-- CHANGEMENT 1 : On retire "game-area-bg" de ce conteneur -->
               <div
                 id="canvas-container"
-                class="relative w-full game-area-bg flex-grow flex items-center justify-center"
+                class="relative w-full flex-grow flex items-center justify-center"
               >
-                <!-- ↑↑↑ ON AJOUTE "flex items-center justify-center" ICI ↑↑↑ -->
-                <canvas id="gameCanvas"></canvas>
+                <!-- CHANGEMENT 2 : On ajoute "game-area-bg" directement au canvas -->
+                <canvas id="gameCanvas" class="game-area-bg"></canvas>
                 <div
                   id="main-player-team-indicator"
                   class="team-indicator"
                 ></div>
               </div>
+              <!-- CHANGEMENT 3 : On retire la hauteur fixe "h-12" de l'inventaire -->
               <div
                 id="spellInventory"
-                class="w-full flex justify-center items-center gap-2 h-12 flex-shrink-0"
+                class="w-full flex justify-center items-center gap-2 flex-shrink-0"
               ></div>
             </div>
 

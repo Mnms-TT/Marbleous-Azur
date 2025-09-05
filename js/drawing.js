@@ -24,7 +24,7 @@ export const Drawing = {
       : (canvas.width / (Config.GRID_COLS * 2 + 1)) * 0.95;
     if (rad <= 0) return;
 
-    // --- On se base sur la logique du jeu pour un positionnement toujours correct ---
+    // --- On revient à la seule méthode correcte pour placer la ligne ---
     const gameOverLineY =
       GameLogic.getBubbleCoords(Config.GAME_OVER_ROW, 0, rad).y - rad;
 
@@ -39,10 +39,7 @@ export const Drawing = {
           for (let c = 0; c < Config.GRID_COLS; c++)
             if (player.grid[r][c]) {
               const { x, y } = GameLogic.getBubbleCoords(r, c, rad);
-              // On ne dessine que les bulles qui sont au-dessus de la zone de tir
-              if (y < gameOverLineY + rad * 2) {
-                this.drawBubble(ctx, player.grid[r][c], rad, x, y);
-              }
+              this.drawBubble(ctx, player.grid[r][c], rad, x, y);
             }
         (player.fallingBubbles || []).forEach((b) =>
           this.drawBubble(ctx, b, rad, b.x, b.y)

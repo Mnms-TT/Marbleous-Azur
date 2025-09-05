@@ -262,15 +262,16 @@ export const UI = {
       const contW = mainCanvasCont.clientWidth;
       const contH = mainCanvasCont.clientHeight;
 
-      // --- NOUVELLE LOGIQUE DE RATIO ---
-      // Hauteur d'une rangée de bulles hexagonales = rayon * 2 * 0.866
-      const rowHeightFactor = 1.732;
-      // La grille visible va jusqu'à la ligne de game over (incluse)
-      const gridHeightInRows = Config.GAME_OVER_ROW + 1; // 12 rangées
-      // La zone du canon doit faire la hauteur de 4 bulles
+      // --- LOGIQUE DE RATIO CORRIGÉE ET FINALISÉE ---
+      const rowHeightFactor = 1.732; // Facteur de hauteur pour une rangée hexagonale (sqrt(3))
+
+      // La zone de grille va jusqu'à la ligne 11 (GAME_OVER_ROW), donc elle a 12 rangées de haut.
+      const gridHeightInRows = Config.GAME_OVER_ROW + 1; // 12
+
+      // CHANGEMENT : La zone de tir doit faire 1/3 de la zone de grille.
+      // 1/3 de 12 rangées = 4 rangées.
       const launcherHeightInRows = 4;
 
-      // Calcul du ratio Largeur / Hauteur
       const idealWidthUnits = Config.GRID_COLS * 2;
       const idealHeightUnits =
         (gridHeightInRows + launcherHeightInRows) * rowHeightFactor;

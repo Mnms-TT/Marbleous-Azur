@@ -4,10 +4,7 @@ import { FirebaseController } from "./firebaseController.js";
 import { GameLogic } from "./gameLogic.js";
 
 export const UI = {
-  announcementTimeout: null,
-  selectedSpellIndex: null,
-
-  // ... (les autres fonctions restent inchangées)
+  // ... (fonctions inchangées)
 
   clearAllReadyOverlays() {
     const overlays = document.querySelectorAll(".ready-overlay");
@@ -262,22 +259,9 @@ export const UI = {
       const contW = mainCanvasCont.clientWidth;
       const contH = mainCanvasCont.clientHeight;
 
-      // --- NOUVELLE LOGIQUE DE RATIO BASÉE SUR VOTRE RÈGLE PRÉCISE ---
-      const rowHeightFactor = 1.732; // Hauteur d'une rangée de bulles par rapport à son rayon
-
-      // La hauteur de la grille de jeu (au-dessus de la ligne) est de 12 rangées (0 à 11)
-      const gridHeightInRows = Config.GAME_OVER_ROW + 1; // 12
-
-      // La zone de tir (sous la ligne) doit faire 1/3 de cette hauteur, soit 4 rangées
-      const launcherHeightInRows = gridHeightInRows / 3; // 12 / 3 = 4
-
-      // La hauteur totale de la zone de jeu est la somme des deux
-      const totalHeightInRows = gridHeightInRows + launcherHeightInRows; // 12 + 4 = 16
-
-      // On peut maintenant calculer le ratio idéal
-      const idealWidthUnits = Config.GRID_COLS * 2;
-      const idealHeightUnits = totalHeightInRows * rowHeightFactor;
-      const idealRatio = idealWidthUnits / idealHeightUnits;
+      // --- CORRECTION FINALE DU RATIO ---
+      // Basé sur l'analyse de l'image du jeu original
+      const idealRatio = 5 / 9;
 
       let newW, newH;
 

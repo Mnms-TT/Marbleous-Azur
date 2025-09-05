@@ -3,7 +3,7 @@ import { GameLogic } from "./gameLogic.js";
 import { Config } from "./config.js";
 
 export const Drawing = {
-  // ... (les autres fonctions restent inchangées)
+  // ... (fonctions inchangées)
 
   drawAll() {
     if (!Game.localPlayer) return;
@@ -26,8 +26,9 @@ export const Drawing = {
       : (canvas.width / (Config.GRID_COLS * 2 + 1)) * 0.95;
     if (rad <= 0) return;
 
-    const gameOverLineY =
-      GameLogic.getBubbleCoords(Config.GAME_OVER_ROW, 0, rad).y - rad;
+    // --- CORRECTION DE LA POSITION DE LA LIGNE ---
+    // La ligne de Game Over est aux 2/3 de la hauteur totale du canvas.
+    const gameOverLineY = canvas.height * (2 / 3);
 
     if (isMain && Game.state === "waiting") {
       this.drawLobbyAnimation(ctx, canvas);
@@ -184,22 +185,21 @@ export const Drawing = {
 
   drawCannonBase(ctx, x, y, rad) {},
 
-  // --- CHANGEMENT COMPLET DE LA FONCTION ---
   drawCannonNeedle(ctx, player, basePos, lineY) {
     ctx.save();
     ctx.translate(basePos.x, basePos.y);
     ctx.rotate(player.launcher.angle + Math.PI / 2);
 
     const length = basePos.y - lineY;
-    const baseWidth = Math.max(4, Game.bubbleRadius * 0.2); // Largeur à la base
-    const tipWidth = Math.max(1, Game.bubbleRadius * 0.05); // Largeur à la pointe
+    const baseWidth = Math.max(4, Game.bubbleRadius * 0.2);
+    const tipWidth = Math.max(1, Game.bubbleRadius * 0.05);
 
     ctx.fillStyle = "#374151";
     ctx.beginPath();
-    ctx.moveTo(-baseWidth / 2, 0); // Point bas gauche
-    ctx.lineTo(baseWidth / 2, 0); // Point bas droit
-    ctx.lineTo(tipWidth / 2, -length); // Point haut droit
-    ctx.lineTo(-tipWidth / 2, -length); // Point haut gauche
+    ctx.moveTo(-baseWidth / 2, 0);
+    ctx.lineTo(baseWidth / 2, 0);
+    ctx.lineTo(tipWidth / 2, -length);
+    ctx.lineTo(-tipWidth / 2, -length);
     ctx.closePath();
     ctx.fill();
 

@@ -260,19 +260,18 @@ export const UI = {
       const contW = mainCanvasCont.clientWidth;
       const contH = mainCanvasCont.clientHeight;
 
-      // --- NOUVELLE LOGIQUE DE RATIO BASÉE SUR VOTRE RÈGLE PRÉCISE ---
       const rowHeightFactor = 1.732;
 
-      // 1. La GRILLE DE JEU a une hauteur de 12 rangées (0 à 11).
+      // Règle 1: La grille de jeu fait 12 rangées de haut (0 à 11).
       const gridHeightInRows = Config.GAME_OVER_ROW + 1; // = 12
 
-      // 2. La ZONE DE TIR a une hauteur de 3 rangées.
+      // Règle 2: La zone de tir fait 3 rangées de haut.
       const launcherHeightInRows = 3;
 
-      // 3. La HAUTEUR TOTALE du contenu est de 12 + 3 = 15 rangées.
+      // La hauteur totale du contenu est donc de 12 + 3 = 15 rangées.
       const totalHeightInRows = gridHeightInRows + launcherHeightInRows;
 
-      // 4. On calcule le ratio final à partir de ces règles.
+      // Calcul du ratio final.
       const idealWidthUnits = Config.GRID_COLS * 2;
       const idealHeightUnits = totalHeightInRows * rowHeightFactor;
       const idealRatio = idealWidthUnits / idealHeightUnits;

@@ -262,19 +262,21 @@ export const UI = {
       const contW = mainCanvasCont.clientWidth;
       const contH = mainCanvasCont.clientHeight;
 
-      // --- LOGIQUE DE RATIO CORRIGÉE ET FINALISÉE ---
-      const rowHeightFactor = 1.732; // Facteur de hauteur pour une rangée hexagonale (sqrt(3))
+      // --- NOUVELLE LOGIQUE DE RATIO BASÉE SUR VOTRE RÈGLE PRÉCISE ---
+      const rowHeightFactor = 1.732; // Hauteur d'une rangée de bulles par rapport à son rayon
 
-      // La zone de grille va jusqu'à la ligne 11 (GAME_OVER_ROW), donc elle a 12 rangées de haut.
+      // La hauteur de la grille de jeu (au-dessus de la ligne) est de 12 rangées (0 à 11)
       const gridHeightInRows = Config.GAME_OVER_ROW + 1; // 12
 
-      // CHANGEMENT : La zone de tir doit faire 1/3 de la zone de grille.
-      // 1/3 de 12 rangées = 4 rangées.
-      const launcherHeightInRows = 4;
+      // La zone de tir (sous la ligne) doit faire 1/3 de cette hauteur, soit 4 rangées
+      const launcherHeightInRows = gridHeightInRows / 3; // 12 / 3 = 4
 
+      // La hauteur totale de la zone de jeu est la somme des deux
+      const totalHeightInRows = gridHeightInRows + launcherHeightInRows; // 12 + 4 = 16
+
+      // On peut maintenant calculer le ratio idéal
       const idealWidthUnits = Config.GRID_COLS * 2;
-      const idealHeightUnits =
-        (gridHeightInRows + launcherHeightInRows) * rowHeightFactor;
+      const idealHeightUnits = totalHeightInRows * rowHeightFactor;
       const idealRatio = idealWidthUnits / idealHeightUnits;
 
       let newW, newH;
@@ -289,12 +291,10 @@ export const UI = {
 
       mainCanvas.width = newW;
       mainCanvas.height = newH;
-
       mainCanvas.style.width = `${newW}px`;
       mainCanvas.style.height = `${newH}px`;
 
       Game.bubbleRadius = (newW / (Config.GRID_COLS * 2 + 1)) * 0.95;
-
       this.updatePlayerStats();
     }
 

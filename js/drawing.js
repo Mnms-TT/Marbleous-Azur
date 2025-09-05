@@ -3,6 +3,8 @@ import { GameLogic } from "./gameLogic.js";
 import { Config } from "./config.js";
 
 export const Drawing = {
+  // ... (les autres fonctions restent inchangées)
+
   drawAll() {
     if (!Game.localPlayer) return;
     const mainCanvas = document.getElementById("gameCanvas");
@@ -47,8 +49,6 @@ export const Drawing = {
 
         if (isMain && player.isAlive) {
           const launcherX = canvas.width / 2;
-
-          // CHANGEMENT 1 : La bulle est plus basse, réduisant l'espace sous la ligne noire
           const launcherBubbleY = canvas.height - rad;
 
           if (player.launcherBubble)
@@ -70,7 +70,6 @@ export const Drawing = {
               launcherBubbleY
             );
 
-          // L'aiguille part de la position de la bulle
           this.drawCannonNeedle(
             ctx,
             player,
@@ -183,16 +182,27 @@ export const Drawing = {
     ctx.stroke();
   },
 
-  // CHANGEMENT 3 : Cette fonction est maintenant inutile.
   drawCannonBase(ctx, x, y, rad) {},
 
+  // --- CHANGEMENT COMPLET DE LA FONCTION ---
   drawCannonNeedle(ctx, player, basePos, lineY) {
     ctx.save();
     ctx.translate(basePos.x, basePos.y);
     ctx.rotate(player.launcher.angle + Math.PI / 2);
+
     const length = basePos.y - lineY;
+    const baseWidth = Math.max(4, Game.bubbleRadius * 0.2); // Largeur à la base
+    const tipWidth = Math.max(1, Game.bubbleRadius * 0.05); // Largeur à la pointe
+
     ctx.fillStyle = "#374151";
-    ctx.fillRect(-2, -length, 4, length);
+    ctx.beginPath();
+    ctx.moveTo(-baseWidth / 2, 0); // Point bas gauche
+    ctx.lineTo(baseWidth / 2, 0); // Point bas droit
+    ctx.lineTo(tipWidth / 2, -length); // Point haut droit
+    ctx.lineTo(-tipWidth / 2, -length); // Point haut gauche
+    ctx.closePath();
+    ctx.fill();
+
     ctx.restore();
   },
 };

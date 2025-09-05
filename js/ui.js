@@ -266,7 +266,7 @@ export const UI = {
       const gridHeightInRows = Config.GAME_OVER_ROW + 1; // = 12
 
       // Règle 2: La zone de tir fait 3 rangées de haut.
-      const launcherHeightInRows = 14;
+      const launcherHeightInRows = 2;
 
       // La hauteur totale du contenu est donc de 12 + 3 = 15 rangées.
       const totalHeightInRows = gridHeightInRows + launcherHeightInRows;

@@ -3,8 +3,6 @@ import { GameLogic } from "./gameLogic.js";
 import { Config } from "./config.js";
 
 export const Drawing = {
-  // ... (fonctions inchangées)
-
   drawAll() {
     if (!Game.localPlayer) return;
     const mainCanvas = document.getElementById("gameCanvas");
@@ -26,9 +24,9 @@ export const Drawing = {
       : (canvas.width / (Config.GRID_COLS * 2 + 1)) * 0.95;
     if (rad <= 0) return;
 
-    // --- CORRECTION DE LA POSITION DE LA LIGNE ---
-    // La ligne de Game Over est aux 2/3 de la hauteur totale du canvas.
-    const gameOverLineY = canvas.height * (2 / 3);
+    // --- On se base sur la logique du jeu pour un positionnement toujours correct ---
+    const gameOverLineY =
+      GameLogic.getBubbleCoords(Config.GAME_OVER_ROW, 0, rad).y - rad;
 
     if (isMain && Game.state === "waiting") {
       this.drawLobbyAnimation(ctx, canvas);
@@ -41,7 +39,10 @@ export const Drawing = {
           for (let c = 0; c < Config.GRID_COLS; c++)
             if (player.grid[r][c]) {
               const { x, y } = GameLogic.getBubbleCoords(r, c, rad);
-              this.drawBubble(ctx, player.grid[r][c], rad, x, y);
+              // On ne dessine que les bulles qui sont au-dessus de la zone de tir
+              if (y < gameOverLineY + rad * 2) {
+                this.drawBubble(ctx, player.grid[r][c], rad, x, y);
+              }
             }
         (player.fallingBubbles || []).forEach((b) =>
           this.drawBubble(ctx, b, rad, b.x, b.y)

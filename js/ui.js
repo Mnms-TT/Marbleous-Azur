@@ -4,7 +4,8 @@ import { FirebaseController } from "./firebaseController.js";
 import { GameLogic } from "./gameLogic.js";
 
 export const UI = {
-  // ... (fonctions inchangées)
+  announcementTimeout: null,
+  selectedSpellIndex: null,
 
   clearAllReadyOverlays() {
     const overlays = document.querySelectorAll(".ready-overlay");
@@ -259,9 +260,22 @@ export const UI = {
       const contW = mainCanvasCont.clientWidth;
       const contH = mainCanvasCont.clientHeight;
 
-      // --- CORRECTION FINALE DU RATIO ---
-      // Basé sur l'analyse de l'image du jeu original
-      const idealRatio = 5 / 9;
+      // --- LOGIQUE FINALE BASÉE SUR VOS RÈGLES ---
+      const rowHeightFactor = 1.732;
+
+      // 1. Hauteur de la GRILLE = 12 rangées (de 0 à 11).
+      const gridHeightInRows = Config.GAME_OVER_ROW + 1; // = 12
+
+      // 2. Hauteur de la ZONE DE TIR = 4 rangées.
+      const launcherHeightInRows = 4;
+
+      // 3. Hauteur TOTALE du contenu = 16 rangées.
+      const totalHeightInRows = gridHeightInRows + launcherHeightInRows;
+
+      // 4. Calcul du ratio final.
+      const idealWidthUnits = Config.GRID_COLS * 2;
+      const idealHeightUnits = totalHeightInRows * rowHeightFactor;
+      const idealRatio = idealWidthUnits / idealHeightUnits;
 
       let newW, newH;
 
@@ -294,6 +308,23 @@ export const UI = {
   },
 
   preloadSpellIcons: () => {
-    // ... (inchangé)
+    const spellIcons = {
+      plateauIncline: "icons/sort_tilt.png",
+      canonEndommage: "icons/sort_canon.png",
+      sabotageSorts: "icons/sort_cancel.png",
+      canonArcEnCiel: "icons/sort_rainbow.png",
+      monteeLignes: "icons/sort_addline.png",
+      nukeBomb: "icons/sort_nuke.png",
+      colonneMonochrome: "icons/sort_monocolor.png",
+    };
+
+    for (const key in spellIcons) {
+      if (Config.SPELLS[key]) {
+        Config.SPELLS[key].icon = spellIcons[key];
+        const img = new Image();
+        img.src = spellIcons[key];
+        Game.spellIcons[key] = img;
+      }
+    }
   },
 };

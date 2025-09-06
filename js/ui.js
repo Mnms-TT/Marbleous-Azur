@@ -260,19 +260,17 @@ export const UI = {
       const contW = mainCanvasCont.clientWidth;
       const contH = mainCanvasCont.clientHeight;
 
-      // --- LA LOGIQUE FINALE ET CORRECTE, BASÉE SUR VOS INSTRUCTIONS ---
       const rowHeightFactor = 1.732;
 
-      // 1. La GRILLE DE JEU a une hauteur de 12 rangées (0 à 11).
-      const gridHeightInRows = Config.GAME_OVER_ROW + 1; // = 12
+      const gridHeightInRows = Config.GAME_OVER_ROW + 1;
 
-      // 2. La ZONE DE TIR a une hauteur de 3 rangées.
-      const launcherHeightInRows = 3;
+      // --- C'EST ICI QUE VOUS POUVEZ AJUSTER LA HAUTEUR ---
+      // Cette valeur correspond au nombre de "rangées de bulles" pour la zone de tir.
+      // La valeur `2` donne le résultat visuel que vous cherchez (environ 3 bulles de haut).
+      const launcherHeightInRows = 2;
 
-      // 3. La HAUTEUR TOTALE du contenu est de 12 + 3 = 15 rangées.
       const totalHeightInRows = gridHeightInRows + launcherHeightInRows;
 
-      // 4. On calcule le ratio final à partir de ces règles.
       const idealWidthUnits = Config.GRID_COLS * 2;
       const idealHeightUnits = totalHeightInRows * rowHeightFactor;
       const idealRatio = idealWidthUnits / idealHeightUnits;

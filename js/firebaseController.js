@@ -23,7 +23,8 @@ export const FirebaseController = {
         try {
             await signInAnonymously(this.auth);
             if (this.auth.currentUser) {
-                document.getElementById('playerId').textContent = this.auth.currentUser.uid;
+                // CHANGEMENT : On supprime cette ligne qui cause l'erreur
+                // document.getElementById('playerId').textContent = this.auth.currentUser.uid;
                 await this.joinGame();
             } else { throw new Error("Authentification anonyme échouée."); }
         } catch (error) {

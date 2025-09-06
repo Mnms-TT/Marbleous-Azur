@@ -55,7 +55,7 @@ export const Config = {
     "#af00c1": "nukeBomb",
     "#d8d6db": "colonneMonochrome",
   },
-  MAX_SPELLS: 8,
+  MAX_SPELLS: 7, // CHANGEMENT ICI: 8 -> 7
   GRID_ROWS: 14,
   GRID_COLS: 8,
   GAME_OVER_ROW: 11,

@@ -94,16 +94,16 @@
         </div>
 
         <main class="flex flex-row gap-2 flex-grow min-h-0">
-          <!-- CHANGEMENT : On restructure la colonne de gauche -->
+          <!-- La structure de la colonne de gauche est corrigée ici -->
           <div class="w-1/3 flex flex-col gap-2">
-            <div id="player-area" class="flex flex-col gap-2 h-full">
-              <div
-                id="canvas-container"
-                class="relative w-full flex-grow flex items-center justify-center"
-              >
-                <canvas id="gameCanvas" class="game-area-bg"></canvas>
-              </div>
-              <div class="flex-shrink-0 text-center">
+            <div
+              id="canvas-container"
+              class="relative w-full h-full flex items-center justify-center"
+            >
+              <canvas id="gameCanvas" class="game-area-bg"></canvas>
+
+              <!-- L'inventaire est maintenant A L'INTERIEUR et positionné en bas -->
+              <div class="absolute bottom-2 left-0 right-0 text-center">
                 <p class="font-bold text-lg -mb-1">SORTILÈGES</p>
                 <div
                   id="spellInventory"

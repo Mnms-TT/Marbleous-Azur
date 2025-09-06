@@ -159,13 +159,13 @@ export const UI = {
 
     const inv = document.getElementById("spellInventory");
     inv.innerHTML = "";
-    for (let i = 0; i < Config.MAX_SPELLS; i++) {
-      const slot = document.createElement("div");
-      slot.className = "spell-slot";
-      const spellName = Game.localPlayer.spells[i];
 
-      if (spellName && Config.SPELLS[spellName]) {
+    // On n'affiche que les sorts que le joueur possède.
+    Game.localPlayer.spells.forEach((spellName, i) => {
+      if (Config.SPELLS[spellName]) {
         const spell = Config.SPELLS[spellName];
+        const slot = document.createElement("div");
+        slot.className = "spell-slot";
         slot.style.backgroundImage = `url("${spell.icon}")`;
         slot.title = spell.name;
 
@@ -178,11 +178,9 @@ export const UI = {
         if (this.selectedSpellIndex === i) {
           slot.classList.add("active");
         }
-      } else {
-        slot.style.opacity = "0.3";
+        inv.appendChild(slot);
       }
-      inv.appendChild(slot);
-    }
+    });
 
     if (Game.bubbleRadius > 0) {
       const slotSize = Game.bubbleRadius * 1.5;
@@ -261,16 +259,9 @@ export const UI = {
       const contH = mainCanvasCont.clientHeight;
 
       const rowHeightFactor = 1.732;
-
       const gridHeightInRows = Config.GAME_OVER_ROW + 1;
-
-      // --- C'EST ICI QUE VOUS POUVEZ AJUSTER LA HAUTEUR ---
-      // Cette valeur correspond au nombre de "rangées de bulles" pour la zone de tir.
-      // La valeur `2` donne le résultat visuel que vous cherchez (environ 3 bulles de haut).
-      const launcherHeightInRows = 2;
-
+      const launcherHeightInRows = 2; // La valeur "magique" qui donne le bon résultat visuel
       const totalHeightInRows = gridHeightInRows + launcherHeightInRows;
-
       const idealWidthUnits = Config.GRID_COLS * 2;
       const idealHeightUnits = totalHeightInRows * rowHeightFactor;
       const idealRatio = idealWidthUnits / idealHeightUnits;

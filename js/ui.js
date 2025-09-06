@@ -157,9 +157,14 @@ export const UI = {
   updatePlayerStats() {
     if (!Game.localPlayer) return;
 
-    const inv = document.getElementById("spellInventory");
-    inv.innerHTML = "";
+    const spellsLeftContainer = document.getElementById("spells-left");
+    const spellsRightContainer = document.getElementById("spells-right");
+    if (!spellsLeftContainer || !spellsRightContainer) return;
 
+    spellsLeftContainer.innerHTML = "";
+    spellsRightContainer.innerHTML = "";
+
+    // On itère sur les sorts du joueur
     Game.localPlayer.spells.forEach((spellName, i) => {
       if (Config.SPELLS[spellName]) {
         const spell = Config.SPELLS[spellName];
@@ -177,14 +182,23 @@ export const UI = {
         if (this.selectedSpellIndex === i) {
           slot.classList.add("active");
         }
-        inv.appendChild(slot);
+
+        // Logique d'affichage : le premier à droite, les autres à gauche
+        if (i === 0) {
+          spellsRightContainer.appendChild(slot);
+        } else {
+          // On ajoute au début pour que le plus récent soit le plus proche du centre
+          spellsLeftContainer.prepend(slot);
+        }
       }
     });
 
     if (Game.bubbleRadius > 0) {
       const slotSize = Game.bubbleRadius * 1.5;
-      inv.style.height = `${slotSize * 1.1}px`;
-      const slots = inv.querySelectorAll(".spell-slot");
+      const spellArea = document.getElementById("spell-area");
+      if (spellArea) spellArea.style.height = `${slotSize * 1.2}px`;
+
+      const slots = document.querySelectorAll("#spell-area .spell-slot");
       slots.forEach((slot) => {
         slot.style.width = `${slotSize}px`;
         slot.style.height = `${slotSize}px`;

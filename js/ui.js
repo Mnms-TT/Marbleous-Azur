@@ -160,7 +160,6 @@ export const UI = {
     const inv = document.getElementById("spellInventory");
     inv.innerHTML = "";
 
-    // On n'affiche que les sorts que le joueur possède.
     Game.localPlayer.spells.forEach((spellName, i) => {
       if (Config.SPELLS[spellName]) {
         const spell = Config.SPELLS[spellName];
@@ -260,7 +259,7 @@ export const UI = {
 
       const rowHeightFactor = 1.732;
       const gridHeightInRows = Config.GAME_OVER_ROW + 1;
-      const launcherHeightInRows = 2; // La valeur "magique" qui donne le bon résultat visuel
+      const launcherHeightInRows = 2;
       const totalHeightInRows = gridHeightInRows + launcherHeightInRows;
       const idealWidthUnits = Config.GRID_COLS * 2;
       const idealHeightUnits = totalHeightInRows * rowHeightFactor;

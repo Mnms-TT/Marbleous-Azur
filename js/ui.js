@@ -318,6 +318,7 @@ export const UI = {
       monteeLignes: "icons/sort_addline.png",
       nukeBomb: "icons/sort_nuke.png",
       colonneMonochrome: "icons/sort_monocolor.png",
+      disparitionLignes: "icons/sort_removeline.png", // Nouveau
     };
 
     for (const key in spellIcons) {

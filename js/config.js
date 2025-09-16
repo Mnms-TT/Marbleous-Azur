@@ -1,12 +1,13 @@
 export const Config = {
   BUBBLE_COLORS: [
-    { main: "#c62b39", shadow: "#69050d" },
-    { main: "#ffd304", shadow: "#957e18" },
-    { main: "#3bda0e", shadow: "#108209" },
-    { main: "#3ee2ee", shadow: "#2babb4" },
-    { main: "#5c68de", shadow: "#18169b" },
-    { main: "#af00c1", shadow: "#860094" },
-    { main: "#d8d6db", shadow: "#636b60" },
+    { main: "#c62b39", shadow: "#69050d" }, // Rouge
+    { main: "#ffd304", shadow: "#957e18" }, // Jaune
+    { main: "#3bda0e", shadow: "#108209" }, // Vert
+    { main: "#3ee2ee", shadow: "#2babb4" }, // Bleu clair
+    { main: "#5c68de", shadow: "#18169b" }, // Bleu foncé
+    { main: "#af00c1", shadow: "#860094" }, // Violet
+    { main: "#d8d6db", shadow: "#636b60" }, // Gris
+    { main: "#4A5568", shadow: "#2D3748" }, // Noir (Nouveau)
   ],
   TEAM_COLORS: ["#3B82F6", "#22C55E", "#F97316", "#EC4899", "#8B5CF6"],
   SPELLS: {
@@ -45,6 +46,11 @@ export const Config = {
       icon: "icons/sort_monocolor.png",
       color: "#d8d6db",
     },
+    disparitionLignes: { // Nouveau sort
+      name: "Disparition de Lignes",
+      icon: "icons/sort_removeline.png",
+      color: "#4A5568",
+    },
   },
   COLOR_TO_SPELL_MAP: {
     "#c62b39": "plateauIncline",
@@ -54,8 +60,9 @@ export const Config = {
     "#5c68de": "monteeLignes",
     "#af00c1": "nukeBomb",
     "#d8d6db": "colonneMonochrome",
+    "#4A5568": "disparitionLignes", // Nouvelle association
   },
-  MAX_SPELLS: 7, // CHANGEMENT ICI: 8 -> 7
+  MAX_SPELLS: 7,
   GRID_ROWS: 14,
   GRID_COLS: 8,
   GAME_OVER_ROW: 11,

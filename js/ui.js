@@ -5,7 +5,7 @@ import { GameLogic } from "./gameLogic.js";
 
 export const UI = {
   announcementTimeout: null,
-  spellSlotSize: 0, 
+  spellSlotSize: 0,
 
   clearAllReadyOverlays() {
     const overlays = document.querySelectorAll(".ready-overlay");
@@ -58,18 +58,20 @@ export const UI = {
     slot.innerHTML = `<div class="flex flex-col items-center justify-center w-full h-full">
         <p class="font-bold text-sm mb-1">Changer d'équipe</p>
         <div class="grid grid-cols-2 gap-2 w-max mx-auto">
-            ${Config.TEAM_COLORS.filter((_, i) => i !== Game.localPlayer.team).map(color => {
+            ${Config.TEAM_COLORS.filter((_, i) => i !== Game.localPlayer.team)
+              .map((color) => {
                 const teamIndex = Config.TEAM_COLORS.indexOf(color);
-                return `<button class="team-choice-btn" style="background-color:${color}; width: 24px; height: 24px; border-radius: 50%;" onclick="window.handleTeamChange(${teamIndex})"></button>`
-            }).join('')}
+                return `<button class="team-choice-btn" style="background-color:${color}; width: 24px; height: 24px; border-radius: 50%;" onclick="window.handleTeamChange(${teamIndex})"></button>`;
+              })
+              .join("")}
         </div>
     </div>`;
     // Attach the function to the window object to be accessible from the onclick attribute
     window.handleTeamChange = (teamIndex) => {
-         FirebaseController.updatePlayerDoc(
-            FirebaseController.auth.currentUser.uid,
-            { team: teamIndex, lastActive: Date.now() }
-          );
+      FirebaseController.updatePlayerDoc(
+        FirebaseController.auth.currentUser.uid,
+        { team: teamIndex, lastActive: Date.now() }
+      );
     };
   },
 
@@ -149,9 +151,9 @@ export const UI = {
     if (!Game.localPlayer) return;
     const spellsContainer = document.getElementById("spells-container");
     if (!spellsContainer || this.spellSlotSize === 0) return;
-  
+
     spellsContainer.innerHTML = "";
-  
+
     Game.localPlayer.spells.forEach((spellName) => {
       if (Config.SPELLS[spellName]) {
         const spell = Config.SPELLS[spellName];
@@ -164,14 +166,14 @@ export const UI = {
         spellsContainer.prepend(slot);
       }
     });
-  
+
     this.updateBoardEffects();
     Game.players.forEach((p) => {
       if (p.id !== Game.localPlayer.id && p.teamIndicator)
         p.teamIndicator.style.backgroundColor = Config.TEAM_COLORS[p.team];
     });
   },
-  
+
   updateBoardEffects() {
     let transform = "";
     if (Game.localPlayer?.statusEffects.plateauIncline)
@@ -195,11 +197,11 @@ export const UI = {
     const slot = document.getElementById("spell-announcement");
     if (!slot) return;
     if (this.announcementTimeout) clearTimeout(this.announcementTimeout);
-  
+
     const iconHTML = spellInfo.icon
       ? `<div class="spell-slot" style="background-color:${spellInfo.color};background-image:url('${spellInfo.icon}');margin: 0 4px;width:24px;height:24px; flex-shrink:0;"></div>`
       : "";
-    
+
     slot.innerHTML = `
       <div class="flex flex-col items-center justify-center w-full h-full text-xs sm:text-sm overflow-hidden p-1">
         <div class="flex items-center justify-center">
@@ -207,12 +209,16 @@ export const UI = {
           ${iconHTML}
           <span class="font-bold whitespace-nowrap">${spellInfo.name}</span>
         </div>
-        ${target ? `<span class="font-bold whitespace-nowrap text-xs mt-1">sur ${target}</span>` : ""}
+        ${
+          target
+            ? `<span class="font-bold whitespace-nowrap text-xs mt-1">sur ${target}</span>`
+            : ""
+        }
       </div>
     `;
-  
+
     this.announcementTimeout = setTimeout(() => {
-      if (slot && (Game.state === "playing" || Game.state === 'countdown')) {
+      if (slot && (Game.state === "playing" || Game.state === "countdown")) {
         slot.innerHTML = "<span>Annonces</span>";
       }
     }, 4000);
@@ -227,11 +233,13 @@ export const UI = {
     if (playerColumn && canvasContainer && mainCanvas && spellsContainer) {
       // CORRECTION DÉFINITIVE : La mise en page est maintenant entièrement contrôlée par JavaScript
       const gap = 4;
-      this.spellSlotSize = (playerColumn.clientWidth - (Config.MAX_SPELLS - 1) * gap) / Config.MAX_SPELLS;
-      
+      this.spellSlotSize =
+        (playerColumn.clientWidth - (Config.MAX_SPELLS - 1) * gap) /
+        Config.MAX_SPELLS;
+
       spellsContainer.style.height = `${this.spellSlotSize}px`;
       spellsContainer.style.gap = `${gap}px`;
-      
+
       canvasContainer.style.height = `calc(100% - ${this.spellSlotSize}px)`;
 
       const contW = canvasContainer.clientWidth;
@@ -260,7 +268,7 @@ export const UI = {
       mainCanvas.style.height = `${newH}px`;
 
       Game.bubbleRadius = (newW / (Config.GRID_COLS * 2 + 1)) * 0.95;
-      
+
       this.updatePlayerStats();
     }
 

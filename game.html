@@ -6,7 +6,7 @@
     <title>Marbleous - Salle de jeu</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic" crossorigin />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
       rel="stylesheet"
@@ -67,7 +67,7 @@
       .spell-slot {
         flex-shrink: 0;
         background-color: #0c1445;
-        border: 3px solid #fde047; /* Jaune pour tous les sorts */
+        border: 3px solid #4a5568; /* Bordure neutre pour tous */
         border-radius: 50%;
         transition: transform 0.2s;
         background-size: 75%;
@@ -75,9 +75,8 @@
         background-repeat: no-repeat;
         aspect-ratio: 1 / 1;
       }
-      /* SUPPRESSION des styles de surbrillance pour .usable */
       .spell-slot:hover {
-        transform: scale(1.08);
+        transform: scale(1.08); /* Garde un léger effet au survol */
       }
       #gameCanvas {
         cursor: default;
@@ -90,15 +89,13 @@
         <main class="flex flex-row gap-2 flex-grow min-h-0">
           <!-- Colonne de gauche (Joueur + Sorts) -->
           <div class="w-1/3 flex flex-col gap-2">
-            <!-- Le conteneur du jeu qui prend la place disponible -->
             <div
               id="canvas-container"
               class="relative w-full flex-grow flex items-center justify-center"
             >
               <canvas id="gameCanvas" class="game-area-bg"></canvas>
             </div>
-            <!-- Le conteneur des sorts, séparé et en dessous -->
-            <!-- CORRIGÉ : Simplification du conteneur et alignement à droite (justify-end) -->
+            <!-- CORRIGÉ : Conteneur simplifié pour un meilleur contrôle JS -->
             <div
               id="spells-container"
               class="flex-shrink-0 w-full flex justify-end items-center gap-1 mt-1"

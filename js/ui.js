@@ -5,6 +5,7 @@ import { GameLogic } from "./gameLogic.js";
 
 export const UI = {
   announcementTimeout: null,
+  spellSlotSize: 0, // Stocker la taille calculée ici
 
   clearAllReadyOverlays() {
     const overlays = document.querySelectorAll(".ready-overlay");
@@ -23,7 +24,7 @@ export const UI = {
     const announcement = document.createElement("div");
     announcement.id = "spell-announcement";
     announcement.className =
-      "opponent-view flex items-center justify-center text-center";
+      "opponent-view flex flex-col items-center justify-center text-center p-2";
     announcement.innerHTML = "<span>Annonces</span>";
 
     for (let i = 0; i < 5; i++) {
@@ -157,22 +158,13 @@ export const UI = {
     if (!Game.localPlayer) return;
 
     const spellsContainer = document.getElementById("spells-container");
-    const mainCanvas = document.getElementById("gameCanvas");
-    if (!spellsContainer || !mainCanvas) return;
+    if (!spellsContainer || this.spellSlotSize === 0) return;
 
-    // CORRECTION : Calcul précis de la taille et application à la zone
-    const gap = parseInt(spellsContainer.style.gap) || 4; // 4px de gap
-    const slotSize =
-      (mainCanvas.clientWidth - (Config.MAX_SPELLS - 1) * gap) /
-      Config.MAX_SPELLS;
-
-    // Fixer la hauteur pour éviter le "saut" de l'interface
-    spellsContainer.style.height = `${slotSize}px`;
-
-    // Vider le conteneur
+    // On s'assure que la hauteur est toujours fixe pour éviter le "saut"
+    spellsContainer.style.height = `${this.spellSlotSize}px`;
     spellsContainer.innerHTML = "";
 
-    // On itère sur les sorts du joueur pour les afficher
+    // On reconstruit la liste des sorts
     Game.localPlayer.spells.forEach((spellName) => {
       if (Config.SPELLS[spellName]) {
         const spell = Config.SPELLS[spellName];
@@ -180,11 +172,10 @@ export const UI = {
         slot.className = "spell-slot";
         slot.style.backgroundImage = `url("${spell.icon}")`;
         slot.title = spell.name;
-        slot.style.width = `${slotSize}px`;
-        slot.style.height = `${slotSize}px`;
+        slot.style.width = `${this.spellSlotSize}px`;
+        slot.style.height = `${this.spellSlotSize}px`;
 
-        // CORRECTION : On utilise prepend pour que le premier sort de la liste
-        // soit visuellement le plus à droite.
+        // Ajoute le sort au début du conteneur (visuellement à gauche)
         spellsContainer.prepend(slot);
       }
     });
@@ -219,12 +210,22 @@ export const UI = {
     const slot = document.getElementById("spell-announcement");
     if (!slot) return;
     if (this.announcementTimeout) clearTimeout(this.announcementTimeout);
-    let icon = spellInfo.icon
-      ? `<div class="spell-slot" style="background-color:${spellInfo.color};background-image:url('${spellInfo.icon}');margin:4px auto;width:30px;height:30px;"></div>`
+
+    const iconHTML = spellInfo.icon
+      ? `<div class="spell-slot" style="background-color:${spellInfo.color};background-image:url('${spellInfo.icon}');margin: 0 8px;width:30px;height:30px;"></div>`
       : "";
-    slot.innerHTML = `<span class="font-bold">${caster}</span>${icon}<span class="font-bold">${
-      spellInfo.name
-    }</span><span class="font-bold">${target ? ` sur ${target}` : ""}</span>`;
+
+    // CORRECTION : Utilisation de flexbox pour un alignement propre de l'annonce
+    slot.innerHTML = `
+      <div class="flex items-center justify-center w-full h-full text-xs sm:text-sm">
+        <span class="font-bold text-right flex-shrink-0">${caster}</span>
+        ${iconHTML}
+        <span class="font-bold text-left">${spellInfo.name}${
+      target ? ` sur ${target}` : ""
+    }</span>
+      </div>
+    `;
+
     this.announcementTimeout = setTimeout(() => {
       if (slot && Game.state === "playing") {
         slot.innerHTML = "<span>Annonces</span>";
@@ -235,11 +236,13 @@ export const UI = {
   resizeAllCanvases() {
     const mainCanvasCont = document.getElementById("canvas-container");
     const mainCanvas = document.getElementById("gameCanvas");
+    const spellsContainer = document.getElementById("spells-container");
 
-    if (mainCanvas && mainCanvasCont) {
+    if (mainCanvas && mainCanvasCont && spellsContainer) {
       const contW = mainCanvasCont.clientWidth;
       const contH = mainCanvasCont.clientHeight;
 
+      // Calcul du ratio idéal pour le canvas (zone de jeu + lanceur)
       const rowHeightFactor = 1.732;
       const gridHeightInRows = Config.GAME_OVER_ROW + 1;
       const launcherHeightInRows = 2;
@@ -264,6 +267,15 @@ export const UI = {
       mainCanvas.style.height = `${newH}px`;
 
       Game.bubbleRadius = (newW / (Config.GRID_COLS * 2 + 1)) * 0.95;
+
+      // CORRECTION : Calculer et stocker la taille des sorts ICI
+      const gap = parseInt(getComputedStyle(spellsContainer).gap) || 4;
+      this.spellSlotSize =
+        (newW - (Config.MAX_SPELLS - 1) * gap) / Config.MAX_SPELLS;
+
+      // On applique la hauteur fixe une fois pour toutes ici
+      spellsContainer.style.height = `${this.spellSlotSize}px`;
+
       this.updatePlayerStats();
     }
 

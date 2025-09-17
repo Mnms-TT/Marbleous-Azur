@@ -157,14 +157,12 @@ export const UI = {
   updatePlayerStats() {
     if (!Game.localPlayer) return;
 
-    const spellsLeftContainer = document.getElementById("spells-left");
-    const spellsRightContainer = document.getElementById("spells-right");
-    if (!spellsLeftContainer || !spellsRightContainer) return;
+    const spellsContainer = document.getElementById("spells-container");
+    if (!spellsContainer) return;
 
-    spellsLeftContainer.innerHTML = "";
-    spellsRightContainer.innerHTML = "";
+    spellsContainer.innerHTML = "";
 
-    // On itère sur les sorts du joueur
+    // On itère sur les sorts du joueur pour les afficher
     Game.localPlayer.spells.forEach((spellName, i) => {
       if (Config.SPELLS[spellName]) {
         const spell = Config.SPELLS[spellName];
@@ -173,26 +171,26 @@ export const UI = {
         slot.style.backgroundImage = `url("${spell.icon}")`;
         slot.title = spell.name;
 
-        slot.onclick = () => {
-          this.selectedSpellIndex = this.selectedSpellIndex === i ? null : i;
-          this.updatePlayerStats();
-          this.updateTargetingUI();
-        };
-
-        if (this.selectedSpellIndex === i) {
-          slot.classList.add("active");
-        }
-
-        // Logique d'affichage : le premier à droite, les autres à gauche
+        // Seul le premier sort de la file (le plus ancien) est utilisable
         if (i === 0) {
-          spellsRightContainer.appendChild(slot);
-        } else {
-          // On ajoute au début pour que le plus récent soit le plus proche du centre
-          spellsLeftContainer.prepend(slot);
+          slot.classList.add("usable");
+          slot.onclick = () => {
+            // L'index du sort à lancer est toujours 0
+            this.selectedSpellIndex = this.selectedSpellIndex === 0 ? null : 0;
+            this.updatePlayerStats();
+            this.updateTargetingUI();
+          };
+
+          if (this.selectedSpellIndex === 0) {
+            slot.classList.add("active");
+          }
         }
+
+        spellsContainer.appendChild(slot);
       }
     });
 
+    // Ajuster la taille des emplacements de sorts en fonction du rayon des bulles
     if (Game.bubbleRadius > 0) {
       const slotSize = Game.bubbleRadius * 1.5;
       const spellArea = document.getElementById("spell-area");
@@ -203,6 +201,10 @@ export const UI = {
         slot.style.width = `${slotSize}px`;
         slot.style.height = `${slotSize}px`;
       });
+      // S'assurer que le conteneur peut contenir 7 sorts
+      spellsContainer.style.maxWidth = `${
+        (slotSize + 8) * Config.MAX_SPELLS
+      }px`;
     }
 
     this.updateBoardEffects();
@@ -318,7 +320,7 @@ export const UI = {
       monteeLignes: "icons/sort_addline.png",
       nukeBomb: "icons/sort_nuke.png",
       colonneMonochrome: "icons/sort_monocolor.png",
-      disparitionLignes: "icons/sort_removeline.png", // Nouveau
+      disparitionLignes: "icons/sort_removeline.png",
     };
 
     for (const key in spellIcons) {

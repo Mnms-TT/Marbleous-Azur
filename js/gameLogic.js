@@ -234,6 +234,7 @@ export const GameLogic = {
     )
       return;
     const spellName = Game.localPlayer.spells[spellIndex];
+    // On utilise splice car c'est toujours le premier sort qu'on enlève (FIFO)
     Game.localPlayer.spells.splice(spellIndex, 1);
     await FirebaseController.updatePlayerDoc(Game.localPlayer.id, {
       spells: Game.localPlayer.spells,
@@ -266,7 +267,7 @@ export const GameLogic = {
         break;
       case "sabotageSorts":
         if (target.spells.length > 0) {
-          target.spells.shift();
+          target.spells.shift(); // Retire le premier sort (le plus ancien) de la cible
           spellsChanged = true;
         }
         for (let r = 0; r < Config.GRID_ROWS; r++)
@@ -334,8 +335,44 @@ export const GameLogic = {
           });
           grid[b.r][b.c] = null;
         }
+        for (let r = 0; r < Config.GRID_ROWS; r++) {
+          for (let c = 0; c < Config.GRID_COLS; c++) {
+            if (grid[r][c]?.isSpellBubble) {
+              grid[r][c].isSpellBubble = false;
+              grid[r][c].spell = null;
+            }
+          }
+        }
         this.handleAvalanche({ grid }, grid, false);
         gridChanged = true;
+        break;
+      }
+      case "disparitionLignes": {
+        let rowsCleared = 0;
+        for (let r = Config.GRID_ROWS - 1; r >= 0 && rowsCleared < 2; r--) {
+          const hasBubble = grid[r].some((cell) => cell !== null);
+          if (hasBubble) {
+            for (let c = 0; c < Config.GRID_COLS; c++) {
+              if (grid[r][c]) {
+                const { x, y } = this.getBubbleCoords(r, c, Game.bubbleRadius);
+                (target.effects = target.effects || []).push({
+                  x,
+                  y,
+                  type: "pop",
+                  radius: Game.bubbleRadius,
+                  life: 15,
+                  color: "#4A5568",
+                });
+                grid[r][c] = null;
+              }
+            }
+            rowsCleared++;
+          }
+        }
+        if (rowsCleared > 0) {
+          this.handleAvalanche({ grid, spells: target.spells }, grid, true);
+          gridChanged = true;
+        }
         break;
       }
     }
@@ -461,9 +498,12 @@ export const GameLogic = {
   handleAvalanche(player, grid, animate) {
     const floating = this.findFloatingBubbles(grid);
     floating.forEach((b) => {
+      // MODIFICATION: Logique FIFO
       if (b.isSpellBubble && b.spell) {
-        (player.spells = player.spells || []).unshift(b.spell);
-        if (player.spells.length > Config.MAX_SPELLS) player.spells.pop();
+        player.spells = player.spells || [];
+        if (player.spells.length < Config.MAX_SPELLS) {
+          player.spells.push(b.spell); // Ajoute à la fin de la file
+        }
       }
       if (animate) {
         const rad =

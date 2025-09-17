@@ -5,7 +5,7 @@ import { GameLogic } from "./gameLogic.js";
 
 export const UI = {
   announcementTimeout: null,
-  spellSlotSize: 0,
+  spellSlotSize: 0, 
 
   clearAllReadyOverlays() {
     const overlays = document.querySelectorAll(".ready-overlay");
@@ -23,7 +23,6 @@ export const UI = {
 
     const announcement = document.createElement("div");
     announcement.id = "spell-announcement";
-    // MODIFIÉ : Retrait de flex-col pour un meilleur centrage vertical
     announcement.className =
       "opponent-view flex items-center justify-center text-center p-2";
     announcement.innerHTML = "<span>Annonces</span>";
@@ -56,31 +55,22 @@ export const UI = {
   renderTeamSelectionInAnnouncementBox() {
     const slot = document.getElementById("spell-announcement");
     if (!slot || !Game.localPlayer) return;
-    slot.innerHTML = "";
-
-    const title = document.createElement("p");
-    title.className = "font-bold text-sm mb-1";
-    title.textContent = "Changer d'équipe";
-    slot.appendChild(title);
-
-    const buttonContainer = document.createElement("div");
-    buttonContainer.className = "grid grid-cols-2 gap-2 w-max mx-auto";
-
-    Config.TEAM_COLORS.filter((_, i) => i !== Game.localPlayer.team).forEach(
-      (color) => {
-        const teamIndex = Config.TEAM_COLORS.indexOf(color);
-        const btn = document.createElement("button");
-        btn.className = "team-choice-btn";
-        btn.style.backgroundColor = color;
-        btn.onclick = () =>
-          FirebaseController.updatePlayerDoc(
+    slot.innerHTML = `<div class="flex flex-col items-center justify-center w-full h-full">
+        <p class="font-bold text-sm mb-1">Changer d'équipe</p>
+        <div class="grid grid-cols-2 gap-2 w-max mx-auto">
+            ${Config.TEAM_COLORS.filter((_, i) => i !== Game.localPlayer.team).map(color => {
+                const teamIndex = Config.TEAM_COLORS.indexOf(color);
+                return `<button class="team-choice-btn" style="background-color:${color}; width: 24px; height: 24px; border-radius: 50%;" onclick="window.handleTeamChange(${teamIndex})"></button>`
+            }).join('')}
+        </div>
+    </div>`;
+    // Attach the function to the window object to be accessible from the onclick attribute
+    window.handleTeamChange = (teamIndex) => {
+         FirebaseController.updatePlayerDoc(
             FirebaseController.auth.currentUser.uid,
             { team: teamIndex, lastActive: Date.now() }
           );
-        buttonContainer.appendChild(btn);
-      }
-    );
-    slot.appendChild(buttonContainer);
+    };
   },
 
   checkVoteStatus() {
@@ -157,13 +147,11 @@ export const UI = {
 
   updatePlayerStats() {
     if (!Game.localPlayer) return;
-
     const spellsContainer = document.getElementById("spells-container");
     if (!spellsContainer || this.spellSlotSize === 0) return;
-
-    spellsContainer.style.height = `${this.spellSlotSize}px`;
+  
     spellsContainer.innerHTML = "";
-
+  
     Game.localPlayer.spells.forEach((spellName) => {
       if (Config.SPELLS[spellName]) {
         const spell = Config.SPELLS[spellName];
@@ -176,14 +164,14 @@ export const UI = {
         spellsContainer.prepend(slot);
       }
     });
-
+  
     this.updateBoardEffects();
     Game.players.forEach((p) => {
       if (p.id !== Game.localPlayer.id && p.teamIndicator)
         p.teamIndicator.style.backgroundColor = Config.TEAM_COLORS[p.team];
     });
   },
-
+  
   updateBoardEffects() {
     let transform = "";
     if (Game.localPlayer?.statusEffects.plateauIncline)
@@ -207,29 +195,24 @@ export const UI = {
     const slot = document.getElementById("spell-announcement");
     if (!slot) return;
     if (this.announcementTimeout) clearTimeout(this.announcementTimeout);
-
+  
     const iconHTML = spellInfo.icon
       ? `<div class="spell-slot" style="background-color:${spellInfo.color};background-image:url('${spellInfo.icon}');margin: 0 4px;width:24px;height:24px; flex-shrink:0;"></div>`
       : "";
-
-    // MODIFIÉ : Amélioration de la structure interne pour un affichage robuste
+    
     slot.innerHTML = `
-      <div class="flex flex-col items-center justify-center w-full h-full text-xs sm:text-sm overflow-hidden">
+      <div class="flex flex-col items-center justify-center w-full h-full text-xs sm:text-sm overflow-hidden p-1">
         <div class="flex items-center justify-center">
           <span class="font-bold whitespace-nowrap">${caster}</span>
           ${iconHTML}
           <span class="font-bold whitespace-nowrap">${spellInfo.name}</span>
         </div>
-        ${
-          target
-            ? `<span class="font-bold whitespace-nowrap text-xs">sur ${target}</span>`
-            : ""
-        }
+        ${target ? `<span class="font-bold whitespace-nowrap text-xs mt-1">sur ${target}</span>` : ""}
       </div>
     `;
-
+  
     this.announcementTimeout = setTimeout(() => {
-      if (slot && Game.state === "playing") {
+      if (slot && (Game.state === "playing" || Game.state === 'countdown')) {
         slot.innerHTML = "<span>Annonces</span>";
       }
     }, 4000);
@@ -242,15 +225,14 @@ export const UI = {
     const spellsContainer = document.getElementById("spells-container");
 
     if (playerColumn && canvasContainer && mainCanvas && spellsContainer) {
-      const gap = parseInt(getComputedStyle(spellsContainer).gap) || 4;
-      this.spellSlotSize =
-        (playerColumn.clientWidth - (Config.MAX_SPELLS - 1) * gap) /
-        Config.MAX_SPELLS;
-
+      // CORRECTION DÉFINITIVE : La mise en page est maintenant entièrement contrôlée par JavaScript
+      const gap = 4;
+      this.spellSlotSize = (playerColumn.clientWidth - (Config.MAX_SPELLS - 1) * gap) / Config.MAX_SPELLS;
+      
       spellsContainer.style.height = `${this.spellSlotSize}px`;
-
-      const columnGap = parseInt(getComputedStyle(playerColumn).gap) || 8;
-      canvasContainer.style.height = `calc(100% - ${this.spellSlotSize}px - ${columnGap}px)`;
+      spellsContainer.style.gap = `${gap}px`;
+      
+      canvasContainer.style.height = `calc(100% - ${this.spellSlotSize}px)`;
 
       const contW = canvasContainer.clientWidth;
       const contH = canvasContainer.clientHeight;
@@ -278,7 +260,7 @@ export const UI = {
       mainCanvas.style.height = `${newH}px`;
 
       Game.bubbleRadius = (newW / (Config.GRID_COLS * 2 + 1)) * 0.95;
-
+      
       this.updatePlayerStats();
     }
 

@@ -5,7 +5,6 @@ import { GameLogic } from "./gameLogic.js";
 
 export const UI = {
   announcementTimeout: null,
-  // selectedSpellIndex: null, // SUPPRIMÉ
 
   clearAllReadyOverlays() {
     const overlays = document.querySelectorAll(".ready-overlay");
@@ -162,7 +161,23 @@ export const UI = {
 
     spellsContainer.innerHTML = "";
 
-    // On itère sur les sorts du joueur pour les afficher
+    // MODIFICATION: On passe en grille pour un dimensionnement parfait
+    spellsContainer.style.display = "grid";
+    spellsContainer.style.gridTemplateColumns = `repeat(${Config.MAX_SPELLS}, 1fr)`;
+
+    // On ajuste la largeur du conteneur des sorts pour qu'elle corresponde à celle du canvas
+    const mainCanvas = document.getElementById("gameCanvas");
+    if (mainCanvas) {
+      spellsContainer.style.width = `${mainCanvas.width}px`;
+    }
+
+    // On crée des slots vides pour maintenir la structure de la grille
+    const emptySlots = Config.MAX_SPELLS - Game.localPlayer.spells.length;
+    for (let i = 0; i < emptySlots; i++) {
+      spellsContainer.appendChild(document.createElement("div"));
+    }
+
+    // On itère sur les sorts pour les afficher (de droite à gauche grâce à flex-row-reverse)
     Game.localPlayer.spells.forEach((spellName, i) => {
       if (Config.SPELLS[spellName]) {
         const spell = Config.SPELLS[spellName];
@@ -171,7 +186,7 @@ export const UI = {
         slot.style.backgroundImage = `url("${spell.icon}")`;
         slot.title = spell.name;
 
-        // Le premier sort (le plus à droite) est visuellement 'utilisable'
+        // Le premier sort (qui sera affiché le plus à droite) est le seul utilisable
         if (i === 0) {
           slot.classList.add("usable");
         }
@@ -180,23 +195,7 @@ export const UI = {
       }
     });
 
-    if (Game.bubbleRadius > 0) {
-      const slotSize = Game.bubbleRadius * 1.5;
-      const spellArea = document.getElementById("spell-area");
-      if (spellArea) spellArea.style.height = `${slotSize * 1.2}px`;
-
-      const slots = document.querySelectorAll("#spell-area .spell-slot");
-      slots.forEach((slot) => {
-        slot.style.width = `${slotSize}px`;
-        slot.style.height = `${slotSize}px`;
-      });
-      spellsContainer.style.maxWidth = `${
-        (slotSize + 8) * Config.MAX_SPELLS
-      }px`;
-    }
-
     this.updateBoardEffects();
-    // this.updateTargetingUI(); // SUPPRIMÉ
     Game.players.forEach((p) => {
       if (p.id !== Game.localPlayer.id && p.teamIndicator)
         p.teamIndicator.style.backgroundColor = Config.TEAM_COLORS[p.team];
@@ -221,8 +220,6 @@ export const UI = {
     const canvas = document.getElementById("gameCanvas");
     if (canvas) canvas.style.transform = transform.trim();
   },
-
-  // updateTargetingUI() { ... } // FONCTION SUPPRIMÉE
 
   updateSpellAnnouncement(caster, spellInfo, target) {
     const slot = document.getElementById("spell-announcement");

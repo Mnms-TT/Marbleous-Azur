@@ -5,7 +5,7 @@ import { GameLogic } from "./gameLogic.js";
 
 export const UI = {
   announcementTimeout: null,
-  spellSlotSize: 0, // Stocker la taille calculée ici
+  spellSlotSize: 0,
 
   clearAllReadyOverlays() {
     const overlays = document.querySelectorAll(".ready-overlay");
@@ -160,11 +160,8 @@ export const UI = {
     const spellsContainer = document.getElementById("spells-container");
     if (!spellsContainer || this.spellSlotSize === 0) return;
 
-    // On s'assure que la hauteur est toujours fixe pour éviter le "saut"
-    spellsContainer.style.height = `${this.spellSlotSize}px`;
     spellsContainer.innerHTML = "";
 
-    // On reconstruit la liste des sorts
     Game.localPlayer.spells.forEach((spellName) => {
       if (Config.SPELLS[spellName]) {
         const spell = Config.SPELLS[spellName];
@@ -174,8 +171,6 @@ export const UI = {
         slot.title = spell.name;
         slot.style.width = `${this.spellSlotSize}px`;
         slot.style.height = `${this.spellSlotSize}px`;
-
-        // Ajoute le sort au début du conteneur (visuellement à gauche)
         spellsContainer.prepend(slot);
       }
     });
@@ -215,7 +210,6 @@ export const UI = {
       ? `<div class="spell-slot" style="background-color:${spellInfo.color};background-image:url('${spellInfo.icon}');margin: 0 8px;width:30px;height:30px;"></div>`
       : "";
 
-    // CORRECTION : Utilisation de flexbox pour un alignement propre de l'annonce
     slot.innerHTML = `
       <div class="flex items-center justify-center w-full h-full text-xs sm:text-sm">
         <span class="font-bold text-right flex-shrink-0">${caster}</span>
@@ -234,15 +228,29 @@ export const UI = {
   },
 
   resizeAllCanvases() {
-    const mainCanvasCont = document.getElementById("canvas-container");
+    const playerColumn = document.getElementById("player-column");
+    const canvasContainer = document.getElementById("canvas-container");
     const mainCanvas = document.getElementById("gameCanvas");
     const spellsContainer = document.getElementById("spells-container");
 
-    if (mainCanvas && mainCanvasCont && spellsContainer) {
-      const contW = mainCanvasCont.clientWidth;
-      const contH = mainCanvasCont.clientHeight;
+    if (playerColumn && canvasContainer && mainCanvas && spellsContainer) {
+      // 1. Calculer la taille des sorts en fonction de la largeur de la colonne
+      const gap = parseInt(getComputedStyle(spellsContainer).gap) || 4;
+      this.spellSlotSize =
+        (playerColumn.clientWidth - (Config.MAX_SPELLS - 1) * gap) /
+        Config.MAX_SPELLS;
 
-      // Calcul du ratio idéal pour le canvas (zone de jeu + lanceur)
+      // 2. Fixer la hauteur de la barre des sorts pour TOUJOURS. C'est la clé.
+      spellsContainer.style.height = `${this.spellSlotSize}px`;
+
+      // 3. Fixer la hauteur du conteneur du canvas
+      const columnGap = parseInt(getComputedStyle(playerColumn).gap) || 8;
+      canvasContainer.style.height = `calc(100% - ${this.spellSlotSize}px - ${columnGap}px)`;
+
+      // 4. Maintenant que le conteneur du canvas est STABLE, on peut calculer la taille du canvas
+      const contW = canvasContainer.clientWidth;
+      const contH = canvasContainer.clientHeight;
+
       const rowHeightFactor = 1.732;
       const gridHeightInRows = Config.GAME_OVER_ROW + 1;
       const launcherHeightInRows = 2;
@@ -252,7 +260,6 @@ export const UI = {
       const idealRatio = idealWidthUnits / idealHeightUnits;
 
       let newW, newH;
-
       if (contW / contH > idealRatio) {
         newH = contH;
         newW = newH * idealRatio;
@@ -268,17 +275,10 @@ export const UI = {
 
       Game.bubbleRadius = (newW / (Config.GRID_COLS * 2 + 1)) * 0.95;
 
-      // CORRECTION : Calculer et stocker la taille des sorts ICI
-      const gap = parseInt(getComputedStyle(spellsContainer).gap) || 4;
-      this.spellSlotSize =
-        (newW - (Config.MAX_SPELLS - 1) * gap) / Config.MAX_SPELLS;
-
-      // On applique la hauteur fixe une fois pour toutes ici
-      spellsContainer.style.height = `${this.spellSlotSize}px`;
-
       this.updatePlayerStats();
     }
 
+    // Redimensionner les canvas des adversaires
     Game.players.forEach((p) => {
       if (p.id !== Game.localPlayer?.id && p.canvas) {
         const oppCont = p.canvas.parentElement;

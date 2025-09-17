@@ -23,8 +23,9 @@ export const UI = {
 
     const announcement = document.createElement("div");
     announcement.id = "spell-announcement";
+    // MODIFIÉ : Retrait de flex-col pour un meilleur centrage vertical
     announcement.className =
-      "opponent-view flex flex-col items-center justify-center text-center p-2";
+      "opponent-view flex items-center justify-center text-center p-2";
     announcement.innerHTML = "<span>Annonces</span>";
 
     for (let i = 0; i < 5; i++) {
@@ -160,6 +161,7 @@ export const UI = {
     const spellsContainer = document.getElementById("spells-container");
     if (!spellsContainer || this.spellSlotSize === 0) return;
 
+    spellsContainer.style.height = `${this.spellSlotSize}px`;
     spellsContainer.innerHTML = "";
 
     Game.localPlayer.spells.forEach((spellName) => {
@@ -207,16 +209,22 @@ export const UI = {
     if (this.announcementTimeout) clearTimeout(this.announcementTimeout);
 
     const iconHTML = spellInfo.icon
-      ? `<div class="spell-slot" style="background-color:${spellInfo.color};background-image:url('${spellInfo.icon}');margin: 0 8px;width:30px;height:30px;"></div>`
+      ? `<div class="spell-slot" style="background-color:${spellInfo.color};background-image:url('${spellInfo.icon}');margin: 0 4px;width:24px;height:24px; flex-shrink:0;"></div>`
       : "";
 
+    // MODIFIÉ : Amélioration de la structure interne pour un affichage robuste
     slot.innerHTML = `
-      <div class="flex items-center justify-center w-full h-full text-xs sm:text-sm">
-        <span class="font-bold text-right flex-shrink-0">${caster}</span>
-        ${iconHTML}
-        <span class="font-bold text-left">${spellInfo.name}${
-      target ? ` sur ${target}` : ""
-    }</span>
+      <div class="flex flex-col items-center justify-center w-full h-full text-xs sm:text-sm overflow-hidden">
+        <div class="flex items-center justify-center">
+          <span class="font-bold whitespace-nowrap">${caster}</span>
+          ${iconHTML}
+          <span class="font-bold whitespace-nowrap">${spellInfo.name}</span>
+        </div>
+        ${
+          target
+            ? `<span class="font-bold whitespace-nowrap text-xs">sur ${target}</span>`
+            : ""
+        }
       </div>
     `;
 
@@ -234,20 +242,16 @@ export const UI = {
     const spellsContainer = document.getElementById("spells-container");
 
     if (playerColumn && canvasContainer && mainCanvas && spellsContainer) {
-      // 1. Calculer la taille des sorts en fonction de la largeur de la colonne
       const gap = parseInt(getComputedStyle(spellsContainer).gap) || 4;
       this.spellSlotSize =
         (playerColumn.clientWidth - (Config.MAX_SPELLS - 1) * gap) /
         Config.MAX_SPELLS;
 
-      // 2. Fixer la hauteur de la barre des sorts pour TOUJOURS. C'est la clé.
       spellsContainer.style.height = `${this.spellSlotSize}px`;
 
-      // 3. Fixer la hauteur du conteneur du canvas
       const columnGap = parseInt(getComputedStyle(playerColumn).gap) || 8;
       canvasContainer.style.height = `calc(100% - ${this.spellSlotSize}px - ${columnGap}px)`;
 
-      // 4. Maintenant que le conteneur du canvas est STABLE, on peut calculer la taille du canvas
       const contW = canvasContainer.clientWidth;
       const contH = canvasContainer.clientHeight;
 
@@ -278,7 +282,6 @@ export const UI = {
       this.updatePlayerStats();
     }
 
-    // Redimensionner les canvas des adversaires
     Game.players.forEach((p) => {
       if (p.id !== Game.localPlayer?.id && p.canvas) {
         const oppCont = p.canvas.parentElement;

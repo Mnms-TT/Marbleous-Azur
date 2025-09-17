@@ -157,23 +157,23 @@ export const UI = {
     if (!Game.localPlayer) return;
 
     const spellsContainer = document.getElementById("spells-container");
-    const spellArea = document.getElementById("spell-area");
     const mainCanvas = document.getElementById("gameCanvas");
-    if (!spellsContainer || !mainCanvas || !spellArea) return;
+    if (!spellsContainer || !mainCanvas) return;
 
+    // CORRECTION : Calcul précis de la taille et application à la zone
+    const gap = parseInt(spellsContainer.style.gap) || 4; // 4px de gap
+    const slotSize =
+      (mainCanvas.clientWidth - (Config.MAX_SPELLS - 1) * gap) /
+      Config.MAX_SPELLS;
+
+    // Fixer la hauteur pour éviter le "saut" de l'interface
+    spellsContainer.style.height = `${slotSize}px`;
+
+    // Vider le conteneur
     spellsContainer.innerHTML = "";
 
-    // CORRECTION : Calcul précis de la taille des sorts
-    const gap = 4; // L'espace en pixels entre les sorts
-    const totalGap = (Config.MAX_SPELLS - 1) * gap;
-    const slotSize = (mainCanvas.width - totalGap) / Config.MAX_SPELLS;
-
-    // CORRECTION : On fixe la hauteur de la zone pour éviter le "saut"
-    spellArea.style.height = `${slotSize}px`;
-    spellsContainer.style.gap = `${gap}px`;
-
-    // On itère sur les sorts pour les afficher
-    Game.localPlayer.spells.forEach((spellName, i) => {
+    // On itère sur les sorts du joueur pour les afficher
+    Game.localPlayer.spells.forEach((spellName) => {
       if (Config.SPELLS[spellName]) {
         const spell = Config.SPELLS[spellName];
         const slot = document.createElement("div");
@@ -183,12 +183,9 @@ export const UI = {
         slot.style.width = `${slotSize}px`;
         slot.style.height = `${slotSize}px`;
 
-        // Le premier sort de la file (affiché à droite) est le seul "utilisable"
-        if (i === 0) {
-          slot.classList.add("usable");
-        }
-
-        spellsContainer.appendChild(slot);
+        // CORRECTION : On utilise prepend pour que le premier sort de la liste
+        // soit visuellement le plus à droite.
+        spellsContainer.prepend(slot);
       }
     });
 

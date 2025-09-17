@@ -157,27 +157,22 @@ export const UI = {
     if (!Game.localPlayer) return;
 
     const spellsContainer = document.getElementById("spells-container");
-    if (!spellsContainer) return;
+    const spellArea = document.getElementById("spell-area");
+    const mainCanvas = document.getElementById("gameCanvas");
+    if (!spellsContainer || !mainCanvas || !spellArea) return;
 
     spellsContainer.innerHTML = "";
 
-    // MODIFICATION: On passe en grille pour un dimensionnement parfait
-    spellsContainer.style.display = "grid";
-    spellsContainer.style.gridTemplateColumns = `repeat(${Config.MAX_SPELLS}, 1fr)`;
+    // CORRECTION : Calcul précis de la taille des sorts
+    const gap = 4; // L'espace en pixels entre les sorts
+    const totalGap = (Config.MAX_SPELLS - 1) * gap;
+    const slotSize = (mainCanvas.width - totalGap) / Config.MAX_SPELLS;
 
-    // On ajuste la largeur du conteneur des sorts pour qu'elle corresponde à celle du canvas
-    const mainCanvas = document.getElementById("gameCanvas");
-    if (mainCanvas) {
-      spellsContainer.style.width = `${mainCanvas.width}px`;
-    }
+    // CORRECTION : On fixe la hauteur de la zone pour éviter le "saut"
+    spellArea.style.height = `${slotSize}px`;
+    spellsContainer.style.gap = `${gap}px`;
 
-    // On crée des slots vides pour maintenir la structure de la grille
-    const emptySlots = Config.MAX_SPELLS - Game.localPlayer.spells.length;
-    for (let i = 0; i < emptySlots; i++) {
-      spellsContainer.appendChild(document.createElement("div"));
-    }
-
-    // On itère sur les sorts pour les afficher (de droite à gauche grâce à flex-row-reverse)
+    // On itère sur les sorts pour les afficher
     Game.localPlayer.spells.forEach((spellName, i) => {
       if (Config.SPELLS[spellName]) {
         const spell = Config.SPELLS[spellName];
@@ -185,8 +180,10 @@ export const UI = {
         slot.className = "spell-slot";
         slot.style.backgroundImage = `url("${spell.icon}")`;
         slot.title = spell.name;
+        slot.style.width = `${slotSize}px`;
+        slot.style.height = `${slotSize}px`;
 
-        // Le premier sort (qui sera affiché le plus à droite) est le seul utilisable
+        // Le premier sort de la file (affiché à droite) est le seul "utilisable"
         if (i === 0) {
           slot.classList.add("usable");
         }

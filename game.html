@@ -6,7 +6,7 @@
     <title>Marbleous - Salle de jeu</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic" crossorigin />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
       rel="stylesheet"
@@ -28,7 +28,6 @@
       }
       #game-wrapper {
         display: flex;
-        /* aspect-ratio: 16 / 10; <== SUPPRIMÉ pour corriger le chevauchement */
         height: 98vh;
         max-width: 98vw;
         background-color: #0c1445;
@@ -66,6 +65,7 @@
         border-radius: 0.5rem;
       }
       .spell-slot {
+        flex-shrink: 0; /* Empêche les sorts de rétrécir */
         background-color: #0c1445;
         border: 3px solid #4a5568;
         border-radius: 50%;
@@ -73,11 +73,11 @@
         background-size: 75%;
         background-position: center;
         background-repeat: no-repeat;
-        aspect-ratio: 1 / 1; /* Assure que les slots restent circulaires */
+        aspect-ratio: 1 / 1;
       }
       .spell-slot.usable {
-        border-color: #fde047; /* Or Jaune pour indiquer qu'il est utilisable */
-        transform: scale(1.1); /* Le rend un peu plus gros */
+        border-color: #fde047;
+        transform: scale(1.1);
         box-shadow: 0 0 10px #fde047;
       }
       .spell-slot.usable:hover {
@@ -103,10 +103,10 @@
             </div>
             <!-- Le conteneur des sorts, séparé et en dessous -->
             <div id="spell-area" class="flex-shrink-0 flex items-center mt-2">
-              <!-- MODIFIÉ: justify-start pour corriger l'alignement avec flex-row-reverse -->
+              <!-- CORRIGÉ : justify-start et flex-row-reverse pour un alignement correct à droite -->
               <div
                 id="spells-container"
-                class="w-full flex justify-start items-center gap-2 flex-row-reverse"
+                class="w-full flex justify-start items-center gap-1 flex-row-reverse"
               >
                 <!-- Les sorts seront injectés ici par ui.js -->
               </div>

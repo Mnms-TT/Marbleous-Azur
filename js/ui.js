@@ -5,7 +5,7 @@ import { GameLogic } from "./gameLogic.js";
 
 export const UI = {
   announcementTimeout: null,
-  selectedSpellIndex: null,
+  // selectedSpellIndex: null, // SUPPRIMÉ
 
   clearAllReadyOverlays() {
     const overlays = document.querySelectorAll(".ready-overlay");
@@ -171,26 +171,15 @@ export const UI = {
         slot.style.backgroundImage = `url("${spell.icon}")`;
         slot.title = spell.name;
 
-        // Seul le premier sort de la file (le plus ancien) est utilisable
+        // Le premier sort (le plus à droite) est visuellement 'utilisable'
         if (i === 0) {
           slot.classList.add("usable");
-          slot.onclick = () => {
-            // L'index du sort à lancer est toujours 0
-            this.selectedSpellIndex = this.selectedSpellIndex === 0 ? null : 0;
-            this.updatePlayerStats();
-            this.updateTargetingUI();
-          };
-
-          if (this.selectedSpellIndex === 0) {
-            slot.classList.add("active");
-          }
         }
 
         spellsContainer.appendChild(slot);
       }
     });
 
-    // Ajuster la taille des emplacements de sorts en fonction du rayon des bulles
     if (Game.bubbleRadius > 0) {
       const slotSize = Game.bubbleRadius * 1.5;
       const spellArea = document.getElementById("spell-area");
@@ -201,14 +190,13 @@ export const UI = {
         slot.style.width = `${slotSize}px`;
         slot.style.height = `${slotSize}px`;
       });
-      // S'assurer que le conteneur peut contenir 7 sorts
       spellsContainer.style.maxWidth = `${
         (slotSize + 8) * Config.MAX_SPELLS
       }px`;
     }
 
     this.updateBoardEffects();
-    this.updateTargetingUI();
+    // this.updateTargetingUI(); // SUPPRIMÉ
     Game.players.forEach((p) => {
       if (p.id !== Game.localPlayer.id && p.teamIndicator)
         p.teamIndicator.style.backgroundColor = Config.TEAM_COLORS[p.team];
@@ -234,19 +222,7 @@ export const UI = {
     if (canvas) canvas.style.transform = transform.trim();
   },
 
-  updateTargetingUI() {
-    if (!Game.localPlayer) return;
-    const isAiming = this.selectedSpellIndex !== null;
-
-    const canvas = document.getElementById("gameCanvas");
-    if (canvas) canvas.classList.toggle("aiming", isAiming);
-
-    Game.players.forEach((p) => {
-      if (p.id !== Game.localPlayer.id && p.container) {
-        p.container.classList.toggle("aiming", isAiming);
-      }
-    });
-  },
+  // updateTargetingUI() { ... } // FONCTION SUPPRIMÉE
 
   updateSpellAnnouncement(caster, spellInfo, target) {
     const slot = document.getElementById("spell-announcement");

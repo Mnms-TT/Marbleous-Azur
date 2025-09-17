@@ -15,45 +15,42 @@ export const InputHandler = {
       .getElementById("chat-input")
       .addEventListener("keydown", this.handleChat.bind(this));
 
+    // Logique de clic sur la zone de jeu principale
     document.getElementById("gameCanvas").addEventListener("click", () => {
-      if (Game.state === "waiting" && Game.localPlayer) {
-        const newReadyState = !Game.localPlayer.isReady;
-        FirebaseController.updatePlayerDoc(
-          FirebaseController.auth.currentUser.uid,
-          {
-            isReady: newReadyState,
-            lastActive: Date.now(),
-          }
-        );
-      } else if (
-        Game.state === "playing" &&
-        Game.localPlayer?.isAlive &&
-        UI.selectedSpellIndex !== null
-      ) {
-        GameLogic.castSpecificSpell(Game.localPlayer, UI.selectedSpellIndex);
-        UI.selectedSpellIndex = null;
-        UI.updatePlayerStats();
+      const p = Game.localPlayer;
+      if (!p) return;
+
+      if (Game.state === "waiting") {
+        const newReadyState = !p.isReady;
+        FirebaseController.updatePlayerDoc(p.id, {
+          isReady: newReadyState,
+          lastActive: Date.now(),
+        });
+      } else if (Game.state === "playing" && p.isAlive) {
+        // Lance directement le premier sort disponible sur soi-même
+        if (p.spells && p.spells.length > 0) {
+          GameLogic.castSpecificSpell(p, 0); // L'index est toujours 0 (FIFO)
+        }
       }
     });
 
+    // Logique de clic sur la grille des adversaires
     document.getElementById("opponents-grid").addEventListener("click", (e) => {
+      const p = Game.localPlayer;
+      if (!p || Game.state !== "playing" || !p.isAlive) return;
+
+      const opponentView = e.target.closest(".opponent-view");
       if (
-        Game.state === "playing" &&
-        Game.localPlayer?.isAlive &&
-        UI.selectedSpellIndex !== null
+        opponentView &&
+        !opponentView.classList.contains("empty-slot") &&
+        opponentView.id !== "spell-announcement"
       ) {
-        const opponentView = e.target.closest(".opponent-view");
-        if (
-          opponentView &&
-          !opponentView.classList.contains("empty-slot") &&
-          opponentView.id !== "spell-announcement"
-        ) {
+        // Lance directement le premier sort disponible sur la cible
+        if (p.spells && p.spells.length > 0) {
           const targetPlayerId = opponentView.id.replace("opponent-", "");
           const targetPlayer = Game.players.get(targetPlayerId);
           if (targetPlayer) {
-            GameLogic.castSpecificSpell(targetPlayer, UI.selectedSpellIndex);
-            UI.selectedSpellIndex = null;
-            UI.updatePlayerStats();
+            GameLogic.castSpecificSpell(targetPlayer, 0); // L'index est toujours 0 (FIFO)
           }
         }
       }
@@ -81,8 +78,7 @@ export const InputHandler = {
     if (
       !Game.localPlayer?.isAlive ||
       Game.bubbleRadius === 0 ||
-      Game.state !== "playing" ||
-      UI.selectedSpellIndex !== null
+      Game.state !== "playing"
     )
       return;
     const mainCanvas = document.getElementById("gameCanvas");
@@ -91,7 +87,6 @@ export const InputHandler = {
     const mouseX = e.clientX - rect.left,
       mouseY = e.clientY - rect.top;
 
-    // Le point de pivot pour l'angle est la position de la bulle du lanceur
     const launcherY = mainCanvas.height - Game.bubbleRadius * 0.8;
 
     Game.localPlayer.launcher.angle = Math.atan2(
@@ -105,8 +100,7 @@ export const InputHandler = {
       Game.state !== "playing" ||
       !p?.isAlive ||
       !p.launcherBubble ||
-      p.shotBubble ||
-      UI.selectedSpellIndex !== null
+      p.shotBubble
     )
       return;
 
@@ -119,8 +113,7 @@ export const InputHandler = {
     p.shotBubble.isStatic = false;
     p.shotBubble.vx = Math.cos(p.launcher.angle) * speed;
     p.shotBubble.vy = Math.sin(p.launcher.angle) * speed;
-    
-    // Le point de départ est la position de la bulle du lanceur
+
     const launcherBubbleY = mainCanvas.height - Game.bubbleRadius * 0.8;
     p.shotBubble.x = mainCanvas.width / 2;
     p.shotBubble.y = launcherBubbleY;

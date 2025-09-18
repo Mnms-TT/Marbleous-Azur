@@ -44,7 +44,13 @@
         cursor: pointer;
         border: 2px solid #ffffff;
         background-color: #d97706;
-        overflow: hidden; /* Empêche le contenu de déborder */
+        overflow: hidden;
+        /* CORRECTION : Suppression de l'aspect-ratio qui causait le conflit */
+        /* aspect-ratio: 8 / 14; */
+      }
+      /* CORRECTION : On impose une grille stable avec deux lignes de hauteur égale */
+      #opponents-grid {
+        grid-template-rows: 1fr 1fr;
       }
       .opponent-view.empty-slot {
         background: #0c1445;
@@ -65,15 +71,15 @@
         border-radius: 0.5rem;
       }
       .spell-slot {
-        flex-shrink: 0; 
+        flex-shrink: 0;
         background-color: #0c1445;
-        border: 3px solid #4A5568;
+        border: 3px solid #4a5568;
         border-radius: 50%;
         transition: transform 0.2s;
         background-size: 75%;
         background-position: center;
         background-repeat: no-repeat;
-        aspect-ratio: 1 / 1; 
+        aspect-ratio: 1 / 1;
       }
       .spell-slot:hover {
         transform: scale(1.08);
@@ -95,13 +101,14 @@
             >
               <canvas id="gameCanvas" class="game-area-bg"></canvas>
             </div>
-            <div id="spells-container" class="flex-shrink-0 w-full flex justify-end items-center gap-1">
-            </div>
+            <div
+              id="spells-container"
+              class="flex-shrink-0 w-full flex justify-end items-center gap-1"
+            ></div>
           </div>
 
           <!-- Colonne de droite (Adversaires) -->
           <div class="w-2/3 flex flex-col">
-             <!-- CORRECTION DÉFINITIVE : grid-rows-2 force les lignes à avoir une hauteur égale et stable -->
             <div
               id="opponents-grid"
               class="grid grid-cols-5 grid-rows-2 gap-1 h-full"
@@ -131,3 +138,4 @@
     <script type="module" src="js/main.js"></script>
   </body>
 </html>
+```

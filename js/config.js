@@ -10,12 +10,12 @@ export const Config = {
     { main: "#111827", shadow: "#000000" }, // Noir
   ],
 
-  // Palette Patchwork (Nuances d'orange du jeu original)
+  // Palette Patchwork "Subtile" (Nuances très proches pour effet texture)
   PATCHWORK_ORANGES: [
-    "#fb923c", // Orange clair
-    "#fdba74", // Orange très clair
-    "#f97316", // Orange moyen
-    "#ea580c", // Orange soutenu
+    "#fb923c", // Base
+    "#fdba74", // Légèrement plus clair
+    "#f97316", // Légèrement plus saturé
+    "#fa8c35", // Intermédiaire
   ],
 
   TEAM_COLORS: ["#3B82F6", "#22C55E", "#F97316", "#EC4899", "#8B5CF6"],

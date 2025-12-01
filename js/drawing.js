@@ -21,21 +21,24 @@ export const Drawing = {
     const rad = isMain ? Game.bubbleRadius : (canvas.width / 17) * 0.95;
     if (!rad || rad < 1) return;
 
-    // --- 1. FOND PATCHWORK MOSAIQUE ---
-    // On utilise de petits rectangles pour faire un effet "pixel"
-    const tileW = canvas.width / 10;
+    // --- 1. FOND PATCHWORK ORGANIQUE ---
+    // On utilise un bruit sinusoïdal pour grouper les couleurs
+    const tileW = canvas.width / 8;
     const tileH = tileW * 0.8;
     const rows = Math.ceil(canvas.height / tileH);
 
     for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < 10; c++) {
-        // Formule pseudo-aléatoire pour mélanger les 4 nuances
-        const idx = (Math.sin(r * 12.9898 + c * 78.233) * 43758.5453) % 1;
-        const colorIndex = Math.floor(
-          Math.abs(idx) * Config.PATCHWORK_ORANGES.length
-        );
+      for (let c = 0; c < 8; c++) {
+        // Cette formule crée des "vagues" de couleurs plutôt qu'un bruit pur
+        // Les cases adjacentes ont des valeurs proches
+        const noise = Math.sin(c * 0.5) + Math.cos(r * 0.5);
+
+        // On normalise le bruit pour choisir une couleur (0 à 3)
+        let colorIndex =
+          Math.floor(Math.abs(noise * 10)) % Config.PATCHWORK_ORANGES.length;
+
         ctx.fillStyle = Config.PATCHWORK_ORANGES[colorIndex];
-        ctx.fillRect(c * tileW, r * tileH, tileW + 1, tileH + 1); // +1 pour éviter les lignes blanches
+        ctx.fillRect(c * tileW, r * tileH, tileW + 1, tileH + 1);
       }
     }
 
@@ -51,7 +54,6 @@ export const Drawing = {
   },
 
   drawLobbyState(ctx, canvas, player, isMain) {
-    // Voile pour atténuer le fond
     ctx.fillStyle = "rgba(0,0,0,0.3)";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -61,95 +63,103 @@ export const Drawing = {
 
     if (isMain) {
       ctx.strokeStyle = "rgba(255,255,255,0.9)";
-      ctx.lineWidth = 3;
-      const w = canvas.width * 0.7;
-      const h = canvas.height * 0.2;
-      const x = (canvas.width - w) / 2;
-      const y = canvas.height * 0.35;
+      ctx.lineWidth = 4;
+      // Cadre arrondi
+      this.roundRect(
+        ctx,
+        canvas.width * 0.15,
+        canvas.height * 0.35,
+        canvas.width * 0.7,
+        canvas.height * 0.2,
+        20
+      );
+      ctx.stroke();
 
-      ctx.strokeRect(x, y, w, h);
       ctx.fillStyle = "white";
       ctx.textAlign = "center";
-      ctx.font = "bold 26px Arial";
+      ctx.font = "bold 28px Arial";
 
-      // Texte avec ombre
-      ctx.shadowColor = "black";
-      ctx.shadowBlur = 4;
       if (player.isReady) {
-        ctx.fillText("PRÊT", canvas.width / 2, y + h / 2 + 10);
+        ctx.fillText("PRÊT", canvas.width / 2, canvas.height * 0.45 + 10);
       } else {
-        ctx.fillText("Clic pour", canvas.width / 2, y + h / 2 - 15);
-        ctx.fillText("démarrer", canvas.width / 2, y + h / 2 + 25);
+        ctx.fillText("Clic pour", canvas.width / 2, canvas.height * 0.45 - 15);
+        ctx.fillText("démarrer", canvas.width / 2, canvas.height * 0.45 + 25);
       }
-      ctx.shadowBlur = 0;
     }
   },
 
   drawGameState(ctx, canvas, player, rad, isMain) {
-    // Calcul de la zone de jeu (70% max)
-    // On force la ligne noire à 70% de la hauteur, peu importe le nombre de boules
-    const deadLineY = canvas.height * 0.7;
+    const gridPixelHeight = Config.GAME_OVER_ROW * (rad * 1.732) + rad;
+    const deadLineY = gridPixelHeight + 10;
 
-    // Fond Dashboard (Rouge très sombre comme sur l'image)
-    ctx.fillStyle = "#7f1d1d"; // Rouge bordeaux
+    // --- DASHBOARD (Zone sous la ligne noire) ---
+    // Dégradé vertical pour effet volume
+    const grad = ctx.createLinearGradient(0, deadLineY, 0, canvas.height);
+    grad.addColorStop(0, "#9f1239"); // Rouge/Rose foncé en haut
+    grad.addColorStop(1, "#881337"); // Plus sombre en bas
+    ctx.fillStyle = grad;
     ctx.fillRect(0, deadLineY, canvas.width, canvas.height - deadLineY);
 
-    // --- CANON ---
+    // --- CANON (Viseur Éventail) ---
     if (isMain) {
       const spellBarHeight = 40;
       const cannonPivotY = canvas.height - spellBarHeight;
       const centerX = canvas.width / 2;
-
-      // Rayon canon = espace disponible
       const cannonRadius = cannonPivotY - deadLineY;
 
+      // 1. Fond semi-transparent
       ctx.beginPath();
+      ctx.moveTo(centerX, cannonPivotY);
       ctx.arc(centerX, cannonPivotY, cannonRadius, Math.PI, 0);
       ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
       ctx.fill();
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+
+      // 2. Les Secteurs (Lignes blanches rayonnantes)
+      // On dessine 6 secteurs (180 degrés / 6 = 30 degrés par secteur)
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
       ctx.lineWidth = 2;
-      ctx.stroke();
 
       for (let i = 0; i <= 6; i++) {
         const angle = Math.PI + (i * Math.PI) / 6;
         ctx.beginPath();
         ctx.moveTo(centerX, cannonPivotY);
-        ctx.lineTo(
-          centerX + Math.cos(angle) * cannonRadius,
-          cannonPivotY + Math.sin(angle) * cannonRadius
-        );
-        ctx.strokeStyle = "rgba(255,255,255,0.2)";
-        ctx.lineWidth = 1;
+        const x = centerX + Math.cos(angle) * cannonRadius;
+        const y = cannonPivotY + Math.sin(angle) * cannonRadius;
+        ctx.lineTo(x, y);
         ctx.stroke();
       }
 
-      Game.cannonPosition = { x: centerX, y: cannonPivotY };
+      // 3. Arc de cercle extérieur
+      ctx.beginPath();
+      ctx.arc(centerX, cannonPivotY, cannonRadius, Math.PI, 0);
+      ctx.stroke();
 
+      // Logique Canon
+      Game.cannonPosition = { x: centerX, y: cannonPivotY };
       if (player.isAlive && !player.launcherBubble && !player.shotBubble) {
         GameLogic.loadBubbles(player);
       }
 
+      // Aiguille
       this.drawCannonNeedle(ctx, player, Game.cannonPosition, cannonRadius);
 
-      // Indicateur Équipe (Cercle coloré à gauche du canon)
+      // Indicateur Equipe (Gauche)
       const teamColor = Config.TEAM_COLORS[player.team || 0];
       ctx.beginPath();
-      // Positionné à gauche, dans la zone rouge
       ctx.arc(
-        centerX - cannonRadius * 0.8,
-        cannonPivotY - cannonRadius * 0.3,
-        12,
+        centerX - cannonRadius * 0.7,
+        cannonPivotY - cannonRadius * 0.4,
+        14,
         0,
         Math.PI * 2
       );
       ctx.fillStyle = teamColor;
       ctx.fill();
+      ctx.lineWidth = 3;
       ctx.strokeStyle = "white";
-      ctx.lineWidth = 2;
       ctx.stroke();
 
-      // Boules Canon
+      // Boules
       if (player.launcherBubble)
         this.drawBubble(
           ctx,
@@ -160,8 +170,8 @@ export const Drawing = {
           true
         );
       if (player.nextBubble) {
-        // NEXT à droite
-        const nextX = Game.cannonPosition.x + rad * 4;
+        // Next à droite
+        const nextX = Game.cannonPosition.x + rad * 3;
         const nextY = Game.cannonPosition.y - 10;
         this.drawBubble(ctx, player.nextBubble, rad * 0.8, nextX, nextY);
       }
@@ -175,12 +185,21 @@ export const Drawing = {
         );
     }
 
-    // Ligne Blanche/Noire de délimitation
+    // --- LIGNE NOIRE (Barre de Game Over) ---
+    // Dessinée bien épaisse par-dessus le dashboard
     ctx.beginPath();
     ctx.moveTo(0, deadLineY);
     ctx.lineTo(canvas.width, deadLineY);
-    ctx.strokeStyle = "white"; // Blanc pour ressortir sur l'orange et le rouge
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = "black";
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    // Petite ligne blanche fine par dessus pour le style
+    ctx.beginPath();
+    ctx.moveTo(0, deadLineY);
+    ctx.lineTo(canvas.width, deadLineY);
+    ctx.strokeStyle = "rgba(255,255,255,0.3)";
+    ctx.lineWidth = 1;
     ctx.stroke();
 
     // Grille
@@ -211,14 +230,14 @@ export const Drawing = {
     ctx.fillStyle = "white";
     ctx.font = "bold 10px Arial";
     ctx.textAlign = "left";
-    ctx.fillText("SORTILEGES", 2, spellY + 24);
+    ctx.fillText("SORTILEGES", 3, spellY + 24);
 
-    const startX = 75;
+    const startX = 80;
     const size = spellH - 6;
     for (let i = 0; i < Config.MAX_SPELLS; i++) {
       const sx = startX + i * (size + 3);
       const sy = spellY + 3;
-      ctx.strokeStyle = "#334155";
+      ctx.strokeStyle = "#475569";
       ctx.strokeRect(sx, sy, size, size);
       if (player.spells && player.spells[i]) {
         const s = Config.SPELLS[player.spells[i]];
@@ -250,7 +269,7 @@ export const Drawing = {
     ctx.beginPath();
     ctx.arc(x, y, rad, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = "rgba(255,255,255,0.5)";
+    ctx.fillStyle = "rgba(255,255,255,0.6)";
     ctx.beginPath();
     ctx.ellipse(
       x - rad * 0.3,
@@ -274,23 +293,40 @@ export const Drawing = {
     ctx.translate(pos.x, pos.y);
     ctx.rotate(player.launcher.angle + Math.PI / 2);
 
-    // Aiguille
+    // Aiguille noire fine
+    ctx.strokeStyle = "black";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(0, -length);
+    ctx.stroke();
+
+    // Pointe verte
     ctx.fillStyle = "#10b981";
     ctx.beginPath();
-    ctx.moveTo(-2, 0);
-    ctx.lineTo(2, 0);
-    ctx.lineTo(0, -length);
+    ctx.arc(0, -length, 4, 0, Math.PI * 2);
     ctx.fill();
 
     // Base
     ctx.fillStyle = "black";
     ctx.beginPath();
-    ctx.moveTo(-4, 0);
-    ctx.lineTo(4, 0);
-    ctx.lineTo(0, -length * 0.2);
+    ctx.arc(0, 0, 6, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.restore();
+  },
+
+  // Utilitaire pour rectangle arrondi
+  roundRect(ctx, x, y, w, h, r) {
+    if (w < 2 * r) r = w / 2;
+    if (h < 2 * r) r = h / 2;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
   },
 
   drawEffect(ctx, e) {

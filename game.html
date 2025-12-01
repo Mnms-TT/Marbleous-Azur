@@ -19,38 +19,43 @@
         margin: 0;
         padding: 0;
         overflow: hidden;
-        background-color: #0f172a;
+        background-color: #020617; /* Fond très sombre autour du jeu */
         font-family: "Inter", sans-serif;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
 
-      #main-wrapper {
+      /* LE CADRE MAGIQUE : Ratio Fixe 16/9 */
+      /* Il grandit jusqu'à toucher les bords mais ne change jamais de proportions */
+      #game-scaler {
+        width: 100%;
+        height: 100%;
+        /* Astuce CSS pour garder le ratio 16/9 (1.77) quoi qu'il arrive */
+        max-width: 177.78vh; /* 16/9 * 100vh */
+        max-height: 56.25vw; /* 9/16 * 100vw */
+
         display: flex;
         flex-direction: column;
-        height: 100vh;
-        width: 100vw;
+        background-color: #0f172a; /* Couleur de fond du jeu */
+        box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
+        border: 1px solid #1e293b;
         padding: 10px;
         box-sizing: border-box;
       }
 
-      /* ZONE HAUTE : Le Jeu */
+      /* HAUT : 85% de la hauteur */
       #top-area {
-        flex: 1; /* Prend toute la hauteur disponible */
-        display: flex;
-        flex-direction: row;
-        gap: 15px; /* Espace entre joueur et adversaires */
-        min-height: 0;
+        height: 82%;
         width: 100%;
-        max-width: 1800px; /* Largeur max très grande pour les grands écrans */
-        margin: 0 auto;
+        display: flex;
+        gap: 1%;
       }
 
-      /* Colonne JOUEUR (Gauche) */
+      /* JOUEUR (Gauche) : 35% de la largeur */
       #player-column {
+        width: 35%;
         height: 100%;
-        /* Largeur fixe relative à la hauteur pour garder le ratio portrait */
-        /* On ajustera via JS, mais on met une base flex */
-        flex: 0 0 35vh;
-        min-width: 300px;
         display: flex;
         flex-direction: column;
       }
@@ -58,80 +63,80 @@
       #canvas-container {
         flex-grow: 1;
         width: 100%;
-        border: 4px solid #334155;
-        border-radius: 0.5rem;
+        border: 3px solid #334155;
+        border-radius: 8px;
         background-color: #1e293b;
-        box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
         position: relative;
+        overflow: hidden;
       }
 
-      /* Colonne ADVERSAIRES (Droite) */
+      /* ADVERSAIRES (Droite) : 64% de la largeur */
       #opponents-column {
-        flex: 1; /* Prend tout le reste de la largeur */
+        width: 64%;
         height: 100%;
-        display: flex;
-        flex-direction: column;
       }
 
       #opponents-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        grid-template-rows: repeat(2, 1fr);
+        gap: 6px;
         height: 100%;
         width: 100%;
-        display: grid;
-        /* 5 colonnes strictes */
-        grid-template-columns: repeat(5, 1fr);
-        /* 2 lignes strictes */
-        grid-template-rows: repeat(2, 1fr);
-        gap: 8px;
       }
 
       .opponent-view {
-        position: relative;
-        border-radius: 0.5rem;
-        border: 2px solid #334155;
         background-color: #1e293b;
+        border: 2px solid #334155;
+        border-radius: 6px;
+        position: relative;
         overflow: hidden;
-        width: 100%;
-        height: 100%;
       }
 
       .opponent-canvas {
         width: 100%;
         height: 100%;
-        object-fit: fill; /* Remplit la case */
+        object-fit: fill;
       }
 
-      /* ZONE BASSE : Chat */
+      /* BAS : CHAT (18% de la hauteur) */
       #bottom-area {
-        height: 130px;
-        margin-top: 10px;
+        height: 18%;
         width: 100%;
-        max-width: 1800px;
-        margin-left: auto;
-        margin-right: auto;
-        flex-shrink: 0;
+        margin-top: 10px;
+        display: flex;
+        flex-direction: column;
       }
 
       .chat-window {
-        height: 100%;
+        flex-grow: 1;
+        background-color: rgba(15, 23, 42, 0.6);
+        border: 1px solid #334155;
+        border-radius: 6px;
+        padding: 8px;
         display: flex;
         flex-direction: column;
-        background-color: rgba(15, 23, 42, 0.9);
-        border: 1px solid #334155;
-        border-radius: 0.5rem;
-        padding: 0.5rem;
       }
 
       #chat-messages {
         flex-grow: 1;
         overflow-y: auto;
+        font-size: 1.4vh; /* Texte adaptatif */
         color: #e2e8f0;
-        font-size: 0.9rem;
-        margin-bottom: 0.5rem;
+        margin-bottom: 5px;
+      }
+
+      /* Inputs et Boutons adaptatifs */
+      input,
+      button,
+      a {
+        font-size: 1.5vh;
+        padding: 0.5vh 1vh;
       }
     </style>
   </head>
   <body>
-    <div id="main-wrapper">
+    <div id="game-scaler">
       <div id="top-area">
         <div id="player-column">
           <div id="canvas-container">
@@ -148,16 +153,16 @@
       <div id="bottom-area">
         <div class="chat-window">
           <div id="chat-messages"></div>
-          <div class="flex gap-2">
+          <div class="flex gap-2 h-8">
             <input
               type="text"
               id="chat-input"
-              class="flex-grow p-2 bg-slate-800 text-white border border-slate-600 rounded"
+              class="flex-grow bg-slate-800 text-white border border-slate-600 rounded px-2"
               placeholder="Écrire un message..."
             />
             <a
               href="index.html"
-              class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded flex items-center justify-center"
+              class="bg-red-600 hover:bg-red-700 text-white font-bold rounded px-4 flex items-center justify-center"
               >Quitter</a
             >
           </div>

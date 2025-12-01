@@ -26,16 +26,12 @@ export const InputHandler = {
         // Si en attente : Clic = Je suis prêt
         if (Game.state === "waiting") {
           const newReadyState = !p.isReady;
-          // On met à jour l'objet local tout de suite pour réactivité immédiate
           p.isReady = newReadyState;
 
           FirebaseController.updatePlayerDoc(p.id, {
             isReady: newReadyState,
             lastActive: Date.now(),
           });
-
-          // Petit son ou feedback visuel ici
-          Drawing.drawAll();
         }
         // Si en jeu : Clic = Tirer
         else if (Game.state === "playing" && p.isAlive) {
@@ -51,15 +47,16 @@ export const InputHandler = {
         const p = Game.localPlayer;
         if (!p || Game.state !== "playing" || !p.isAlive) return;
 
-        // On cherche si on a cliqué sur une vue adversaire
+        // On cherche si on a cliqué sur une vue adversaire (pas l'annonce)
         const view = e.target.closest(".opponent-view");
-        if (view && view.dataset.playerId) {
+        if (view && view.dataset.playerId && view.id !== "spell-announcement") {
           const targetId = view.dataset.playerId;
           // Si on a des sorts, on lance le premier (FIFO)
           if (p.spells && p.spells.length > 0) {
             // Index 0 car FIFO
             const spellToCast = p.spells[0];
-            GameLogic.castSpecificSpell(Game.players.get(targetId), 0);
+            // Logique future : GameLogic.castSpell(p, targetId);
+            console.log("Cible sélectionnée:", targetId);
           }
         }
       });
@@ -101,7 +98,6 @@ export const InputHandler = {
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
-    // Utilise la position calculée par Drawing.js, sinon fallback centre/bas
     const cannonPos = Game.cannonPosition || {
       x: mainCanvas.width / 2,
       y: mainCanvas.height - 50,
@@ -109,7 +105,6 @@ export const InputHandler = {
 
     let angle = Math.atan2(mouseY - cannonPos.y, mouseX - cannonPos.x);
 
-    // Restrictions d'angle (ne pas tirer vers le bas)
     if (angle > -0.1) angle = -0.1;
     if (angle < -Math.PI + 0.1) angle = -Math.PI + 0.1;
 
@@ -131,12 +126,11 @@ export const InputHandler = {
     p.shotBubble = p.launcherBubble;
     p.launcherBubble = null;
 
-    const speed = Game.bubbleRadius * 1.5; // Vitesse rapide
+    const speed = Game.bubbleRadius * 1.5;
     p.shotBubble.isStatic = false;
     p.shotBubble.vx = Math.cos(p.launcher.angle) * speed;
     p.shotBubble.vy = Math.sin(p.launcher.angle) * speed;
 
-    // Départ du canon
     const startPos = Game.cannonPosition || {
       x: mainCanvas.width / 2,
       y: mainCanvas.height - 50,

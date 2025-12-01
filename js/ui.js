@@ -12,18 +12,15 @@ export const UI = {
     if (!grid) return;
     grid.innerHTML = "";
 
-    // On s'assure que la grille CSS est bien configurée pour 5 colonnes
-    grid.className = "grid grid-cols-5 grid-rows-2 gap-1 h-full";
+    // On force le style CSS Grid ici pour être sûr
+    grid.className = "grid grid-cols-5 grid-rows-2 gap-1";
+    // IMPORTANT : On retire 'h-full' qui causait l'étirement, on gérera la hauteur en JS
 
     const opponents = Array.from(Game.players.values()).filter(
       (p) => p.id !== FirebaseController.auth?.currentUser?.uid
     );
 
-    // LOGIQUE DE PLACEMENT 5x2 (10 slots au total)
-    // Ligne 1 : 5 Adversaires
-    // Ligne 2 : 1 Annonce (Gauche) + 4 Adversaires
-
-    // 1. Remplir la première ligne (Indices 0 à 4)
+    // --- Ligne 1 : 5 Adversaires ---
     for (let i = 0; i < 5; i++) {
       const p = opponents[i];
       const slot = p ? p.container : this.createEmptySlot();
@@ -31,18 +28,20 @@ export const UI = {
       grid.appendChild(slot);
     }
 
-    // 2. Placer la case ANNONCES (Premier slot de la ligne 2 -> Index 5)
+    // --- Ligne 2 : Case Annonce + 4 Adversaires ---
+
+    // 1. Case Annonce (Slot 6, premier de la ligne 2)
     const announcement = document.createElement("div");
     announcement.id = "spell-announcement";
     announcement.className =
-      "opponent-view flex items-center justify-center text-center p-1";
-    announcement.style.backgroundColor = "#ea580c"; // Orange distinctif (comme photo)
+      "opponent-view flex flex-col items-center justify-center text-center p-1 overflow-hidden relative";
+    announcement.style.backgroundColor = "#ea580c"; // Orange
     announcement.style.border = "2px solid white";
-    announcement.innerHTML =
-      "<span class='text-white font-bold'>Annonces</span>";
+    // Contenu par défaut
+    announcement.innerHTML = `<span class="text-white font-bold text-sm">Annonces</span>`;
     grid.appendChild(announcement);
 
-    // 3. Remplir le reste de la ligne 2 (Indices 5 à 8 des opposants)
+    // 2. Les 4 autres adversaires
     for (let i = 5; i < 9; i++) {
       const p = opponents[i];
       const slot = p ? p.container : this.createEmptySlot();
@@ -50,14 +49,16 @@ export const UI = {
       grid.appendChild(slot);
     }
 
-    this.resizeAllCanvases();
+    // On force le redimensionnement pour tout aligner
+    setTimeout(() => this.resizeAllCanvases(), 0);
   },
 
   createEmptySlot: () => {
     const s = document.createElement("div");
+    // Style unifié pour que les cases vides aient la même structure que l'annonce
     s.className =
-      "opponent-view empty-slot flex items-center justify-center bg-gray-900 border-2 border-dashed border-gray-600";
-    s.innerHTML = `<span class="text-gray-500 text-xs">En attente...</span>`;
+      "opponent-view empty-slot flex items-center justify-center bg-gray-900 border-2 border-dashed border-gray-600 opacity-50";
+    s.innerHTML = `<span class="text-gray-500 text-[10px]">En attente...</span>`;
     return s;
   },
 
@@ -70,17 +71,20 @@ export const UI = {
     const total = Game.players.size;
     const required = total <= 1 ? 1 : Math.ceil(total / 2) + 1;
 
-    // Mise à jour de la case Annonces
     if (!Game.localPlayer.isReady) {
       this.renderTeamSelectionInAnnouncementBox();
     } else {
       const slot = document.getElementById("spell-announcement");
-      if (slot)
-        slot.innerHTML = `<div class="flex flex-col text-white"><span class="font-bold text-lg">Prêts: ${ready}/${total}</span><span class="text-xs text-gray-200">En attente...</span></div>`;
+      if (slot) {
+        slot.innerHTML = `
+                <div class="flex flex-col justify-center items-center h-full w-full">
+                    <span class="font-bold text-white text-lg leading-none mb-1">Prêts</span>
+                    <span class="font-black text-3xl text-white leading-none">${ready}/${total}</span>
+                    <span class="text-[10px] text-gray-200 mt-1">En attente...</span>
+                </div>`;
+      }
     }
 
-    // Affichage "PRET" sur le canvas du joueur
-    // Note : Le dessin "PRET" est géré dans drawing.js, ici on gère juste le changement d'état
     if (
       total > 0 &&
       ready >= required &&
@@ -94,22 +98,23 @@ export const UI = {
     const slot = document.getElementById("spell-announcement");
     if (!slot || !Game.localPlayer) return;
 
-    // Interface de choix d'équipe dans la case orange
+    // On utilise flex-wrap et gap-1 pour que ça rentre dans la petite case
     slot.innerHTML = `
     <div class="flex flex-col items-center justify-center w-full h-full p-1">
-        <p class="font-bold text-xs text-white mb-1">Choix Équipe</p>
-        <div class="flex flex-wrap justify-center gap-1 mb-1">
+        <p class="font-bold text-[10px] text-white uppercase mb-1">Équipe</p>
+        <div class="flex flex-wrap justify-center gap-1 w-full max-w-[80px]">
             ${Config.TEAM_COLORS.map((color, index) => {
               const isSelected = Game.localPlayer.team === index;
-              return `<button style="background-color:${color}; width: 18px; height: 18px; border-radius: 50%; border: ${
-                isSelected ? "2px solid white" : "1px solid rgba(0,0,0,0.3)"
+              // Boutons plus petits pour être sûr qu'ils rentrent
+              return `<button style="background-color:${color}; width: 16px; height: 16px; border-radius: 50%; border: ${
+                isSelected ? "2px solid white" : "1px solid rgba(0,0,0,0.2)"
               }; transform: ${
                 isSelected ? "scale(1.2)" : "scale(1)"
               }" onclick="window.handleTeamChange(${index})"></button>`;
             }).join("")}
         </div>
-        <div class="bg-black bg-opacity-30 rounded px-2 py-1 mt-1 animate-pulse cursor-pointer" onclick="document.getElementById('gameCanvas').click()">
-            <span class="text-[10px] font-bold text-white">CLIQUEZ LE JEU<br>POUR ÊTRE PRÊT</span>
+        <div class="mt-2 bg-black bg-opacity-40 rounded px-2 py-1 cursor-pointer hover:bg-opacity-60 transition" onclick="document.getElementById('gameCanvas').click()">
+            <span class="text-[9px] font-bold text-white leading-tight block">CLIQUER<br>LE JEU</span>
         </div>
     </div>`;
 
@@ -128,9 +133,17 @@ export const UI = {
 
     let count = 3;
     const update = () => {
-      slot.innerHTML = `<span class="text-6xl font-black text-white drop-shadow-md">${count}</span>`;
+      // Ajustement de la taille de police pour que ça rentre
+      slot.innerHTML = `
+        <div class="flex items-center justify-center h-full w-full bg-orange-700">
+            <span class="text-5xl font-black text-white drop-shadow-lg">${count}</span>
+        </div>`;
+
       if (count <= 0) {
-        slot.innerHTML = `<span class="text-4xl font-bold text-green-300">GO!</span>`;
+        slot.innerHTML = `
+        <div class="flex items-center justify-center h-full w-full bg-green-600">
+            <span class="text-4xl font-black text-white">GO!</span>
+        </div>`;
         clearInterval(Game.countdownInterval);
       }
       count--;
@@ -146,28 +159,28 @@ export const UI = {
     }
     const slot = document.getElementById("spell-announcement");
     if (slot)
-      slot.innerHTML = "<span class='text-white font-bold'>Annonces</span>";
+      slot.innerHTML =
+        "<span class='text-white font-bold text-sm'>Annonces</span>";
   },
 
-  updatePlayerStats() {
-    // Géré par le canvas maintenant
-  },
+  updatePlayerStats() {},
 
   resizeAllCanvases() {
     const canvasContainer = document.getElementById("canvas-container");
     const mainCanvas = document.getElementById("gameCanvas");
     const spellsContainer = document.getElementById("spells-container");
+    const opponentsGrid = document.getElementById("opponents-grid");
 
     if (canvasContainer && mainCanvas) {
-      if (spellsContainer) spellsContainer.style.display = "none"; // On cache l'ancien HTML
+      if (spellsContainer) spellsContainer.style.display = "none";
+
+      // On prend toute la hauteur disponible du parent
       canvasContainer.style.height = "100%";
 
       const contW = canvasContainer.clientWidth;
       const contH = canvasContainer.clientHeight;
 
-      // RATIO STRICT TYPE "Bust-A-Move"
-      // Hauteur = 12 lignes + Ligne + Canon + Sorts. C'est très vertical.
-      // Ratio L/H environ 0.6
+      // Ratio strict du jeu (Portrait)
       const idealRatio = 0.6;
 
       let newW, newH;
@@ -180,25 +193,32 @@ export const UI = {
         newH = newW / idealRatio;
       }
 
+      // Appliquer les dimensions au Canvas du joueur
       mainCanvas.width = newW;
       mainCanvas.height = newH;
       mainCanvas.style.width = `${newW}px`;
       mainCanvas.style.height = `${newH}px`;
 
-      // CALCUL DU RAYON (Vital)
-      // On prend la plus petite valeur pour être sûr que ça rentre
-      // 17 unités en largeur (8 boules * 2 + 1)
-      // 25 unités en hauteur (12 lignes + canon)
-      const radW = newW / 17;
-      const radH = newH / 26; // Un peu plus de marge verticale
+      // --- CORRECTION CRITIQUE : SYNCHRONISATION DE LA GRILLE ---
+      // On force la grille des adversaires à avoir exactement la même hauteur que le canvas
+      if (opponentsGrid) {
+        opponentsGrid.style.height = `${newH}px`;
+        // On centre verticalement la grille si le container est plus grand
+        opponentsGrid.style.marginTop = `${(contH - newH) / 2}px`;
+      }
 
+      // Calcul du rayon des boules
+      const radW = newW / 17;
+      const radH = newH / 26;
       Game.bubbleRadius = Math.min(radW, radH) * 0.95;
     }
 
+    // Redimensionnement des canvas adverses
     Game.players.forEach((p) => {
       if (p.id !== Game.localPlayer?.id && p.canvas) {
         const oppCont = p.canvas.parentElement;
         if (oppCont) {
+          // Les canvas adverses prennent 100% de leur slot CSS grid
           p.canvas.width = oppCont.clientWidth;
           p.canvas.height = oppCont.clientHeight;
         }
@@ -211,18 +231,19 @@ export const UI = {
     if (!slot) return;
     if (this.announcementTimeout) clearTimeout(this.announcementTimeout);
 
+    // Affichage compact pour que ça rentre
     slot.innerHTML = `
-        <div class="flex flex-col items-center">
-            <span class="text-xs font-bold text-yellow-300">${caster}</span>
-            <div style="background-image:url('${spellInfo.icon}'); background-size:cover; width:24px; height:24px;"></div>
-            <span class="font-bold text-xs text-white">${spellInfo.name}</span>
-            <span class="text-[10px] text-red-200">-> ${targetName}</span>
+        <div class="flex flex-col items-center justify-center h-full p-1 bg-red-900 border-2 border-yellow-400 animate-pulse">
+            <span class="text-[10px] font-bold text-yellow-300 truncate w-full text-center">${caster}</span>
+            <div style="background-image:url('${spellInfo.icon}'); background-size:cover; width:20px; height:20px; margin: 2px 0;"></div>
+            <span class="text-[9px] text-white leading-none text-center">sur<br>${targetName}</span>
         </div>
       `;
 
     this.announcementTimeout = setTimeout(() => {
       if (Game.state === "playing")
-        slot.innerHTML = "<span class='text-white font-bold'>Annonces</span>";
+        slot.innerHTML =
+          "<span class='text-white font-bold text-sm'>Annonces</span>";
     }, 4000);
   },
 

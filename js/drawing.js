@@ -18,166 +18,144 @@ export const Drawing = {
     const canvas = ctx.canvas;
     if (!canvas || canvas.width === 0 || !player) return;
 
-    // Dimensions
     const rad = isMain ? Game.bubbleRadius : (canvas.width / 17) * 0.95;
     if (!rad || rad < 1) return;
 
-    // 1. Fond Damier
+    // 1. FOND DAMIER
     const tileSize = canvas.width / 8;
     const rows = Math.ceil(canvas.height / tileSize);
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < 8; c++) {
-        ctx.fillStyle =
-          (r + c) % 2 === 0
-            ? Config.BACKGROUND_CHECKER.light
-            : Config.BACKGROUND_CHECKER.dark;
-        ctx.fillRect(c * tileSize, r * tileSize, tileSize, tileSize);
-      }
+    for(let r = 0; r < rows; r++) {
+        for(let c = 0; c < 8; c++) {
+            ctx.fillStyle = (r + c) % 2 === 0 ? Config.BACKGROUND_CHECKER.light : Config.BACKGROUND_CHECKER.dark;
+            ctx.fillRect(c * tileSize, r * tileSize, tileSize, tileSize);
+        }
     }
 
     const isGameActive = Game.state === "playing" || Game.state === "countdown";
-
+    
     if (!isGameActive) {
-      this.drawLobbyState(ctx, canvas, player, isMain);
+        this.drawLobbyState(ctx, canvas, player, isMain);
     } else {
-      this.drawGameState(ctx, canvas, player, rad, isMain);
+        this.drawGameState(ctx, canvas, player, rad, isMain);
     }
 
     if (isMain) this.drawSpellBar(ctx, canvas, player);
   },
 
   drawLobbyState(ctx, canvas, player, isMain) {
-    ctx.fillStyle = "rgba(0,0,0,0.3)"; // Ombre légère sur damier
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "rgba(0,0,0,0.3)";
+      ctx.fillRect(0,0,canvas.width, canvas.height);
 
-    (Game.lobbyMarbles || []).forEach((marble) => {
-      this.drawBubble(ctx, marble, marble.r, marble.x, marble.y);
-    });
+      (Game.lobbyMarbles || []).forEach((marble) => {
+          this.drawBubble(ctx, marble, marble.r, marble.x, marble.y);
+      });
 
-    if (isMain) {
-      // Cadre plus petit et centré
-      ctx.strokeStyle = "rgba(255,255,255,0.8)";
-      ctx.lineWidth = 4;
-      const w = canvas.width * 0.8;
-      const h = canvas.height * 0.15;
-      const x = (canvas.width - w) / 2;
-      const y = canvas.height * 0.4;
-
-      ctx.strokeRect(x, y, w, h);
-      ctx.fillStyle = "white";
-      ctx.textAlign = "center";
-      ctx.font = "bold 24px Arial";
-
-      if (player.isReady) {
-        ctx.fillText("PRÊT", canvas.width / 2, y + h / 2 + 8);
-      } else {
-        ctx.fillText("Clic pour démarrer", canvas.width / 2, y + h / 2 + 8);
+      if (isMain) {
+          ctx.strokeStyle = "rgba(255,255,255,0.8)";
+          ctx.lineWidth = 4;
+          const w = canvas.width * 0.8;
+          const h = canvas.height * 0.15;
+          const x = (canvas.width - w) / 2;
+          const y = canvas.height * 0.4;
+          
+          ctx.strokeRect(x, y, w, h);
+          ctx.fillStyle = "white";
+          ctx.textAlign = "center";
+          ctx.font = "bold 24px Arial";
+          
+          if(player.isReady) {
+              ctx.fillText("PRÊT", canvas.width/2, y + h/2 + 8);
+          } else {
+              ctx.fillText("Clic pour démarrer", canvas.width/2, y + h/2 + 8);
+          }
       }
-    }
   },
 
   drawGameState(ctx, canvas, player, rad, isMain) {
-    // Calcul de la ligne de mort
-    const gridPixelHeight = Config.GAME_OVER_ROW * (rad * 1.732) + rad;
-    const deadLineY = gridPixelHeight + 5;
+    // Calcul Ligne Noire
+    const gridPixelHeight = (Config.GAME_OVER_ROW) * (rad * 1.732) + rad;
+    const deadLineY = gridPixelHeight + 10; 
 
-    // Zone Dashboard (Rouge en bas)
-    ctx.fillStyle = "#991b1b";
+    // Fond Dashboard (Plus foncé pour contraste)
+    ctx.fillStyle = "#9a3412"; // Orange très sombre / rouille
     ctx.fillRect(0, deadLineY, canvas.width, canvas.height - deadLineY);
 
-    // Canon "Eventail" (Viseur)
+    // --- CANON ---
     if (isMain) {
-      const cannonY = canvas.height - 40; // Juste au dessus de la barre de sorts
-      const centerX = canvas.width / 2;
+        // Le pivot du canon est en bas, au centre
+        const cannonPivotY = canvas.height - 40; // Juste au dessus des sorts
+        const cannonPivotX = canvas.width / 2;
+        
+        // Rayon du canon = Distance jusqu'à la ligne noire
+        const cannonRadius = cannonPivotY - deadLineY;
 
-      ctx.beginPath();
-      // Un grand arc blanc semi-transparent
-      ctx.arc(centerX, cannonY + 20, rad * 4, Math.PI, 0);
-      ctx.fillStyle = "rgba(255,255,255,0.15)";
-      ctx.fill();
-      ctx.strokeStyle = "rgba(255,255,255,0.6)";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      // Rayons
-      for (let i = 0; i <= 6; i++) {
-        const angle = Math.PI + (i * Math.PI) / 6;
-        const len = rad * 4;
+        // Dessin de l'éventail (Arc de cercle blanc)
         ctx.beginPath();
-        ctx.moveTo(centerX, cannonY + 20);
-        ctx.lineTo(
-          centerX + Math.cos(angle) * len,
-          cannonY + 20 + Math.sin(angle) * len
-        );
-        ctx.strokeStyle = "rgba(255,255,255,0.3)";
-        ctx.lineWidth = 1;
+        // Arc complet de Gauche (PI) à Droite (0)
+        ctx.arc(cannonPivotX, cannonPivotY, cannonRadius, Math.PI, 0);
+        ctx.fillStyle = "rgba(255, 255, 255, 0.1)"; // Blanc très léger
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.4)"; // Bord blanc
+        ctx.lineWidth = 2;
         ctx.stroke();
-      }
+
+        // Rayons décoratifs
+        for(let i=0; i<=6; i++) {
+            const angle = Math.PI + (i * Math.PI)/6;
+            ctx.beginPath();
+            ctx.moveTo(cannonPivotX, cannonPivotY);
+            ctx.lineTo(
+                cannonPivotX + Math.cos(angle)*cannonRadius, 
+                cannonPivotY + Math.sin(angle)*cannonRadius
+            );
+            ctx.strokeStyle = "rgba(255,255,255,0.2)";
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
+        
+        // Mise à jour position logique pour le clic
+        Game.cannonPosition = { x: cannonPivotX, y: cannonPivotY };
+        
+        // Sécurité chargement boule
+        if (player.isAlive && !player.launcherBubble && !player.shotBubble) {
+            GameLogic.loadBubbles(player);
+        }
+        
+        // Aiguille
+        this.drawCannonNeedle(ctx, player, Game.cannonPosition, cannonRadius);
+        
+        // Boules Canon
+        if (player.launcherBubble) this.drawBubble(ctx, player.launcherBubble, rad, Game.cannonPosition.x, Game.cannonPosition.y, true);
+        if (player.nextBubble) {
+            const nextX = Game.cannonPosition.x + rad * 3;
+            const nextY = Game.cannonPosition.y - 10;
+            this.drawBubble(ctx, player.nextBubble, rad * 0.8, nextX, nextY);
+        }
+        if (player.shotBubble) this.drawBubble(ctx, player.shotBubble, rad, player.shotBubble.x, player.shotBubble.y);
     }
 
-    // Ligne Noire
+    // Ligne Noire (Dessinée par dessus l'éventail pour le couper proprement)
     ctx.beginPath();
     ctx.moveTo(0, deadLineY);
     ctx.lineTo(canvas.width, deadLineY);
     ctx.strokeStyle = "black";
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 4;
     ctx.stroke();
 
     // Grille
     if (player.grid) {
-      for (let r = 0; r < Config.GRID_ROWS; r++) {
-        for (let c = 0; c < Config.GRID_COLS; c++) {
-          if (player.grid[r][c]) {
-            const { x, y } = GameLogic.getBubbleCoords(r, c, rad);
-            this.drawBubble(ctx, player.grid[r][c], rad, x, y);
+        for (let r = 0; r < Config.GRID_ROWS; r++) {
+          for (let c = 0; c < Config.GRID_COLS; c++) {
+            if (player.grid[r][c]) {
+              const { x, y } = GameLogic.getBubbleCoords(r, c, rad);
+              this.drawBubble(ctx, player.grid[r][c], rad, x, y);
+            }
           }
         }
-      }
     }
-
-    (player.fallingBubbles || []).forEach((b) =>
-      this.drawBubble(ctx, b, rad, b.x, b.y)
-    );
+    
+    (player.fallingBubbles || []).forEach((b) => this.drawBubble(ctx, b, rad, b.x, b.y));
     (player.effects || []).forEach((e) => this.drawEffect(ctx, e));
-
-    // Elements Canon
-    if (isMain && player.isAlive) {
-      // Point de pivot du tir
-      const cannonY = canvas.height - 40;
-      Game.cannonPosition = { x: canvas.width / 2, y: cannonY };
-
-      if (!player.launcherBubble && !player.shotBubble)
-        GameLogic.loadBubbles(player);
-
-      // Aiguille
-      this.drawCannonNeedle(ctx, player, Game.cannonPosition, rad * 3.5);
-
-      // Boules
-      if (player.launcherBubble)
-        this.drawBubble(
-          ctx,
-          player.launcherBubble,
-          rad,
-          Game.cannonPosition.x,
-          Game.cannonPosition.y,
-          true
-        );
-
-      if (player.nextBubble) {
-        const nextX = Game.cannonPosition.x + rad * 3;
-        const nextY = Game.cannonPosition.y + 5;
-        this.drawBubble(ctx, player.nextBubble, rad * 0.8, nextX, nextY);
-      }
-
-      if (player.shotBubble)
-        this.drawBubble(
-          ctx,
-          player.shotBubble,
-          rad,
-          player.shotBubble.x,
-          player.shotBubble.y
-        );
-    }
 
     if (!player.isAlive) this.drawOverlayText(ctx, canvas, "PERDU", "red");
   },
@@ -185,10 +163,8 @@ export const Drawing = {
   drawSpellBar(ctx, canvas, player) {
     const spellH = 35;
     const spellY = canvas.height - spellH;
-
-    ctx.fillStyle = "#020617"; // Noir
+    ctx.fillStyle = "#020617";
     ctx.fillRect(0, spellY, canvas.width, spellH);
-
     ctx.fillStyle = "white";
     ctx.font = "bold 10px Arial";
     ctx.textAlign = "left";
@@ -196,103 +172,80 @@ export const Drawing = {
 
     const startX = 70;
     const size = spellH - 4;
-    for (let i = 0; i < Config.MAX_SPELLS; i++) {
-      const sx = startX + i * (size + 2);
-      const sy = spellY + 2;
-      ctx.strokeStyle = "#334155";
-      ctx.strokeRect(sx, sy, size, size);
-
-      if (player.spells && player.spells[i]) {
-        const s = Config.SPELLS[player.spells[i]];
-        if (s) {
-          const icon = Game.spellIcons[player.spells[i]];
-          if (icon && icon.complete) ctx.drawImage(icon, sx, sy, size, size);
-          else {
-            ctx.fillStyle = s.color;
-            ctx.fillRect(sx + 1, sy + 1, size - 2, size - 2);
-          }
+    for(let i=0; i<Config.MAX_SPELLS; i++) {
+        const sx = startX + i * (size + 2);
+        const sy = spellY + 2;
+        ctx.strokeStyle = "#334155";
+        ctx.strokeRect(sx, sy, size, size);
+        if(player.spells && player.spells[i]) {
+            const s = Config.SPELLS[player.spells[i]];
+            if(s) {
+                const icon = Game.spellIcons[player.spells[i]];
+                if(icon && icon.complete) ctx.drawImage(icon, sx, sy, size, size);
+                else { ctx.fillStyle = s.color; ctx.fillRect(sx+1, sy+1, size-2, size-2); }
+            }
         }
-      }
     }
   },
 
   drawBubble(ctx, b, rad, x, y) {
     if (!b || !b.color) return;
-    const grad = ctx.createRadialGradient(
-      x - rad / 3,
-      y - rad / 3,
-      rad / 4,
-      x,
-      y,
-      rad
-    );
+    const grad = ctx.createRadialGradient(x - rad/3, y - rad/3, rad/4, x, y, rad);
     grad.addColorStop(0, b.color.main);
     grad.addColorStop(1, b.color.shadow);
     ctx.fillStyle = grad;
     ctx.beginPath();
     ctx.arc(x, y, rad, 0, Math.PI * 2);
     ctx.fill();
-
-    // Reflet blanc
     ctx.fillStyle = "rgba(255,255,255,0.6)";
     ctx.beginPath();
-    ctx.ellipse(
-      x - rad * 0.3,
-      y - rad * 0.3,
-      rad * 0.25,
-      rad * 0.15,
-      Math.PI / 4,
-      0,
-      Math.PI * 2
-    );
+    ctx.ellipse(x - rad*0.3, y - rad*0.3, rad*0.25, rad*0.15, Math.PI/4, 0, Math.PI*2);
     ctx.fill();
-
-    if (b.isSpellBubble && b.spell && Game.spellIcons[b.spell]) {
-      const icon = Game.spellIcons[b.spell];
-      if (icon.complete)
-        ctx.drawImage(icon, x - rad * 0.7, y - rad * 0.7, rad * 1.4, rad * 1.4);
+    if(b.isSpellBubble && b.spell && Game.spellIcons[b.spell]) {
+        const icon = Game.spellIcons[b.spell];
+        if(icon.complete) ctx.drawImage(icon, x - rad*0.7, y - rad*0.7, rad*1.4, rad*1.4);
     }
   },
 
   drawCannonNeedle(ctx, player, pos, length) {
-    ctx.save();
-    ctx.translate(pos.x, pos.y);
-    ctx.rotate(player.launcher.angle + Math.PI / 2);
-
-    // Aiguille
-    ctx.fillStyle = "#22c55e"; // Vert
-    ctx.beginPath();
-    ctx.moveTo(-1, 0);
-    ctx.lineTo(1, 0);
-    ctx.lineTo(0, -length);
-    ctx.fill();
-
-    // Base
-    ctx.fillStyle = "black";
-    ctx.beginPath();
-    ctx.moveTo(-3, 0);
-    ctx.lineTo(3, 0);
-    ctx.lineTo(0, -length * 0.2);
-    ctx.fill();
-
-    ctx.restore();
-  },
-
-  drawEffect(ctx, e) {
-    if (e.type === "pop") {
+      ctx.save();
+      ctx.translate(pos.x, pos.y);
+      ctx.rotate(player.launcher.angle + Math.PI / 2);
+      
+      // Aiguille
+      ctx.fillStyle = "#10b981"; 
       ctx.beginPath();
-      ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
-      ctx.strokeStyle = "white";
-      ctx.stroke();
-    }
+      ctx.moveTo(-2, 0);
+      ctx.lineTo(2, 0);
+      ctx.lineTo(0, -length); // Va jusqu'au bout du rayon
+      ctx.fill();
+      
+      // Base
+      ctx.fillStyle = "black";
+      ctx.beginPath();
+      ctx.moveTo(-4, 0);
+      ctx.lineTo(4, 0);
+      ctx.lineTo(0, -length * 0.2);
+      ctx.fill();
+      
+      ctx.restore();
   },
-
+  
+  drawEffect(ctx, e) {
+      if(e.type === 'pop') {
+          ctx.beginPath();
+          ctx.arc(e.x, e.y, e.radius, 0, Math.PI*2);
+          ctx.strokeStyle = 'white';
+          ctx.stroke();
+      }
+  },
+  
   drawOverlayText(ctx, canvas, mainText, color) {
-    ctx.fillStyle = "rgba(0,0,0,0.6)";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = color;
-    ctx.textAlign = "center";
-    ctx.font = "bold 30px Arial";
-    ctx.fillText(mainText, canvas.width / 2, canvas.height / 2);
-  },
+      ctx.fillStyle = "rgba(0,0,0,0.6)";
+      ctx.fillRect(0,0,canvas.width, canvas.height);
+      ctx.fillStyle = color;
+      ctx.textAlign = "center";
+      ctx.font = "bold 30px Arial";
+      ctx.fillText(mainText, canvas.width/2, canvas.height/2);
+  }
 };

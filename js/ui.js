@@ -11,11 +11,12 @@ export const UI = {
     if (!grid) return;
     grid.innerHTML = "";
 
+    // Grille gérée par CSS
+
     const opponents = Array.from(Game.players.values()).filter(
       (p) => p.id !== FirebaseController.auth?.currentUser?.uid
     );
 
-    // Ligne 1
     for (let i = 0; i < 5; i++) {
       const p = opponents[i];
       const slot = p ? p.container : this.createEmptySlot();
@@ -23,15 +24,13 @@ export const UI = {
       grid.appendChild(slot);
     }
 
-    // Ligne 2 : Annonces (Orange)
     const announcement = document.createElement("div");
     announcement.id = "spell-announcement";
     announcement.className =
-      "opponent-view flex flex-col items-center justify-center text-center p-1 overflow-hidden relative";
-    // Meme orange que le fond dashboard pour continuité visuelle
+      "opponent-view flex flex-col items-center justify-center text-center p-1 relative";
     announcement.style.backgroundColor = "#c2410c";
-    announcement.style.border = "2px solid #fdba74"; // Bordure orange clair
-    announcement.innerHTML = `<span class="text-white font-bold">Annonces</span>`;
+    announcement.style.border = "2px solid white";
+    announcement.innerHTML = `<span class="text-white font-bold text-xs">Annonces</span>`;
     grid.appendChild(announcement);
 
     for (let i = 5; i < 9; i++) {
@@ -47,8 +46,8 @@ export const UI = {
   createEmptySlot: () => {
     const s = document.createElement("div");
     s.className =
-      "opponent-view flex items-center justify-center bg-slate-900 border-2 border-dashed border-slate-700 opacity-40";
-    s.innerHTML = `<span class="text-slate-500 text-xs">Libre</span>`;
+      "opponent-view flex items-center justify-center bg-slate-900 opacity-50";
+    s.innerHTML = `<span class="text-slate-600 text-[10px]">Libre</span>`;
     return s;
   },
 
@@ -65,14 +64,8 @@ export const UI = {
     if (!Game.localPlayer.isReady) {
       this.renderTeamSelectionInAnnouncementBox();
     } else {
-      if (slot) {
-        slot.innerHTML = `
-                <div class="flex flex-col justify-center items-center h-full w-full bg-green-700 animate-pulse">
-                    <span class="font-bold text-white text-xl mb-1">PRÊT</span>
-                    <div class="w-2/3 h-px bg-white/30 my-1"></div>
-                    <span class="text-white/80 text-xs">Joueurs: ${ready}/${total}</span>
-                </div>`;
-      }
+      if (slot)
+        slot.innerHTML = `<div class="flex flex-col items-center justify-center h-full bg-green-700 animate-pulse text-white"><span class="font-bold text-sm">PRÊT</span><span class="text-[10px]">${ready}/${total}</span></div>`;
     }
 
     if (
@@ -89,21 +82,16 @@ export const UI = {
     if (!slot || !Game.localPlayer) return;
 
     slot.innerHTML = `
-    <div class="flex flex-col items-center justify-center w-full h-full p-1">
-        <p class="font-bold text-xs text-white mb-1 uppercase tracking-wide shadow-black drop-shadow-md">Équipe</p>
-        <div class="flex flex-wrap justify-center gap-1.5 mb-2">
-            ${Config.TEAM_COLORS.map((c, i) => {
-              const isSelected = Game.localPlayer.team === i;
-              return `<button style="background:${c}; width:18px; height:18px; border-radius:50%; border:${
-                isSelected ? "2px solid white" : "1px solid rgba(0,0,0,0.4)"
-              }; transform:${
-                isSelected ? "scale(1.2)" : "scale(1)"
-              }; box-shadow: 0 2px 4px rgba(0,0,0,0.5);" onclick="window.handleTeamChange(${i})"></button>`;
-            }).join("")}
+    <div class="flex flex-col items-center justify-center w-full h-full bg-orange-600 p-1">
+        <div class="flex flex-wrap justify-center gap-1 mb-1">
+            ${Config.TEAM_COLORS.map(
+              (c, i) =>
+                `<button style="background:${c}; width:12px; height:12px; border-radius:50%; border:${
+                  Game.localPlayer.team === i ? "2px solid white" : "none"
+                }" onclick="window.handleTeamChange(${i})"></button>`
+            ).join("")}
         </div>
-        <div class="bg-black/40 hover:bg-black/60 transition px-2 py-1 rounded cursor-pointer border border-white/20 shadow-md" onclick="document.getElementById('gameCanvas').click()">
-            <span class="text-[10px] font-bold text-white block leading-tight text-center">CLIQUER<br>POUR PRÊT</span>
-        </div>
+        <button class="bg-black/40 hover:bg-black/60 text-white text-[9px] font-bold px-2 py-1 rounded border border-white/20" onclick="document.getElementById('gameCanvas').click()">GO</button>
     </div>`;
 
     window.handleTeamChange = (i) =>
@@ -119,9 +107,9 @@ export const UI = {
     if (!slot) return;
     let count = 3;
     const update = () => {
-      slot.innerHTML = `<div class="w-full h-full flex items-center justify-center bg-purple-700 text-white font-black text-6xl border-4 border-white shadow-lg">${count}</div>`;
+      slot.innerHTML = `<div class="w-full h-full flex items-center justify-center bg-purple-800 text-white font-black text-4xl">${count}</div>`;
       if (count <= 0) {
-        slot.innerHTML = `<div class="w-full h-full flex items-center justify-center bg-green-500 text-white font-black text-4xl border-4 border-white shadow-lg animate-bounce">GO!</div>`;
+        slot.innerHTML = `<div class="w-full h-full flex items-center justify-center bg-green-600 text-white font-black text-2xl">GO!</div>`;
         clearInterval(Game.countdownInterval);
 
         const hostId = Array.from(Game.players.keys()).sort()[0];
@@ -139,28 +127,32 @@ export const UI = {
     if (Game.countdownInterval) clearInterval(Game.countdownInterval);
     const slot = document.getElementById("spell-announcement");
     if (slot)
-      slot.innerHTML = "<span class='text-white font-bold'>Annonces</span>";
+      slot.innerHTML =
+        "<span class='text-white font-bold text-xs'>Annonces</span>";
   },
 
   updatePlayerStats() {},
 
   resizeAllCanvases() {
-    const canvasContainer = document.getElementById("canvas-container");
+    const container = document.getElementById("canvas-container");
     const mainCanvas = document.getElementById("gameCanvas");
-    const playerCol = document.getElementById("player-column");
 
-    if (canvasContainer && mainCanvas) {
-      const w = canvasContainer.clientWidth;
-      const h = canvasContainer.clientHeight;
+    if (container && mainCanvas) {
+      const h = container.clientHeight;
+      // ICI LA CORRECTION : On force une largeur basée sur la hauteur (Ratio 0.55 = Portrait)
+      // Cela évite l'effet "carré écrasé"
+      const w = h * 0.55;
 
-      mainCanvas.width = w;
       mainCanvas.height = h;
-      mainCanvas.style.width = w + "px";
-      mainCanvas.style.height = h + "px";
+      mainCanvas.width = w;
 
-      // Calcul ajusté pour que les boules soient un peu plus petites (plus d'air)
+      // On applique le style pixel pour centrer le canvas dans le conteneur flex
+      mainCanvas.style.height = `${h}px`;
+      mainCanvas.style.width = `${w}px`;
+
+      // Recalcul du rayon : 17 unités de large (8 boules * 2 + 1)
       const radW = w / 17;
-      Game.bubbleRadius = radW * 0.9; // Réduit à 0.90 pour être moins "grosses"
+      Game.bubbleRadius = radW * 0.95;
     }
 
     Game.players.forEach((p) => {
@@ -182,11 +174,7 @@ export const UI = {
   addChatMessage(name, msg) {
     const chat = document.getElementById("chat-messages");
     if (chat) {
-      const color =
-        Game.localPlayer?.team !== undefined
-          ? Config.TEAM_COLORS[Game.localPlayer.team]
-          : "#93c5fd";
-      chat.innerHTML += `<div class="mb-1"><span class="font-bold" style="color:${color}">${name}:</span> ${msg}</div>`;
+      chat.innerHTML += `<div class="mb-1"><span class="font-bold text-blue-300">${name}:</span> ${msg}</div>`;
       chat.scrollTop = chat.scrollHeight;
     }
   },

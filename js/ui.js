@@ -11,7 +11,7 @@ export const UI = {
     if (!grid) return;
     grid.innerHTML = "";
 
-    // IMPORTANT: On enlève les contraintes de hauteur CSS pour laisser JS gérer
+    // Grille 5 colonnes
     grid.className = "grid grid-cols-5 grid-rows-2 gap-2";
 
     const opponents = Array.from(Game.players.values()).filter(
@@ -61,12 +61,23 @@ export const UI = {
     const total = Game.players.size;
     const required = total <= 1 ? 1 : Math.ceil(total / 2) + 1;
 
+    // --- LOGIQUE DE VERROUILLAGE ---
+    const slot = document.getElementById("spell-announcement");
+
     if (!Game.localPlayer.isReady) {
+      // PAS PRÊT : On affiche la sélection d'équipe (boutons actifs)
       this.renderTeamSelectionInAnnouncementBox();
     } else {
-      const slot = document.getElementById("spell-announcement");
-      if (slot)
-        slot.innerHTML = `<div class="text-center text-white"><div class="font-bold text-xl">${ready}/${total}</div><div class="text-[10px]">Prêts</div></div>`;
+      // PRÊT : On affiche juste le statut (PAS DE BOUTONS = VERROUILLÉ)
+      if (slot) {
+        slot.innerHTML = `
+                <div class="flex flex-col justify-center items-center h-full w-full animate-pulse">
+                    <span class="font-bold text-white text-lg leading-none mb-1">PRÊT !</span>
+                    <div class="w-full h-px bg-white my-1 opacity-50"></div>
+                    <span class="text-[10px] text-white">Joueurs prêts:</span>
+                    <span class="font-black text-2xl text-white leading-none">${ready}/${total}</span>
+                </div>`;
+      }
     }
 
     if (
@@ -81,20 +92,26 @@ export const UI = {
   renderTeamSelectionInAnnouncementBox() {
     const slot = document.getElementById("spell-announcement");
     if (!slot || !Game.localPlayer) return;
+
+    // Interface avec boutons (Déverrouillé)
     slot.innerHTML = `
-    <div class="flex flex-col items-center justify-center w-full h-full">
-        <div class="flex flex-wrap justify-center gap-1 mb-1 px-2">
-            ${Config.TEAM_COLORS.map(
-              (c, i) =>
-                `<button style="background:${c}; width:16px; height:16px; border-radius:50%; border:${
-                  Game.localPlayer.team === i ? "2px solid white" : "none"
-                }" onclick="window.handleTeamChange(${i})"></button>`
-            ).join("")}
+    <div class="flex flex-col items-center justify-center w-full h-full p-1">
+        <p class="font-bold text-[10px] text-white uppercase mb-1">Équipe</p>
+        <div class="flex flex-wrap justify-center gap-1 w-full max-w-[80px]">
+            ${Config.TEAM_COLORS.map((c, i) => {
+              const isSelected = Game.localPlayer.team === i;
+              return `<button style="background:${c}; width:16px; height:16px; border-radius:50%; border:${
+                isSelected ? "2px solid white" : "1px solid rgba(0,0,0,0.3)"
+              }; transform:${
+                isSelected ? "scale(1.2)" : "scale(1)"
+              }" onclick="window.handleTeamChange(${i})"></button>`;
+            }).join("")}
         </div>
-        <div class="bg-black/40 px-2 py-1 rounded cursor-pointer hover:bg-black/60" onclick="document.getElementById('gameCanvas').click()">
-            <span class="text-[10px] text-white font-bold block leading-tight">CLIQUER<br>LE JEU</span>
+        <div class="mt-2 bg-black/40 px-2 py-1 rounded cursor-pointer hover:bg-black/60 shadow-md" onclick="document.getElementById('gameCanvas').click()">
+            <span class="text-[9px] font-bold text-white leading-tight block">CLIQUER<br>LE JEU</span>
         </div>
     </div>`;
+
     window.handleTeamChange = (i) =>
       FirebaseController.updatePlayerDoc(
         FirebaseController.auth.currentUser.uid,
@@ -134,7 +151,6 @@ export const UI = {
     const grid = document.getElementById("opponents-grid");
 
     if (mainCanvas && playerCol) {
-      // 1. On dimensionne le canvas à la taille réelle de sa colonne
       const w = playerCol.clientWidth;
       const h = playerCol.clientHeight;
 
@@ -143,15 +159,10 @@ export const UI = {
       mainCanvas.style.width = w + "px";
       mainCanvas.style.height = h + "px";
 
-      // 2. Calcul du rayon basé sur la largeur (17 unités)
       const radW = w / 17;
       Game.bubbleRadius = radW * 0.95;
 
-      // 3. On synchronise la hauteur de la grille adverses avec le joueur
-      // La grille a 2 rangées. La colonne joueur a 1 rangée (le jeu).
-      // On veut que la grille ne dépasse pas la hauteur du joueur.
       if (grid) {
-        // On force la grille à ne pas dépasser la hauteur du joueur
         grid.style.height = h + "px";
       }
     }

@@ -8,17 +8,21 @@ export const GameLogic = {
     Array.from({ length: Config.GRID_ROWS }, () =>
       Array(Config.GRID_COLS).fill(null)
     ),
+
   createInitialGrid: () => {
     const grid = GameLogic.createEmptyGrid();
+    // Création de 3 lignes de boules aléatoires au début
     for (let r = 0; r < 3; r++) {
       for (let c = 0; c < Config.GRID_COLS; c++) {
         if (Math.random() > 0.5) {
+          // 50% de chance d'avoir une boule par case
           grid[r][c] = GameLogic.createBubble(r, c);
         }
       }
     }
     return grid;
   },
+
   createBubble: (r, c, color = null, spell = null) => ({
     r,
     c,
@@ -31,23 +35,47 @@ export const GameLogic = {
     isSpellBubble: !!spell,
     isStatic: true,
   }),
+
+  // --- NOUVEAU : Animation PLUIE du Lobby ---
   updateLobbyAnimation() {
     const mainCanvas = document.getElementById("gameCanvas");
     if (!mainCanvas) return;
+
+    // Initialisation si la liste est vide
+    if (!Game.lobbyMarbles || Game.lobbyMarbles.length === 0) {
+      Game.lobbyMarbles = [];
+      for (let i = 0; i < 30; i++) {
+        Game.lobbyMarbles.push({
+          x: Math.random() * mainCanvas.width,
+          y: Math.random() * mainCanvas.height, // Position aléatoire verticale
+          r: Math.random() * 10 + 5,
+          vy: Math.random() * 1.5 + 0.5, // Vitesse de chute constante
+          color:
+            Config.BUBBLE_COLORS[
+              Math.floor(Math.random() * Config.BUBBLE_COLORS.length)
+            ],
+        });
+      }
+    }
+
+    // Mise à jour du mouvement (Chute infinie)
     Game.lobbyMarbles.forEach((marble) => {
       marble.y += marble.vy;
+      // Si la boule sort par le bas, elle revient tout en haut
       if (marble.y - marble.r > mainCanvas.height) {
         marble.y = -marble.r;
         marble.x = Math.random() * mainCanvas.width;
       }
     });
   },
+
   loadBubbles: (player) => {
     if (!player?.isAlive) return;
     player.launcherBubble = player.nextBubble || GameLogic.createBubble(-1, -1);
     player.launcherBubble.isStatic = true;
     player.nextBubble = GameLogic.createBubble(-1, -1);
   },
+
   async snapBubble(player, shotBubble) {
     if (!player || !shotBubble) return;
     player.shotBubble = null;
@@ -56,6 +84,7 @@ export const GameLogic = {
       const { r, c } = bestSpot;
       player.grid[r][c] = this.createBubble(r, c, shotBubble.color);
       const matches = this.findMatches(player.grid, r, c);
+
       if (matches.length >= 3) {
         let cleared = matches.length;
         matches.forEach((b) => {
@@ -69,23 +98,29 @@ export const GameLogic = {
           });
           player.grid[b.r][b.c] = null;
         });
+
         const avalanche = this.handleAvalanche(player, player.grid, true);
         cleared += avalanche;
+
+        // Logique de transformation en sort (sera ajustée plus tard selon vos règles précises)
         if (Math.random() < Config.SPELL_SPAWN_CHANCE)
           this.spawnSpellBubble(player);
+
         await FirebaseController.updatePlayerDoc(player.id, {
           score: player.score + cleared * 10 + Math.pow(avalanche, 2) * 10,
           attackBubbleCounter: player.attackBubbleCounter + cleared,
           grid: JSON.stringify(player.grid),
           spells: player.spells,
         });
-      } else
+      } else {
         await FirebaseController.updatePlayerDoc(player.id, {
           grid: JSON.stringify(player.grid),
         });
+      }
     }
     await this.checkGameOver(player);
   },
+
   async triggerGlobalAttack() {
     if (Game.state !== "playing") return;
     for (const player of Game.players.values()) {
@@ -104,6 +139,7 @@ export const GameLogic = {
       }
     }
   },
+
   addJunkBubbles(target, junkCount) {
     const validSlots = [];
     for (let r = 0; r < Config.GRID_ROWS; r++)
@@ -118,23 +154,27 @@ export const GameLogic = {
     const toAdd = Math.min(validSlots.length, junkCount);
     for (let i = 0; i < toAdd; i++) {
       const s = validSlots[i];
-      target.grid[s.r][s.c] = this.createBubble(s.r, s.c);
+      target.grid[s.r][s.c] = this.createBubble(s.r, s.c); // Couleur aléatoire = junk
     }
     FirebaseController.updatePlayerDoc(target.id, {
       grid: JSON.stringify(target.grid),
     });
   },
+
   levelUp: () => {
     if (Game.state === "playing" && Game.localPlayer)
       FirebaseController.updatePlayerDoc(Game.localPlayer.id, {
         level: Game.localPlayer.level + 1,
       });
   },
+
   updateLocalAnimations() {
     if (!Game.localPlayer) return;
     const mainCanvas = document.getElementById("gameCanvas");
     if (!mainCanvas) return;
+
     this.processStatusEffects(Game.localPlayer);
+
     Game.players.forEach((p) =>
       p.effects.forEach((e, i) => {
         e.life--;
@@ -149,21 +189,29 @@ export const GameLogic = {
       rotSpeed *= 0.4;
       Game.localPlayer.launcher.angle += (Math.random() - 0.5) * 0.08;
     }
+
     if (Game.keys.left) Game.localPlayer.launcher.angle -= rotSpeed;
     if (Game.keys.right) Game.localPlayer.launcher.angle += rotSpeed;
+
+    // Limitation de l'angle pour ne pas tirer en bas (entre -PI et 0)
     Game.localPlayer.launcher.angle = Math.max(
       -Math.PI + 0.1,
       Math.min(-0.1, Game.localPlayer.launcher.angle)
     );
+
     if (Game.localPlayer.shotBubble) {
       let b = Game.localPlayer.shotBubble;
       b.vx = b.vx || 0;
       b.vy = b.vy || 0;
+
       if (Game.localPlayer.statusEffects.plateauIncline)
         b.vx += 0.15 * Game.localPlayer.statusEffects.plateauIncline.direction;
+
       b.x += b.vx;
       b.y += b.vy;
-      let collided = b.y - Game.bubbleRadius < Config.GRID_VERTICAL_OFFSET;
+
+      let collided = b.y - Game.bubbleRadius < 0; // Mur du haut
+
       if (!collided)
         for (let r = 0; r < Config.GRID_ROWS; r++) {
           for (let c = 0; c < Config.GRID_COLS; c++)
@@ -179,27 +227,30 @@ export const GameLogic = {
             }
           if (collided) break;
         }
+
       if (collided) {
         this.snapBubble(Game.localPlayer, b);
         return;
       }
+
       if (
         b.x - Game.bubbleRadius < 0 ||
         b.x + Game.bubbleRadius > mainCanvas.width
       )
-        b.vx *= -1;
+        b.vx *= -1; // Rebond murs latéraux
     }
+
     Game.players.forEach((p) =>
       p.fallingBubbles.forEach((b, i) => {
         b.vy += 0.2;
         b.y += b.vy;
         b.x += b.vx;
-        const c = p.id === Game.localPlayer.id ? mainCanvas : p.canvas;
-        if (c && b.y > c.height + Game.bubbleRadius)
-          p.fallingBubbles.splice(i, 1);
+        // On supprime si ça tombe très bas
+        if (b.y > 2000) p.fallingBubbles.splice(i, 1);
       })
     );
   },
+
   processStatusEffects(player) {
     let changed = false;
     const now = Date.now();
@@ -224,6 +275,7 @@ export const GameLogic = {
           ];
     }
   },
+
   async castSpecificSpell(targetPlayer, spellIndex) {
     if (
       !Game.localPlayer ||
@@ -233,30 +285,37 @@ export const GameLogic = {
       !targetPlayer
     )
       return;
+
     const spellName = Game.localPlayer.spells[spellIndex];
-    // On utilise splice car c'est toujours le premier sort qu'on enlève (FIFO)
+    // FIFO : On retire toujours le premier
     Game.localPlayer.spells.splice(spellIndex, 1);
+
     await FirebaseController.updatePlayerDoc(Game.localPlayer.id, {
       spells: Game.localPlayer.spells,
     });
+
     UI.updateSpellAnnouncement(
       Game.localPlayer.name,
       Config.SPELLS[spellName],
       targetPlayer.name
     );
+
     await this.applySpellEffect(targetPlayer, spellName);
   },
+
   async applySpellEffect(target, spell) {
     if (!target?.isAlive || !spell) return;
     if (target.id === Game.localPlayer.id) UI.triggerScreenShake("high");
+
     const DURATION = 10000;
     let effects = { ...target.statusEffects };
     let gridChanged = false,
       spellsChanged = false;
     let grid = target.grid.map((r) => [...r]);
+
     switch (spell) {
       case "canonEndommage":
-      case "canonArcEnCiel":
+      case "variationCouleurs": // anciennement canonArcEnCiel (à adapter)
         effects[spell] = { endTime: Date.now() + DURATION };
         break;
       case "plateauIncline":
@@ -265,9 +324,9 @@ export const GameLogic = {
           direction: Math.random() < 0.5 ? -1 : 1,
         };
         break;
-      case "sabotageSorts":
+      case "annulationSorts": // sabotageSorts
         if (target.spells.length > 0) {
-          target.spells.shift(); // Retire le premier sort (le plus ancien) de la cible
+          target.spells.shift();
           spellsChanged = true;
         }
         for (let r = 0; r < Config.GRID_ROWS; r++)
@@ -278,7 +337,7 @@ export const GameLogic = {
               gridChanged = true;
             }
         break;
-      case "monteeLignes":
+      case "apparitionLigne": // monteeLignes
         for (let i = 0; i < 2; i++) {
           for (let r = Config.GRID_ROWS - 1; r > 0; r--)
             for (let c = 0; c < Config.GRID_COLS; c++) {
@@ -291,7 +350,7 @@ export const GameLogic = {
         this.handleAvalanche({ grid }, grid, false);
         gridChanged = true;
         break;
-      case "colonneMonochrome": {
+      case "couleursIdentiques": // colonneMonochrome
         const cols = [
           ...new Set(
             grid
@@ -314,7 +373,6 @@ export const GameLogic = {
           gridChanged = true;
         }
         break;
-      }
       case "nukeBomb": {
         const bubbles = [];
         for (let r = 0; r < Config.GRID_ROWS; r++)
@@ -376,6 +434,7 @@ export const GameLogic = {
         break;
       }
     }
+
     const updateData = { statusEffects: effects };
     if (gridChanged) updateData.grid = JSON.stringify(grid);
     if (spellsChanged) updateData.spells = target.spells;
@@ -385,10 +444,12 @@ export const GameLogic = {
       await this.checkGameOver(Game.localPlayer);
     }
   },
+
   getBubbleCoords: (r, c, rad) => ({
     x: rad + c * rad * 2 + (r % 2) * rad,
-    y: rad + r * rad * 2 * 0.866 + Config.GRID_VERTICAL_OFFSET,
+    y: rad + r * rad * 2 * 0.866, // Suppression de l'offset vertical
   }),
+
   getNeighborCoords(r, c) {
     const odd = r % 2 !== 0,
       n = [];
@@ -408,13 +469,12 @@ export const GameLogic = {
     }
     return n;
   },
+
   findBestSnapSpot(player, bubble) {
     let best = null,
       minD = Infinity;
-    const rad =
-      player.id === Game.localPlayer.id
-        ? Game.bubbleRadius
-        : (player.canvas.width / (Config.GRID_COLS * 2 + 1)) * 0.95;
+    const rad = Game.bubbleRadius;
+
     for (let r = 0; r < Config.GRID_ROWS; r++)
       for (let c = 0; c < Config.GRID_COLS; c++)
         if (!player.grid[r][c]) {
@@ -430,6 +490,8 @@ export const GameLogic = {
             }
           }
         }
+
+    // Si on n'a rien trouvé (bulle flottante ou tir raté au plafond)
     if (!best) {
       let cCol = -1,
         cDist = Infinity;
@@ -446,6 +508,7 @@ export const GameLogic = {
     }
     return best;
   },
+
   findMatches(grid, r, c) {
     const start = grid[r]?.[c];
     if (!start) return [];
@@ -469,6 +532,7 @@ export const GameLogic = {
     }
     return matches;
   },
+
   findFloatingBubbles(grid) {
     const connected = new Set(),
       q = [];
@@ -495,22 +559,18 @@ export const GameLogic = {
           floating.push(grid[r][c]);
     return floating;
   },
+
   handleAvalanche(player, grid, animate) {
     const floating = this.findFloatingBubbles(grid);
     floating.forEach((b) => {
-      // MODIFICATION: Logique FIFO
       if (b.isSpellBubble && b.spell) {
         player.spells = player.spells || [];
         if (player.spells.length < Config.MAX_SPELLS) {
-          player.spells.push(b.spell); // Ajoute à la fin de la file
+          player.spells.push(b.spell);
         }
       }
       if (animate) {
-        const rad =
-          player.id === Game.localPlayer.id
-            ? Game.bubbleRadius
-            : (player.canvas.width / (Config.GRID_COLS * 2 + 1)) * 0.95;
-        const { x, y } = this.getBubbleCoords(b.r, b.c, rad);
+        const { x, y } = this.getBubbleCoords(b.r, b.c, Game.bubbleRadius);
         (player.fallingBubbles = player.fallingBubbles || []).push({
           ...b,
           x,
@@ -523,6 +583,7 @@ export const GameLogic = {
     });
     return floating.length;
   },
+
   async spawnSpellBubble(player) {
     const bubbles = player.grid
       .flat()
@@ -539,6 +600,7 @@ export const GameLogic = {
       }
     }
   },
+
   async checkGameOver(player) {
     if (player.isAlive) {
       for (let c = 0; c < Config.GRID_COLS; c++) {
@@ -548,6 +610,7 @@ export const GameLogic = {
       }
     }
   },
+
   async forceGameOver(player) {
     if (player.isAlive) {
       await FirebaseController.updatePlayerDoc(player.id, { isAlive: false });

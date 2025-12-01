@@ -11,14 +11,14 @@ export const UI = {
     if (!grid) return;
     grid.innerHTML = "";
 
-    // Grille 5 colonnes
-    grid.className = "grid grid-cols-5 grid-rows-2 gap-2";
+    // Le CSS grid est géré par la classe HTML/CSS maintenant, plus besoin de forcer ici
+    // sauf pour s'assurer qu'il est propre.
 
     const opponents = Array.from(Game.players.values()).filter(
       (p) => p.id !== FirebaseController.auth?.currentUser?.uid
     );
 
-    // Ligne 1
+    // Ligne 1 (5 slots)
     for (let i = 0; i < 5; i++) {
       const p = opponents[i];
       const slot = p ? p.container : this.createEmptySlot();
@@ -26,13 +26,14 @@ export const UI = {
       grid.appendChild(slot);
     }
 
-    // Ligne 2 : Annonces + 4 adversaires
+    // Ligne 2 (1 Annonce + 4 slots)
     const announcement = document.createElement("div");
     announcement.id = "spell-announcement";
     announcement.className =
-      "opponent-view flex items-center justify-center p-1 bg-orange-600 border-2 border-white";
-    announcement.innerHTML =
-      "<span class='text-white font-bold'>Annonces</span>";
+      "opponent-view flex flex-col items-center justify-center text-center p-1 overflow-hidden relative";
+    announcement.style.backgroundColor = "#ea580c";
+    announcement.style.border = "2px solid white";
+    announcement.innerHTML = `<span class="text-white font-bold text-sm">Annonces</span>`;
     grid.appendChild(announcement);
 
     for (let i = 5; i < 9; i++) {
@@ -42,13 +43,14 @@ export const UI = {
       grid.appendChild(slot);
     }
 
-    this.resizeAllCanvases();
+    // Appel différé pour s'assurer que le DOM est prêt
+    requestAnimationFrame(() => this.resizeAllCanvases());
   },
 
   createEmptySlot: () => {
     const s = document.createElement("div");
     s.className =
-      "opponent-view empty-slot flex items-center justify-center bg-slate-800 border-2 border-dashed border-slate-600";
+      "opponent-view flex items-center justify-center bg-slate-900 border-2 border-dashed border-slate-700 opacity-50";
     s.innerHTML = `<span class="text-slate-500 text-[10px]">Vide</span>`;
     return s;
   },
@@ -61,21 +63,18 @@ export const UI = {
     const total = Game.players.size;
     const required = total <= 1 ? 1 : Math.ceil(total / 2) + 1;
 
-    // --- LOGIQUE DE VERROUILLAGE ---
     const slot = document.getElementById("spell-announcement");
 
     if (!Game.localPlayer.isReady) {
-      // PAS PRÊT : On affiche la sélection d'équipe (boutons actifs)
       this.renderTeamSelectionInAnnouncementBox();
     } else {
-      // PRÊT : On affiche juste le statut (PAS DE BOUTONS = VERROUILLÉ)
       if (slot) {
         slot.innerHTML = `
-                <div class="flex flex-col justify-center items-center h-full w-full animate-pulse">
+                <div class="flex flex-col justify-center items-center h-full w-full animate-pulse bg-green-800">
                     <span class="font-bold text-white text-lg leading-none mb-1">PRÊT !</span>
-                    <div class="w-full h-px bg-white my-1 opacity-50"></div>
-                    <span class="text-[10px] text-white">Joueurs prêts:</span>
-                    <span class="font-black text-2xl text-white leading-none">${ready}/${total}</span>
+                    <div class="w-1/2 h-px bg-white my-1 opacity-50"></div>
+                    <span class="text-[10px] text-white">Attente...</span>
+                    <span class="font-black text-xl text-white leading-none">${ready}/${total}</span>
                 </div>`;
       }
     }
@@ -93,21 +92,20 @@ export const UI = {
     const slot = document.getElementById("spell-announcement");
     if (!slot || !Game.localPlayer) return;
 
-    // Interface avec boutons (Déverrouillé)
     slot.innerHTML = `
-    <div class="flex flex-col items-center justify-center w-full h-full p-1">
+    <div class="flex flex-col items-center justify-center w-full h-full p-1 bg-orange-600">
         <p class="font-bold text-[10px] text-white uppercase mb-1">Équipe</p>
-        <div class="flex flex-wrap justify-center gap-1 w-full max-w-[80px]">
+        <div class="flex flex-wrap justify-center gap-1 w-full px-1">
             ${Config.TEAM_COLORS.map((c, i) => {
               const isSelected = Game.localPlayer.team === i;
-              return `<button style="background:${c}; width:16px; height:16px; border-radius:50%; border:${
+              return `<button style="background:${c}; width:14px; height:14px; border-radius:50%; border:${
                 isSelected ? "2px solid white" : "1px solid rgba(0,0,0,0.3)"
               }; transform:${
-                isSelected ? "scale(1.2)" : "scale(1)"
+                isSelected ? "scale(1.3)" : "scale(1)"
               }" onclick="window.handleTeamChange(${i})"></button>`;
             }).join("")}
         </div>
-        <div class="mt-2 bg-black/40 px-2 py-1 rounded cursor-pointer hover:bg-black/60 shadow-md" onclick="document.getElementById('gameCanvas').click()">
+        <div class="mt-2 bg-black/30 px-3 py-1 rounded cursor-pointer hover:bg-black/50 shadow border border-white/20" onclick="document.getElementById('gameCanvas').click()">
             <span class="text-[9px] font-bold text-white leading-tight block">CLIQUER<br>LE JEU</span>
         </div>
     </div>`;
@@ -125,9 +123,9 @@ export const UI = {
     if (!slot) return;
     let count = 3;
     const update = () => {
-      slot.innerHTML = `<span class="text-5xl font-black text-white drop-shadow">${count}</span>`;
+      slot.innerHTML = `<div class="w-full h-full flex items-center justify-center bg-purple-700 text-white font-black text-6xl">${count}</div>`;
       if (count <= 0) {
-        slot.innerHTML = `<span class="text-4xl font-bold text-green-300">GO!</span>`;
+        slot.innerHTML = `<div class="w-full h-full flex items-center justify-center bg-green-600 text-white font-black text-4xl">GO!</div>`;
         clearInterval(Game.countdownInterval);
       }
       count--;
@@ -146,27 +144,45 @@ export const UI = {
   updatePlayerStats() {},
 
   resizeAllCanvases() {
+    const topArea = document.getElementById("top-area");
     const mainCanvas = document.getElementById("gameCanvas");
     const playerCol = document.getElementById("player-column");
-    const grid = document.getElementById("opponents-grid");
+    const opponentsCol = document.getElementById("opponents-column");
 
-    if (mainCanvas && playerCol) {
-      const w = playerCol.clientWidth;
-      const h = playerCol.clientHeight;
+    if (topArea && mainCanvas && playerCol && opponentsCol) {
+      // 1. Hauteur Maximale disponible
+      const availableHeight = topArea.clientHeight;
 
-      mainCanvas.width = w;
-      mainCanvas.height = h;
-      mainCanvas.style.width = w + "px";
-      mainCanvas.style.height = h + "px";
+      // 2. Définition du Ratio du Jeu (Mode Portrait type mobile/arcade)
+      // Largeur = 0.58 * Hauteur (Approx Bust-a-move)
+      const gameRatio = 0.58;
 
-      const radW = w / 17;
+      // 3. Calcul de la largeur du joueur
+      let playerWidth = availableHeight * gameRatio;
+
+      // Appliquer les dimensions au conteneur du joueur
+      playerCol.style.width = `${playerWidth}px`;
+      playerCol.style.flex = "0 0 auto"; // Fixe
+
+      // 4. Appliquer les dimensions au Canvas (interne)
+      mainCanvas.width = playerWidth;
+      mainCanvas.height = availableHeight;
+      mainCanvas.style.width = "100%";
+      mainCanvas.style.height = "100%";
+
+      // 5. Calcul de la largeur de la grille adverses
+      // La grille a 5 colonnes. Le joueur en a (visuellement) environ 3 équivalentes en largeur.
+      // On veut que la hauteur de la grille (2 rangées) soit égale à la hauteur du jeu ?
+      // NON, votre demande est : "De la même hauteur que les deux miniatures de droite"
+      // -> Cela signifie que la colonne de droite doit avoir la MÊME HAUTEUR TOTALE que la colonne de gauche.
+      // C'est déjà le cas grâce au Flexbox du parent #top-area.
+
+      // Calcul du rayon des boules basé sur la nouvelle largeur
+      const radW = playerWidth / 17;
       Game.bubbleRadius = radW * 0.95;
-
-      if (grid) {
-        grid.style.height = h + "px";
-      }
     }
 
+    // Redimensionnement des canvas adverses
     Game.players.forEach((p) => {
       if (p.id !== Game.localPlayer?.id && p.canvas) {
         const parent = p.canvas.parentElement;

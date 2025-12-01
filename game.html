@@ -18,116 +18,149 @@
         margin: 0;
         padding: 0;
         overflow: hidden;
-        background-color: #0f172a; /* Bleu très sombre */
+        background-color: #0f172a;
         font-family: "Inter", sans-serif;
       }
-      #game-wrapper {
+
+      /* Conteneur principal qui prend tout l'écran */
+      #main-wrapper {
         display: flex;
-        /* On force une hauteur max pour ne pas dépasser l'écran */
+        flex-direction: column;
         height: 100vh;
         width: 100vw;
         padding: 10px;
         box-sizing: border-box;
-        align-items: center;
-        justify-content: center;
       }
-      .game-container {
+
+      /* Zone du haut : Jeu + Grille */
+      #top-area {
+        flex: 1; /* Prend tout l'espace disponible sauf le chat */
         display: flex;
         flex-direction: row;
         gap: 10px;
-        /* Le ratio magique : Hauteur = 95% de l'écran, Largeur s'adapte */
-        height: 95vh;
-        width: 100%;
-        max-width: 1400px; /* On évite que ce soit trop large sur écran géant */
+        min-height: 0; /* Important pour que flexbox ne déborde pas */
+        justify-content: center; /* Centre le tout horizontalement */
       }
 
-      /* Colonne Joueur : Taille basée sur le contenu, ne s'écrase pas */
+      /* Colonne du joueur : Largeur auto basée sur le ratio du canvas */
       #player-column {
-        flex: 0 0 auto; /* Ne grandit pas, ne rétrécit pas */
-        /* Aspect ratio environ 0.6 (Largeur/Hauteur) pour le Bust-a-move */
-        aspect-ratio: 9 / 16;
         height: 100%;
-        position: relative;
+        /* On ne force pas la largeur ici, c'est le JS qui va calculer le ratio */
+        display: flex;
+        justify-content: center;
       }
 
-      /* Colonne Adversaires : Prend le reste */
-      #opponents-column {
-        flex: 1;
+      #canvas-container {
         height: 100%;
+        /* Le ratio sera géré par le canvas lui-même via JS */
+        border: 4px solid #334155;
+        border-radius: 0.5rem;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        background-color: #1e293b;
+      }
+
+      /* Colonne des adversaires */
+      #opponents-column {
+        height: 100%;
+        /* La largeur sera définie par le JS pour matcher le ratio des cartes */
         display: flex;
         flex-direction: column;
+      }
+
+      /* Grille des adversaires */
+      #opponents-grid {
+        height: 100%;
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        grid-template-rows: repeat(2, 1fr);
+        gap: 4px;
       }
 
       .opponent-view {
         position: relative;
         border-radius: 0.5rem;
-        cursor: pointer;
         border: 2px solid #334155;
         background-color: #1e293b;
         overflow: hidden;
+        /* Important : cela force les cases à s'adapter à la grille */
+        width: 100%;
+        height: 100%;
       }
 
       .opponent-canvas {
         width: 100%;
         height: 100%;
-        object-fit: contain;
+        object-fit: cover;
       }
 
-      .chat-container {
-        height: 120px;
-        overflow-y: scroll;
-        background-color: rgba(0, 0, 0, 0.5);
-        border: 1px solid #475569;
-        padding: 0.5rem;
+      /* Zone du bas : Chat */
+      #bottom-area {
+        height: 140px; /* Hauteur fixe pour le chat */
+        margin-top: 10px;
+        flex-shrink: 0;
+        width: 100%;
+        max-width: 1200px; /* Pas trop large sur grands écrans */
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      .chat-window {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        background-color: rgba(15, 23, 42, 0.8);
+        border: 1px solid #334155;
         border-radius: 0.5rem;
-        font-size: 0.9rem;
-        color: white;
+        padding: 0.5rem;
       }
 
-      /* Scrollbar fine pour le chat */
-      .chat-container::-webkit-scrollbar {
-        width: 5px;
+      #chat-messages {
+        flex-grow: 1;
+        overflow-y: auto;
+        color: #cbd5e1;
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
       }
-      .chat-container::-webkit-scrollbar-thumb {
+
+      #chat-messages::-webkit-scrollbar {
+        width: 6px;
+      }
+      #chat-messages::-webkit-scrollbar-thumb {
         background: #475569;
         border-radius: 3px;
       }
     </style>
   </head>
   <body>
-    <div id="game-wrapper">
-      <div class="game-container">
+    <div id="main-wrapper">
+      <div id="top-area">
         <div id="player-column">
-          <div
-            id="canvas-container"
-            class="w-full h-full relative border-4 border-slate-600 rounded-lg overflow-hidden shadow-2xl"
-          >
+          <div id="canvas-container">
             <canvas id="gameCanvas"></canvas>
           </div>
           <div id="spells-container" style="display: none"></div>
         </div>
 
         <div id="opponents-column">
-          <div
-            id="opponents-grid"
-            class="grid grid-cols-5 grid-rows-2 gap-2 w-full flex-grow min-h-0 mb-2"
-          ></div>
+          <div id="opponents-grid"></div>
+        </div>
+      </div>
 
-          <div class="flex-shrink-0 flex flex-col gap-2">
-            <div class="chat-container" id="chat-messages"></div>
-            <div class="flex gap-2">
-              <input
-                type="text"
-                id="chat-input"
-                class="flex-grow p-2 bg-slate-700 text-white border border-slate-500 rounded focus:outline-none focus:border-blue-500"
-                placeholder="Écrire un message..."
-              />
-              <a
-                href="index.html"
-                class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded text-sm flex items-center"
-                >Quitter</a
-              >
-            </div>
+      <div id="bottom-area">
+        <div class="chat-window">
+          <div id="chat-messages"></div>
+          <div class="flex gap-2">
+            <input
+              type="text"
+              id="chat-input"
+              class="flex-grow p-2 bg-slate-800 text-white border border-slate-600 rounded focus:outline-none focus:border-blue-500"
+              placeholder="Écrire un message..."
+            />
+            <a
+              href="index.html"
+              class="bg-red-700 hover:bg-red-600 text-white font-bold py-2 px-6 rounded text-sm flex items-center justify-center"
+              >Quitter</a
+            >
           </div>
         </div>
       </div>

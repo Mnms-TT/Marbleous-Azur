@@ -7,11 +7,7 @@ export const Drawing = {
     if (!Game.localPlayer) return;
     const mainCanvas = document.getElementById("gameCanvas");
     if (!mainCanvas) return;
-
-    // Joueur local
     this.drawPlayer(Game.localPlayer, mainCanvas.getContext("2d"), true);
-
-    // Adversaires
     Game.players.forEach((p) => {
       if (p.id !== Game.localPlayer.id && p.canvas)
         this.drawPlayer(p, p.ctx, false);
@@ -22,59 +18,43 @@ export const Drawing = {
     const canvas = ctx.canvas;
     if (!canvas || canvas.width === 0 || !player) return;
 
-    // Calcul dimensions
     const rad = isMain ? Game.bubbleRadius : (canvas.width / 17) * 0.95;
     if (!rad || rad < 1) return;
 
-    // 1. Fond commun
+    // FOND
     ctx.fillStyle = isMain ? "#1e293b" : "#334155";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // --- SÉPARATION DES ÉTATS ---
+    // --- ETATS ---
     const isGameActive = Game.state === "playing" || Game.state === "countdown";
 
     if (!isGameActive) {
-      // Mode LOBBY (Attente)
       this.drawLobbyState(ctx, canvas, player, isMain);
     } else {
-      // Mode JEU (Action)
       this.drawGameState(ctx, canvas, player, rad, isMain);
     }
 
-    // 6. BARRE DE SORTS (Toujours visible en bas pour la structure)
-    if (isMain) {
-      this.drawSpellBar(ctx, canvas, player);
-    }
+    // SORTS
+    if (isMain) this.drawSpellBar(ctx, canvas, player);
   },
 
-  // --- DESSIN DU LOBBY (Bulles qui tombent + Texte) ---
   drawLobbyState(ctx, canvas, player, isMain) {
-    // Animation de pluie de boules
-    // On utilise les billes du lobby stockées dans Game
     (Game.lobbyMarbles || []).forEach((marble) => {
       this.drawBubble(ctx, marble, marble.r, marble.x, marble.y);
     });
 
-    // Overlay Texte "Prêt" ou "Clic"
     ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
     ctx.textAlign = "center";
 
     if (player.isReady) {
-      ctx.fillStyle = "#4ade80"; // Vert clair
+      ctx.fillStyle = "#4ade80";
       ctx.font = "bold 30px Arial";
       ctx.fillText("PRÊT", canvas.width / 2, canvas.height / 2);
-
       ctx.fillStyle = "white";
       ctx.font = "16px Arial";
-      ctx.fillText(
-        "Attente des autres...",
-        canvas.width / 2,
-        canvas.height / 2 + 30
-      );
+      ctx.fillText("En attente...", canvas.width / 2, canvas.height / 2 + 30);
     } else {
-      // Cadre "Clic pour démarrer"
       if (isMain) {
         ctx.save();
         ctx.strokeStyle = "rgba(255,255,255,0.8)";
@@ -82,7 +62,6 @@ export const Drawing = {
         const w = canvas.width * 0.8;
         const h = canvas.height * 0.3;
         ctx.strokeRect((canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
-
         ctx.fillStyle = "white";
         ctx.shadowColor = "black";
         ctx.shadowBlur = 5;
@@ -90,30 +69,23 @@ export const Drawing = {
         ctx.fillText("Clic pour", canvas.width / 2, canvas.height / 2 - 15);
         ctx.fillText("démarrer", canvas.width / 2, canvas.height / 2 + 25);
         ctx.restore();
-      } else {
-        // Pour les adversaires pas prêts
-        ctx.fillStyle = "rgba(255,255,255,0.5)";
-        ctx.font = "14px Arial";
-        ctx.fillText("Pas prêt", canvas.width / 2, canvas.height / 2);
       }
     }
   },
 
-  // --- DESSIN DU JEU (Grille, Canon, Ligne) ---
   drawGameState(ctx, canvas, player, rad, isMain) {
     const gridPixelHeight = Config.GAME_OVER_ROW * (rad * 1.732) + rad * 2;
     const deadLineY = gridPixelHeight + 5;
 
-    // Fond Dashboard Rouge
+    // DASHBOARD
     ctx.fillStyle = "#7f1d1d";
     ctx.fillRect(0, deadLineY, canvas.width, canvas.height - deadLineY);
 
-    // Demi-cercle Canon
     ctx.beginPath();
     ctx.arc(
       canvas.width / 2,
-      canvas.height + rad * 2,
-      canvas.width * 0.6,
+      canvas.height + rad * 3,
+      canvas.width * 0.65,
       Math.PI,
       0
     );
@@ -123,7 +95,7 @@ export const Drawing = {
     ctx.lineWidth = 3;
     ctx.stroke();
 
-    // Ligne Noire
+    // LIGNE NOIRE
     ctx.beginPath();
     ctx.moveTo(0, deadLineY);
     ctx.lineTo(canvas.width, deadLineY);
@@ -131,7 +103,7 @@ export const Drawing = {
     ctx.lineWidth = isMain ? 4 : 2;
     ctx.stroke();
 
-    // Grille des boules
+    // GRILLE
     if (player.grid) {
       for (let r = 0; r < Config.GRID_ROWS; r++) {
         for (let c = 0; c < Config.GRID_COLS; c++) {
@@ -143,17 +115,19 @@ export const Drawing = {
       }
     }
 
-    // Effets & Boules tombantes
     (player.fallingBubbles || []).forEach((b) =>
       this.drawBubble(ctx, b, rad, b.x, b.y)
     );
     (player.effects || []).forEach((e) => this.drawEffect(ctx, e));
 
-    // Canon (Seulement joueur principal vivant)
+    // CANON
     if (isMain && player.isAlive) {
-      const cannonY = deadLineY + (canvas.height - deadLineY) / 2;
+      // Position du canon : Plus bas pour permettre une aiguille plus longue
+      const cannonY = canvas.height - 50;
       Game.cannonPosition = { x: canvas.width / 2, y: cannonY };
 
+      // Aiguille (Dessinée AVANT la bulle pour être dessous)
+      // On passe deadLineY pour que l'aiguille puisse "viser" loin visuellement
       this.drawCannonNeedle(ctx, player, Game.cannonPosition, deadLineY);
 
       if (player.launcherBubble)
@@ -186,10 +160,7 @@ export const Drawing = {
         );
     }
 
-    // Perdu
-    if (!player.isAlive) {
-      this.drawOverlayText(ctx, canvas, "PERDU", "red");
-    }
+    if (!player.isAlive) this.drawOverlayText(ctx, canvas, "PERDU", "red");
   },
 
   drawSpellBar(ctx, canvas, player) {
@@ -209,7 +180,6 @@ export const Drawing = {
       const sy = spellY + 2;
       ctx.strokeStyle = "#475569";
       ctx.strokeRect(sx, sy, size, size);
-
       if (player.spells && player.spells[i]) {
         const s = Config.SPELLS[player.spells[i]];
         if (s) {
@@ -245,13 +215,24 @@ export const Drawing = {
     ctx.save();
     ctx.translate(pos.x, pos.y);
     ctx.rotate(player.launcher.angle + Math.PI / 2);
-    const len = pos.y - limitY - 5;
-    ctx.fillStyle = "#fbbf24";
+
+    // Aiguille plus longue (1.5x la distance jusqu'à la ligne noire pour l'esthétique)
+    const len = (pos.y - limitY) * 1.2;
+
+    // Flèche style "Boussole"
+    ctx.fillStyle = "#fbbf24"; // Or
     ctx.beginPath();
-    ctx.moveTo(-4, 0);
-    ctx.lineTo(4, 0);
-    ctx.lineTo(0, -len);
+    ctx.moveTo(-5, 0); // Base large
+    ctx.lineTo(5, 0);
+    ctx.lineTo(0, -len); // Pointe fine
     ctx.fill();
+
+    // Axe central
+    ctx.fillStyle = "#451a03"; // Marron foncé
+    ctx.beginPath();
+    ctx.arc(0, 0, 8, 0, Math.PI * 2);
+    ctx.fill();
+
     ctx.restore();
   },
 

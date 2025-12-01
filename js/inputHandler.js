@@ -15,8 +15,8 @@ export const InputHandler = {
       .getElementById("chat-input")
       .addEventListener("keydown", this.handleChat.bind(this));
 
-    // Logique de clic sur la zone de jeu principale
-    document.getElementById("gameCanvas").addEventListener("click", () => {
+    // Clic principal
+    document.getElementById("gameCanvas").addEventListener("click", (e) => {
       const p = Game.localPlayer;
       if (!p) return;
 
@@ -27,35 +27,17 @@ export const InputHandler = {
           lastActive: Date.now(),
         });
       } else if (Game.state === "playing" && p.isAlive) {
-        // Lance directement le premier sort disponible sur soi-même
-        if (p.spells && p.spells.length > 0) {
-          GameLogic.castSpecificSpell(p, 0); // L'index est toujours 0 (FIFO)
-        }
+        // Tir avec la souris au clic (optionnel, sinon flèche haut)
+        this.handleShoot();
       }
     });
 
-    // Logique de clic sur la grille des adversaires
+    // Clic adversaires (pour lancer des sorts plus tard)
     document.getElementById("opponents-grid").addEventListener("click", (e) => {
-      const p = Game.localPlayer;
-      if (!p || Game.state !== "playing" || !p.isAlive) return;
-
-      const opponentView = e.target.closest(".opponent-view");
-      if (
-        opponentView &&
-        !opponentView.classList.contains("empty-slot") &&
-        opponentView.id !== "spell-announcement"
-      ) {
-        // Lance directement le premier sort disponible sur la cible
-        if (p.spells && p.spells.length > 0) {
-          const targetPlayerId = opponentView.id.replace("opponent-", "");
-          const targetPlayer = Game.players.get(targetPlayerId);
-          if (targetPlayer) {
-            GameLogic.castSpecificSpell(targetPlayer, 0); // L'index est toujours 0 (FIFO)
-          }
-        }
-      }
+      // Logique sorts à venir
     });
   },
+
   handleKeyDown(e) {
     if (document.activeElement === document.getElementById("chat-input"))
       return;
@@ -65,15 +47,17 @@ export const InputHandler = {
 
     if (Game.state !== "playing" || !Game.localPlayer?.isAlive) return;
 
-    if (e.key === "ArrowUp") {
+    if (e.key === "ArrowUp" || e.code === "Space") {
       e.preventDefault();
       this.handleShoot();
     }
   },
+
   handleKeyUp(e) {
     if (e.key === "ArrowLeft") Game.keys.left = false;
     if (e.key === "ArrowRight") Game.keys.right = false;
   },
+
   handleMouseMove(e) {
     if (
       !Game.localPlayer?.isAlive ||
@@ -81,19 +65,37 @@ export const InputHandler = {
       Game.state !== "playing"
     )
       return;
+
     const mainCanvas = document.getElementById("gameCanvas");
     if (!mainCanvas) return;
+
     const rect = mainCanvas.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left,
-      mouseY = e.clientY - rect.top;
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
 
-    const launcherY = mainCanvas.height - Game.bubbleRadius * 0.8;
+    // CORRECTION : On utilise la position réelle du canon définie par Drawing
+    // Si pas encore définie (premier frame), on prend une valeur par défaut
+    const launcherX = Game.cannonPosition
+      ? Game.cannonPosition.x
+      : mainCanvas.width / 2;
+    const launcherY = Game.cannonPosition
+      ? Game.cannonPosition.y
+      : mainCanvas.height - 50;
 
-    Game.localPlayer.launcher.angle = Math.atan2(
-      mouseY - launcherY,
-      mouseX - mainCanvas.width / 2
-    );
+    // Calcul de l'angle
+    // atan2(dy, dx)
+    // On veut que -PI/2 soit "Haut".
+    let angle = Math.atan2(mouseY - launcherY, mouseX - launcherX);
+
+    // On limite l'angle pour ne pas tirer vers le bas ou trop plat
+    // Plage acceptée : de -PI (gauche) à 0 (droite), mais on restreint un peu
+    // ex: -3.0 (gauche max) à -0.1 (droite max)
+    if (angle > -0.1) angle = -0.1;
+    if (angle < -Math.PI + 0.1) angle = -Math.PI + 0.1;
+
+    Game.localPlayer.launcher.angle = angle;
   },
+
   handleShoot() {
     const p = Game.localPlayer;
     if (
@@ -107,63 +109,43 @@ export const InputHandler = {
     const mainCanvas = document.getElementById("gameCanvas");
     if (!mainCanvas) return;
 
+    // Transfert de la bulle lanceur vers la bulle tirée
     p.shotBubble = p.launcherBubble;
     p.launcherBubble = null;
-    const speed = Game.bubbleRadius * 1.2;
+
+    const speed = Game.bubbleRadius * 1.5; // Vitesse de tir
     p.shotBubble.isStatic = false;
+
+    // Calcul Vecteur Vitesse
+    // Utilise l'angle actuel du lanceur
     p.shotBubble.vx = Math.cos(p.launcher.angle) * speed;
     p.shotBubble.vy = Math.sin(p.launcher.angle) * speed;
 
-    const launcherBubbleY = mainCanvas.height - Game.bubbleRadius * 0.8;
-    p.shotBubble.x = mainCanvas.width / 2;
-    p.shotBubble.y = launcherBubbleY;
+    // Position de départ : Celle du canon
+    p.shotBubble.x = Game.cannonPosition
+      ? Game.cannonPosition.x
+      : mainCanvas.width / 2;
+    p.shotBubble.y = Game.cannonPosition
+      ? Game.cannonPosition.y
+      : mainCanvas.height - 50;
 
     FirebaseController.updatePlayerDoc(p.id, { lastActive: Date.now() });
 
+    // Recharger la prochaine bulle tout de suite (visuel)
     GameLogic.loadBubbles(p);
   },
+
   handleChat(e) {
-    if (e.stopPropagation) e.stopPropagation();
     if (e.key === "Enter") {
       const input = e.target;
-      const message = input.value.trim();
-      if (!message || !Game.localPlayer) return;
-
-      FirebaseController.updatePlayerDoc(Game.localPlayer.id, {
-        lastActive: Date.now(),
-      });
-
-      if (message.startsWith("/canon ")) {
-        const parts = message.split(" ");
-        if (parts.length === 2) {
-          const speedValue = parseFloat(parts[1]);
-          if (!isNaN(speedValue) && speedValue >= 1 && speedValue <= 10) {
-            Game.currentRotationSpeed =
-              Config.LAUNCHER_ROTATION_SPEED * (speedValue / 5);
-            this.showLocalSystemMessage(
-              `Vitesse du canon réglée sur ${speedValue}.`
-            );
-          } else {
-            this.showLocalSystemMessage(
-              "Erreur : utilisez /canon [un nombre entre 1 et 10]."
-            );
-          }
-        }
+      const msg = input.value.trim();
+      if (msg && Game.localPlayer) {
+        UI.addChatMessage(Game.localPlayer.name, msg);
         input.value = "";
-        return;
       }
+    }
+  },
 
-      UI.addChatMessage(Game.localPlayer.name, message);
-      input.value = "";
-    }
-  },
-  showLocalSystemMessage(msg) {
-    const chat = document.getElementById("chat-messages");
-    if (chat) {
-      chat.innerHTML += `<p><em class="text-gray-400">${msg}</em></p>`;
-      chat.scrollTop = chat.scrollHeight;
-    }
-  },
   handleBeforeUnload() {
     if (FirebaseController.auth.currentUser) {
       FirebaseController.deletePlayerDoc(

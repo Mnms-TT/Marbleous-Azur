@@ -7,11 +7,7 @@ export const Drawing = {
     if (!Game.localPlayer) return;
     const mainCanvas = document.getElementById("gameCanvas");
     if (!mainCanvas) return;
-
-    // Le joueur principal
     this.drawPlayer(Game.localPlayer, mainCanvas.getContext("2d"), true);
-
-    // Les adversaires
     Game.players.forEach((p) => {
       if (p.id !== Game.localPlayer.id && p.canvas)
         this.drawPlayer(p, p.ctx, false);
@@ -22,22 +18,42 @@ export const Drawing = {
     const canvas = ctx.canvas;
     if (!canvas || canvas.width === 0 || !player) return;
 
-    // 1. Fond du plateau
-    // Couleur de fond légèrement différente selon si c'est nous ou l'ennemi (optionnel, ici uni)
-    ctx.fillStyle = isMain ? "#b91c1c" : "#ea580c"; // Rouge foncé pour main, Orange pour ennemi (comme l'image)
-    if (isMain) ctx.fillStyle = "#cd5c5c"; // Un rouge un peu plus "tapis de jeu"
+    // 1. Fond
+    ctx.fillStyle = isMain ? "#1e293b" : "#475569"; // Bleu nuit pour fond de jeu
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Calcul du rayon basé sur la largeur pour que 8 boules rentrent parfaitement
-    const rad = canvas.width / (Config.GRID_COLS * 2 + 1); // +1 pour le décalage hex
+    // Calculs de dimensions
+    const rad = isMain ? Game.bubbleRadius : (canvas.width / 17) * 0.95;
 
-    // --- CALCUL DES ZONES (Structure Verticale) ---
-    // La grille prend une hauteur fixe basée sur les boules
-    const gridHeight = GameLogic.getBubbleCoords(Config.GRID_ROWS, 0, rad).y;
-    const deadLineY = gridHeight + rad / 2; // La ligne noire est juste sous la dernière rangée possible
+    // La ligne de mort est JUSTE après la dernière rangée jouable (row 11)
+    // Coordonnée Y de la rangée 11 + un peu de marge
+    const lastRowY = GameLogic.getBubbleCoords(Config.GAME_OVER_ROW, 0, rad).y;
+    const deadLineY = lastRowY + rad;
 
-    // 2. Dessin des boules (Grille)
+    // 2. Dessin du Dashboard (Le bas de l'écran)
+    // On dessine le fond du dashboard (zone morte)
+    ctx.fillStyle = "#991b1b"; // Rouge sombre
+    ctx.fillRect(0, deadLineY, canvas.width, canvas.height - deadLineY);
+
+    // Le demi-cercle décoratif
+    ctx.beginPath();
+    ctx.arc(canvas.width / 2, canvas.height, canvas.width * 0.6, Math.PI, 0);
+    ctx.fillStyle = "#b91c1c"; // Rouge un peu plus clair
+    ctx.fill();
+    ctx.strokeStyle = "#7f1d1d";
+    ctx.stroke();
+
+    // 3. Ligne de Mort (DESSINÉE APRÈS LE FOND POUR ÊTRE VISIBLE)
+    ctx.beginPath();
+    ctx.moveTo(0, deadLineY);
+    ctx.lineTo(canvas.width, deadLineY);
+    ctx.strokeStyle = "#000000"; // NOIR
+    ctx.lineWidth = 4; // ÉPAIS
+    ctx.stroke();
+
+    // 4. Boules (Grille)
     if (Game.state === "playing" || (isMain && Game.state === "countdown")) {
+      // Grille statique
       for (let r = 0; r < Config.GRID_ROWS; r++) {
         for (let c = 0; c < Config.GRID_COLS; c++) {
           if (player.grid[r][c]) {
@@ -46,105 +62,48 @@ export const Drawing = {
           }
         }
       }
-
-      // Boules qui tombent
+      // Boules tombantes
       (player.fallingBubbles || []).forEach((b) =>
         this.drawBubble(ctx, b, rad, b.x, b.y)
       );
-
-      // Effets (particules)
+      // Effets
       (player.effects || []).forEach((e) => this.drawEffect(ctx, e));
     }
 
-    // 3. Ligne de Mort (Noir Strict)
-    ctx.beginPath();
-    ctx.moveTo(0, deadLineY);
-    ctx.lineTo(canvas.width, deadLineY);
-    ctx.strokeStyle = "black";
-    ctx.lineWidth = isMain ? 4 : 2;
-    ctx.stroke();
-
-    // 4. Zone Canon (Dashboard)
-    // Elle commence sous la ligne noire et va jusqu'en bas (moins la zone de sorts)
-    const dashboardY = deadLineY;
-    const spellZoneHeight = isMain ? 40 : 0; // Espace pour les sorts en bas (visuel)
-    const bottomY = canvas.height - spellZoneHeight;
-
-    // Dessin du fond rouge arrondi (le tableau de bord)
-    // On dessine un arc de cercle centré en bas
-    ctx.save();
-    ctx.fillStyle = "#991b1b"; // Rouge sombre style "plastique dur"
-    ctx.beginPath();
-    // Un grand arc qui dépasse en bas pour faire l'effet "dashboard"
-    ctx.arc(
-      canvas.width / 2,
-      bottomY + rad * 2,
-      canvas.width * 0.6,
-      Math.PI,
-      0
-    );
-    ctx.fill();
-    ctx.strokeStyle = "#450a0a";
-    ctx.lineWidth = 3;
-    ctx.stroke();
-
-    // Zone Sortilèges (Fond noir en bas)
-    if (isMain) {
-      ctx.fillStyle = "#1f2937"; // Gris très foncé
-      ctx.fillRect(
-        0,
-        canvas.height - spellZoneHeight,
-        canvas.width,
-        spellZoneHeight
-      );
-      ctx.fillStyle = "white";
-      ctx.font = "12px Arial";
-      ctx.fillText("SORTILEGES", 5, canvas.height - 12);
-
-      // Ici on pourrait dessiner les cases vides des sorts
-      const slotSize = spellZoneHeight - 4;
-      for (let i = 0; i < Config.MAX_SPELLS; i++) {
-        ctx.strokeStyle = "#4b5563";
-        ctx.strokeRect(
-          80 + i * (slotSize + 2),
-          canvas.height - spellZoneHeight + 2,
-          slotSize,
-          slotSize
-        );
-      }
-    }
-    ctx.restore();
-
-    // 5. Le Canon et la Flèche
+    // 5. Canon et Tir (Uniquement pour le joueur principal)
     if (isMain && player.isAlive && Game.state === "playing") {
-      const pivotX = canvas.width / 2;
-      const pivotY = bottomY - rad; // Le canon est posé sur le dashboard
+      // POSITION DU CANON : Fixée visuellement au milieu de la zone dashboard
+      const cannonY = deadLineY + (canvas.height - deadLineY) / 2;
 
-      // La bulle à tirer (dans le canon)
+      // On sauvegarde cette position dans Game pour que InputHandler puisse l'utiliser !
+      Game.cannonPosition = { x: canvas.width / 2, y: cannonY };
+
+      // Aiguille
+      this.drawCannonNeedle(ctx, player, Game.cannonPosition, deadLineY);
+
+      // Bulle dans le canon (Launcher)
       if (player.launcherBubble) {
-        this.drawBubble(ctx, player.launcherBubble, rad, pivotX, pivotY, true);
-      }
-
-      // La bulle suivante (petite, à côté)
-      if (player.nextBubble) {
         this.drawBubble(
           ctx,
-          player.nextBubble,
-          rad * 0.7,
-          pivotX - rad * 3,
-          pivotY + rad / 2
+          player.launcherBubble,
+          rad,
+          Game.cannonPosition.x,
+          Game.cannonPosition.y,
+          true
         );
-        // Petit texte "NEXT"
-        ctx.fillStyle = "#fbbf24";
-        ctx.font = "bold 10px Arial";
-        ctx.textAlign = "center";
-        ctx.fillText("NEXT", pivotX - rad * 3, pivotY - rad / 2);
       }
 
-      // L'aiguille du canon
-      this.drawCannonNeedle(ctx, player, { x: pivotX, y: pivotY }, rad * 3); // Aiguille plus longue
+      // Bulle suivante (Next)
+      if (player.nextBubble) {
+        const nextX = Game.cannonPosition.x - rad * 3;
+        const nextY = Game.cannonPosition.y + rad;
+        this.drawBubble(ctx, player.nextBubble, rad * 0.8, nextX, nextY);
+        ctx.fillStyle = "#fbbf24";
+        ctx.font = "10px Arial";
+        ctx.fillText("NEXT", nextX - 10, nextY - rad);
+      }
 
-      // La bulle tirée (en mouvement)
+      // Bulle tirée (Shot)
       if (player.shotBubble) {
         this.drawBubble(
           ctx,
@@ -156,111 +115,119 @@ export const Drawing = {
       }
     }
 
-    // Game Over Overlay
+    // 6. Zone Sorts (Tout en bas)
+    if (isMain) {
+      const spellH = 40;
+      const spellY = canvas.height - spellH;
+
+      ctx.fillStyle = "#111827"; // Fond noir barre sorts
+      ctx.fillRect(0, spellY, canvas.width, spellH);
+
+      ctx.fillStyle = "white";
+      ctx.font = "bold 12px Arial";
+      ctx.textAlign = "left";
+      ctx.fillText("SORTILEGES", 10, spellY + 25);
+
+      // Dessin des slots
+      const startX = 100;
+      const gap = 5;
+      const size = spellH - 4;
+
+      for (let i = 0; i < Config.MAX_SPELLS; i++) {
+        const sx = startX + i * (size + gap);
+        const sy = spellY + 2;
+
+        // Cadre vide
+        ctx.strokeStyle = "#4b5563";
+        ctx.strokeRect(sx, sy, size, size);
+
+        // Si on a un sort
+        if (player.spells && player.spells[i]) {
+          const spellName = player.spells[i];
+          if (Config.SPELLS[spellName]) {
+            const icon = Game.spellIcons[spellName];
+            if (icon && icon.complete) {
+              ctx.drawImage(icon, sx, sy, size, size);
+            } else {
+              // Fallback couleur si icone pas chargée
+              ctx.fillStyle = Config.SPELLS[spellName].color;
+              ctx.fillRect(sx + 2, sy + 2, size - 4, size - 4);
+            }
+          }
+        }
+      }
+    }
+
+    // Game Over Text
     if (!player.isAlive && Game.state === "playing") {
       ctx.fillStyle = "rgba(0,0,0,0.7)";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = "white";
-      ctx.font = `bold ${canvas.width / 6}px Arial`;
+      ctx.font = "bold 40px Arial";
       ctx.textAlign = "center";
       ctx.fillText("PERDU", canvas.width / 2, canvas.height / 2);
     }
 
-    // Animation Lobby (si en attente)
+    // Lobby Text
     if (isMain && Game.state === "waiting") {
       this.drawLobbyAnimation(ctx, canvas);
     }
   },
 
   drawBubble(ctx, b, rad, x, y, isLauncher = false) {
-    if (!isFinite(x) || !isFinite(y) || rad <= 0 || !b || !b.color) return;
-
-    // Ombre (Effet 3D)
-    ctx.fillStyle = b.color.shadow;
+    if (!b || !b.color) return;
     ctx.beginPath();
-    ctx.arc(x, y, rad, 0, 2 * Math.PI);
-    ctx.fill();
-
-    // Couleur principale (légèrement décalée pour l'effet de lumière)
+    ctx.arc(x, y, rad, 0, Math.PI * 2);
     ctx.fillStyle = b.color.main;
-    ctx.beginPath();
-    ctx.arc(x - rad * 0.1, y - rad * 0.1, rad * 0.85, 0, 2 * Math.PI);
     ctx.fill();
 
-    // Reflet blanc (Shine)
-    ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+    // Effet reflet
     ctx.beginPath();
-    ctx.arc(x - rad * 0.3, y - rad * 0.3, rad * 0.25, 0, 2 * Math.PI);
+    ctx.arc(x - rad * 0.3, y - rad * 0.3, rad * 0.3, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255,255,255,0.3)";
     ctx.fill();
 
-    // Icône de sort si présent
+    // Sort
     if (b.isSpellBubble && b.spell && Game.spellIcons[b.spell]) {
       const icon = Game.spellIcons[b.spell];
-      if (icon && icon.complete && icon.naturalWidth !== 0) {
-        const size = rad * 1.2;
-        ctx.drawImage(icon, x - size / 2, y - size / 2, size, size);
+      if (icon.complete) {
+        ctx.drawImage(icon, x - rad, y - rad, rad * 2, rad * 2);
       }
     }
+  },
+
+  drawCannonNeedle(ctx, player, pos, limitY) {
+    ctx.save();
+    ctx.translate(pos.x, pos.y);
+    ctx.rotate(player.launcher.angle + Math.PI / 2); // Ajustement angle
+
+    const len = pos.y - limitY - 10; // Longueur jusqu'à la ligne
+
+    ctx.fillStyle = "#fbbf24"; // Aiguille or
+    ctx.beginPath();
+    ctx.moveTo(-5, 0);
+    ctx.lineTo(5, 0);
+    ctx.lineTo(0, -len);
+    ctx.fill();
+
+    ctx.restore();
   },
 
   drawEffect(ctx, e) {
     if (e.type === "pop") {
       ctx.beginPath();
-      ctx.strokeStyle = e.color || `rgba(255, 255, 255, ${e.life / 10})`;
-      ctx.lineWidth = 2;
-      ctx.arc(e.x, e.y, e.radius, 0, 2 * Math.PI);
+      ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
+      ctx.strokeStyle = e.color || "white";
       ctx.stroke();
     }
   },
 
   drawLobbyAnimation(ctx, canvas) {
-    // Fond sombre
-    ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+    ctx.fillStyle = "rgba(0,0,0,0.6)";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    (Game.lobbyMarbles || []).forEach((marble) => {
-      ctx.fillStyle = marble.color.main;
-      ctx.beginPath();
-      ctx.arc(marble.x, marble.y, marble.r, 0, Math.PI * 2);
-      ctx.fill();
-    });
-
-    ctx.textAlign = "center";
-    ctx.fillStyle = "#fbbf24";
-    ctx.font = `bold ${canvas.width / 8}px Arial`;
-    ctx.fillText("PRÊT ?", canvas.width / 2, canvas.height / 2);
-    ctx.font = `normal ${canvas.width / 20}px Arial`;
     ctx.fillStyle = "white";
-    ctx.fillText(
-      "Cliquez pour valider",
-      canvas.width / 2,
-      canvas.height / 2 + 40
-    );
-  },
-
-  drawCannonNeedle(ctx, player, basePos, length) {
-    ctx.save();
-    ctx.translate(basePos.x, basePos.y);
-    // + Math.PI / 2 car 0 est à droite en Canvas, et on veut que -PI/2 soit en haut
-    ctx.rotate(player.launcher.angle + Math.PI / 2);
-
-    // Dessin d'une flèche stylisée
-    const width = length * 0.15;
-
-    ctx.fillStyle = "#fbbf24"; // Or
-    ctx.beginPath();
-    ctx.moveTo(-width / 2, 0);
-    ctx.lineTo(width / 2, 0);
-    ctx.lineTo(0, -length); // Pointe vers le haut (négatif Y)
-    ctx.closePath();
-    ctx.fill();
-
-    // Axe central
-    ctx.fillStyle = "#451a03";
-    ctx.beginPath();
-    ctx.arc(0, 0, width / 1.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.restore();
+    ctx.textAlign = "center";
+    ctx.font = "20px Arial";
+    ctx.fillText("En attente...", canvas.width / 2, canvas.height / 2);
   },
 };

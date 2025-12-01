@@ -15,6 +15,7 @@
       html,
       body {
         height: 100%;
+        width: 100%;
         margin: 0;
         padding: 0;
         overflow: hidden;
@@ -22,7 +23,6 @@
         font-family: "Inter", sans-serif;
       }
 
-      /* Conteneur principal qui prend tout l'écran */
       #main-wrapper {
         display: flex;
         flex-direction: column;
@@ -32,48 +32,56 @@
         box-sizing: border-box;
       }
 
-      /* Zone du haut : Jeu + Grille */
+      /* ZONE HAUTE : Le Jeu */
       #top-area {
-        flex: 1; /* Prend tout l'espace disponible sauf le chat */
+        flex: 1; /* Prend toute la hauteur disponible */
         display: flex;
         flex-direction: row;
-        gap: 10px;
-        min-height: 0; /* Important pour que flexbox ne déborde pas */
-        justify-content: center; /* Centre le tout horizontalement */
+        gap: 15px; /* Espace entre joueur et adversaires */
+        min-height: 0;
+        width: 100%;
+        max-width: 1800px; /* Largeur max très grande pour les grands écrans */
+        margin: 0 auto;
       }
 
-      /* Colonne du joueur : Largeur auto basée sur le ratio du canvas */
+      /* Colonne JOUEUR (Gauche) */
       #player-column {
         height: 100%;
-        /* On ne force pas la largeur ici, c'est le JS qui va calculer le ratio */
-        display: flex;
-        justify-content: center;
-      }
-
-      #canvas-container {
-        height: 100%;
-        /* Le ratio sera géré par le canvas lui-même via JS */
-        border: 4px solid #334155;
-        border-radius: 0.5rem;
-        box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-        background-color: #1e293b;
-      }
-
-      /* Colonne des adversaires */
-      #opponents-column {
-        height: 100%;
-        /* La largeur sera définie par le JS pour matcher le ratio des cartes */
+        /* Largeur fixe relative à la hauteur pour garder le ratio portrait */
+        /* On ajustera via JS, mais on met une base flex */
+        flex: 0 0 35vh;
+        min-width: 300px;
         display: flex;
         flex-direction: column;
       }
 
-      /* Grille des adversaires */
+      #canvas-container {
+        flex-grow: 1;
+        width: 100%;
+        border: 4px solid #334155;
+        border-radius: 0.5rem;
+        background-color: #1e293b;
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+        position: relative;
+      }
+
+      /* Colonne ADVERSAIRES (Droite) */
+      #opponents-column {
+        flex: 1; /* Prend tout le reste de la largeur */
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+
       #opponents-grid {
         height: 100%;
+        width: 100%;
         display: grid;
+        /* 5 colonnes strictes */
         grid-template-columns: repeat(5, 1fr);
+        /* 2 lignes strictes */
         grid-template-rows: repeat(2, 1fr);
-        gap: 4px;
+        gap: 8px;
       }
 
       .opponent-view {
@@ -82,7 +90,6 @@
         border: 2px solid #334155;
         background-color: #1e293b;
         overflow: hidden;
-        /* Important : cela force les cases à s'adapter à la grille */
         width: 100%;
         height: 100%;
       }
@@ -90,25 +97,25 @@
       .opponent-canvas {
         width: 100%;
         height: 100%;
-        object-fit: cover;
+        object-fit: fill; /* Remplit la case */
       }
 
-      /* Zone du bas : Chat */
+      /* ZONE BASSE : Chat */
       #bottom-area {
-        height: 140px; /* Hauteur fixe pour le chat */
+        height: 130px;
         margin-top: 10px;
-        flex-shrink: 0;
         width: 100%;
-        max-width: 1200px; /* Pas trop large sur grands écrans */
+        max-width: 1800px;
         margin-left: auto;
         margin-right: auto;
+        flex-shrink: 0;
       }
 
       .chat-window {
         height: 100%;
         display: flex;
         flex-direction: column;
-        background-color: rgba(15, 23, 42, 0.8);
+        background-color: rgba(15, 23, 42, 0.9);
         border: 1px solid #334155;
         border-radius: 0.5rem;
         padding: 0.5rem;
@@ -117,17 +124,9 @@
       #chat-messages {
         flex-grow: 1;
         overflow-y: auto;
-        color: #cbd5e1;
+        color: #e2e8f0;
         font-size: 0.9rem;
         margin-bottom: 0.5rem;
-      }
-
-      #chat-messages::-webkit-scrollbar {
-        width: 6px;
-      }
-      #chat-messages::-webkit-scrollbar-thumb {
-        background: #475569;
-        border-radius: 3px;
       }
     </style>
   </head>
@@ -153,12 +152,12 @@
             <input
               type="text"
               id="chat-input"
-              class="flex-grow p-2 bg-slate-800 text-white border border-slate-600 rounded focus:outline-none focus:border-blue-500"
+              class="flex-grow p-2 bg-slate-800 text-white border border-slate-600 rounded"
               placeholder="Écrire un message..."
             />
             <a
               href="index.html"
-              class="bg-red-700 hover:bg-red-600 text-white font-bold py-2 px-6 rounded text-sm flex items-center justify-center"
+              class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded flex items-center justify-center"
               >Quitter</a
             >
           </div>

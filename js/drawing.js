@@ -18,14 +18,14 @@ export const Drawing = {
     const canvas = ctx.canvas;
     if (!canvas || canvas.width === 0 || !player) return;
 
+    // Calcul dimensions
     const rad = isMain ? Game.bubbleRadius : (canvas.width / 17) * 0.95;
     if (!rad || rad < 1) return;
 
-    // FOND
+    // Fond
     ctx.fillStyle = isMain ? "#1e293b" : "#334155";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // --- ETATS ---
     const isGameActive = Game.state === "playing" || Game.state === "countdown";
 
     if (!isGameActive) {
@@ -34,7 +34,6 @@ export const Drawing = {
       this.drawGameState(ctx, canvas, player, rad, isMain);
     }
 
-    // SORTS
     if (isMain) this.drawSpellBar(ctx, canvas, player);
   },
 
@@ -53,15 +52,20 @@ export const Drawing = {
       ctx.fillText("PRÊT", canvas.width / 2, canvas.height / 2);
       ctx.fillStyle = "white";
       ctx.font = "16px Arial";
-      ctx.fillText("En attente...", canvas.width / 2, canvas.height / 2 + 30);
+      ctx.fillText(
+        "Attente des autres...",
+        canvas.width / 2,
+        canvas.height / 2 + 30
+      );
     } else {
       if (isMain) {
         ctx.save();
         ctx.strokeStyle = "rgba(255,255,255,0.8)";
         ctx.lineWidth = 3;
-        const w = canvas.width * 0.8;
-        const h = canvas.height * 0.3;
+        const w = canvas.width * 0.7;
+        const h = canvas.height * 0.25;
         ctx.strokeRect((canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
+
         ctx.fillStyle = "white";
         ctx.shadowColor = "black";
         ctx.shadowBlur = 5;
@@ -77,33 +81,34 @@ export const Drawing = {
     const gridPixelHeight = Config.GAME_OVER_ROW * (rad * 1.732) + rad * 2;
     const deadLineY = gridPixelHeight + 5;
 
-    // DASHBOARD
+    // --- DASHBOARD (Fond rouge) ---
     ctx.fillStyle = "#7f1d1d";
     ctx.fillRect(0, deadLineY, canvas.width, canvas.height - deadLineY);
 
     ctx.beginPath();
+    // Arc plus grand pour bien englober le bas
     ctx.arc(
       canvas.width / 2,
-      canvas.height + rad * 3,
-      canvas.width * 0.65,
+      canvas.height + rad * 4,
+      canvas.width * 0.7,
       Math.PI,
       0
     );
     ctx.fillStyle = "#991b1b";
     ctx.fill();
     ctx.strokeStyle = "#450a0a";
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 4;
     ctx.stroke();
 
-    // LIGNE NOIRE
+    // --- LIGNE NOIRE ---
     ctx.beginPath();
     ctx.moveTo(0, deadLineY);
     ctx.lineTo(canvas.width, deadLineY);
     ctx.strokeStyle = "black";
-    ctx.lineWidth = isMain ? 4 : 2;
+    ctx.lineWidth = isMain ? 5 : 2;
     ctx.stroke();
 
-    // GRILLE
+    // --- GRILLE ---
     if (player.grid) {
       for (let r = 0; r < Config.GRID_ROWS; r++) {
         for (let c = 0; c < Config.GRID_COLS; c++) {
@@ -120,17 +125,22 @@ export const Drawing = {
     );
     (player.effects || []).forEach((e) => this.drawEffect(ctx, e));
 
-    // CANON
+    // --- CANON ---
     if (isMain && player.isAlive) {
-      // Position du canon : Plus bas pour permettre une aiguille plus longue
+      // Position du canon (bas de l'écran - marge sorts)
       const cannonY = canvas.height - 50;
       Game.cannonPosition = { x: canvas.width / 2, y: cannonY };
 
-      // Aiguille (Dessinée AVANT la bulle pour être dessous)
-      // On passe deadLineY pour que l'aiguille puisse "viser" loin visuellement
+      // >>> CORRECTION CRITIQUE : CHARGEMENT FORCÉ DE LA BOULE <<<
+      if (!player.launcherBubble && !player.shotBubble) {
+        GameLogic.loadBubbles(player);
+      }
+
+      // Aiguille
       this.drawCannonNeedle(ctx, player, Game.cannonPosition, deadLineY);
 
-      if (player.launcherBubble)
+      // Boule dans le canon
+      if (player.launcherBubble) {
         this.drawBubble(
           ctx,
           player.launcherBubble,
@@ -139,18 +149,22 @@ export const Drawing = {
           Game.cannonPosition.y,
           true
         );
+      }
 
+      // Boule suivante
       if (player.nextBubble) {
         const nextX = Game.cannonPosition.x - rad * 3;
         const nextY = Game.cannonPosition.y + rad;
         this.drawBubble(ctx, player.nextBubble, rad * 0.8, nextX, nextY);
+
         ctx.fillStyle = "#fbbf24";
         ctx.font = "10px Arial";
         ctx.textAlign = "center";
         ctx.fillText("NEXT", nextX, nextY - rad - 2);
       }
 
-      if (player.shotBubble)
+      // Boule tirée
+      if (player.shotBubble) {
         this.drawBubble(
           ctx,
           player.shotBubble,
@@ -158,6 +172,7 @@ export const Drawing = {
           player.shotBubble.x,
           player.shotBubble.y
         );
+      }
     }
 
     if (!player.isAlive) this.drawOverlayText(ctx, canvas, "PERDU", "red");
@@ -171,14 +186,15 @@ export const Drawing = {
     ctx.fillStyle = "white";
     ctx.font = "bold 12px Arial";
     ctx.textAlign = "left";
-    ctx.fillText("SORTILEGES", 5, spellY + 25);
+    ctx.fillText("SORTILEGES", 8, spellY + 25);
 
-    const startX = 90;
-    const size = spellH - 4;
+    const startX = 100;
+    const size = spellH - 6;
     for (let i = 0; i < Config.MAX_SPELLS; i++) {
       const sx = startX + i * (size + 4);
-      const sy = spellY + 2;
+      const sy = spellY + 3;
       ctx.strokeStyle = "#475569";
+      ctx.lineWidth = 1;
       ctx.strokeRect(sx, sy, size, size);
       if (player.spells && player.spells[i]) {
         const s = Config.SPELLS[player.spells[i]];
@@ -216,21 +232,19 @@ export const Drawing = {
     ctx.translate(pos.x, pos.y);
     ctx.rotate(player.launcher.angle + Math.PI / 2);
 
-    // Aiguille plus longue (1.5x la distance jusqu'à la ligne noire pour l'esthétique)
-    const len = (pos.y - limitY) * 1.2;
+    const len = (pos.y - limitY) * 1.1; // Aiguille longue qui touche presque la ligne
 
-    // Flèche style "Boussole"
-    ctx.fillStyle = "#fbbf24"; // Or
+    ctx.fillStyle = "#fbbf24";
     ctx.beginPath();
-    ctx.moveTo(-5, 0); // Base large
+    ctx.moveTo(-5, 0);
     ctx.lineTo(5, 0);
-    ctx.lineTo(0, -len); // Pointe fine
+    ctx.lineTo(0, -len);
     ctx.fill();
 
-    // Axe central
-    ctx.fillStyle = "#451a03"; // Marron foncé
+    // Base de l'aiguille
     ctx.beginPath();
-    ctx.arc(0, 0, 8, 0, Math.PI * 2);
+    ctx.fillStyle = "#451a03";
+    ctx.arc(0, 0, 10, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.restore();

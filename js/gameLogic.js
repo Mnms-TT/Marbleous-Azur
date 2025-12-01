@@ -11,15 +11,91 @@ export const GameLogic = {
 
   createInitialGrid: () => {
     const grid = GameLogic.createEmptyGrid();
-    // Création de 3 lignes de boules aléatoires au début
-    for (let r = 0; r < 3; r++) {
+
+    // 1. Remplissage initial
+    // Ligne 0 : TOUJOURS PLEINE (c'est le plafond, ça tient tout)
+    for (let c = 0; c < Config.GRID_COLS; c++) {
+      grid[0][c] = GameLogic.createBubble(0, c);
+    }
+
+    // Lignes 1 et 2 : Aléatoire
+    for (let r = 1; r < 3; r++) {
       for (let c = 0; c < Config.GRID_COLS; c++) {
-        if (Math.random() > 0.5) {
-          // 50% de chance d'avoir une boule par case
+        if (Math.random() > 0.3) {
+          // 70% de remplissage pour avoir de la densité
           grid[r][c] = GameLogic.createBubble(r, c);
         }
       }
     }
+
+    // 2. NETTOYAGE (Sécurité anti-gravité)
+    // On vérifie immédiatement s'il y a des orphelines et on les supprime
+    // (On utilise la logique interne de findFloatingBubbles sans animation)
+    const connected = new Set();
+    const q = [];
+
+    // On part du plafond (Ligne 0)
+    for (let c = 0; c < Config.GRID_COLS; c++) {
+      if (grid[0][c]) {
+        q.push(grid[0][c]);
+        connected.add(`0,${c}`);
+      }
+    }
+
+    // Propagation (BFS)
+    let head = 0;
+    while (head < q.length) {
+      const curr = q[head++];
+      const neighbors = GameLogic.getNeighborCoords(curr.r, curr.c); // Fonction interne nécessaire ici? Non, on l'appelle via GameLogic si besoin, mais ici on est dedans.
+      // Attention : getNeighborCoords est définie plus bas, il faut s'assurer qu'elle est accessible.
+      // Comme on est dans l'objet, on utilise `this` ou on duplique la logique courte.
+      // Utilisons la méthode définie plus bas :
+      const dirs =
+        curr.r % 2 !== 0
+          ? [
+              { r: -1, c: 0 },
+              { r: -1, c: 1 },
+              { r: 0, c: -1 },
+              { r: 0, c: 1 },
+              { r: 1, c: 0 },
+              { r: 1, c: 1 },
+            ]
+          : [
+              { r: -1, c: -1 },
+              { r: -1, c: 0 },
+              { r: 0, c: -1 },
+              { r: 0, c: 1 },
+              { r: 1, c: -1 },
+              { r: 1, c: 0 },
+            ];
+
+      for (const d of dirs) {
+        const nr = curr.r + d.r;
+        const nc = curr.c + d.c;
+        if (
+          nr >= 0 &&
+          nr < Config.GRID_ROWS &&
+          nc >= 0 &&
+          nc < Config.GRID_COLS
+        ) {
+          const neighbor = grid[nr][nc];
+          if (neighbor && !connected.has(`${nr},${nc}`)) {
+            connected.add(`${nr},${nc}`);
+            q.push(neighbor);
+          }
+        }
+      }
+    }
+
+    // Suppression de tout ce qui n'est pas connecté
+    for (let r = 0; r < Config.GRID_ROWS; r++) {
+      for (let c = 0; c < Config.GRID_COLS; c++) {
+        if (grid[r][c] && !connected.has(`${r},${c}`)) {
+          grid[r][c] = null;
+        }
+      }
+    }
+
     return grid;
   },
 
@@ -36,20 +112,19 @@ export const GameLogic = {
     isStatic: true,
   }),
 
-  // --- NOUVEAU : Animation PLUIE du Lobby ---
+  // --- Animation PLUIE du Lobby ---
   updateLobbyAnimation() {
     const mainCanvas = document.getElementById("gameCanvas");
     if (!mainCanvas) return;
 
-    // Initialisation si la liste est vide
     if (!Game.lobbyMarbles || Game.lobbyMarbles.length === 0) {
       Game.lobbyMarbles = [];
       for (let i = 0; i < 30; i++) {
         Game.lobbyMarbles.push({
           x: Math.random() * mainCanvas.width,
-          y: Math.random() * mainCanvas.height, // Position aléatoire verticale
+          y: Math.random() * mainCanvas.height,
           r: Math.random() * 10 + 5,
-          vy: Math.random() * 1.5 + 0.5, // Vitesse de chute constante
+          vy: Math.random() * 1.5 + 0.5,
           color:
             Config.BUBBLE_COLORS[
               Math.floor(Math.random() * Config.BUBBLE_COLORS.length)
@@ -58,10 +133,8 @@ export const GameLogic = {
       }
     }
 
-    // Mise à jour du mouvement (Chute infinie)
     Game.lobbyMarbles.forEach((marble) => {
       marble.y += marble.vy;
-      // Si la boule sort par le bas, elle revient tout en haut
       if (marble.y - marble.r > mainCanvas.height) {
         marble.y = -marble.r;
         marble.x = Math.random() * mainCanvas.width;
@@ -102,7 +175,6 @@ export const GameLogic = {
         const avalanche = this.handleAvalanche(player, player.grid, true);
         cleared += avalanche;
 
-        // Logique de transformation en sort (sera ajustée plus tard selon vos règles précises)
         if (Math.random() < Config.SPELL_SPAWN_CHANCE)
           this.spawnSpellBubble(player);
 
@@ -154,7 +226,7 @@ export const GameLogic = {
     const toAdd = Math.min(validSlots.length, junkCount);
     for (let i = 0; i < toAdd; i++) {
       const s = validSlots[i];
-      target.grid[s.r][s.c] = this.createBubble(s.r, s.c); // Couleur aléatoire = junk
+      target.grid[s.r][s.c] = this.createBubble(s.r, s.c);
     }
     FirebaseController.updatePlayerDoc(target.id, {
       grid: JSON.stringify(target.grid),
@@ -193,7 +265,6 @@ export const GameLogic = {
     if (Game.keys.left) Game.localPlayer.launcher.angle -= rotSpeed;
     if (Game.keys.right) Game.localPlayer.launcher.angle += rotSpeed;
 
-    // Limitation de l'angle pour ne pas tirer en bas (entre -PI et 0)
     Game.localPlayer.launcher.angle = Math.max(
       -Math.PI + 0.1,
       Math.min(-0.1, Game.localPlayer.launcher.angle)
@@ -210,7 +281,7 @@ export const GameLogic = {
       b.x += b.vx;
       b.y += b.vy;
 
-      let collided = b.y - Game.bubbleRadius < 0; // Mur du haut
+      let collided = b.y - Game.bubbleRadius < 0;
 
       if (!collided)
         for (let r = 0; r < Config.GRID_ROWS; r++) {
@@ -237,7 +308,7 @@ export const GameLogic = {
         b.x - Game.bubbleRadius < 0 ||
         b.x + Game.bubbleRadius > mainCanvas.width
       )
-        b.vx *= -1; // Rebond murs latéraux
+        b.vx *= -1;
     }
 
     Game.players.forEach((p) =>
@@ -245,7 +316,6 @@ export const GameLogic = {
         b.vy += 0.2;
         b.y += b.vy;
         b.x += b.vx;
-        // On supprime si ça tombe très bas
         if (b.y > 2000) p.fallingBubbles.splice(i, 1);
       })
     );
@@ -287,7 +357,6 @@ export const GameLogic = {
       return;
 
     const spellName = Game.localPlayer.spells[spellIndex];
-    // FIFO : On retire toujours le premier
     Game.localPlayer.spells.splice(spellIndex, 1);
 
     await FirebaseController.updatePlayerDoc(Game.localPlayer.id, {
@@ -315,7 +384,7 @@ export const GameLogic = {
 
     switch (spell) {
       case "canonEndommage":
-      case "variationCouleurs": // anciennement canonArcEnCiel (à adapter)
+      case "variationCouleurs":
         effects[spell] = { endTime: Date.now() + DURATION };
         break;
       case "plateauIncline":
@@ -324,7 +393,7 @@ export const GameLogic = {
           direction: Math.random() < 0.5 ? -1 : 1,
         };
         break;
-      case "annulationSorts": // sabotageSorts
+      case "annulationSorts":
         if (target.spells.length > 0) {
           target.spells.shift();
           spellsChanged = true;
@@ -337,7 +406,7 @@ export const GameLogic = {
               gridChanged = true;
             }
         break;
-      case "apparitionLigne": // monteeLignes
+      case "apparitionLigne":
         for (let i = 0; i < 2; i++) {
           for (let r = Config.GRID_ROWS - 1; r > 0; r--)
             for (let c = 0; c < Config.GRID_COLS; c++) {
@@ -350,7 +419,7 @@ export const GameLogic = {
         this.handleAvalanche({ grid }, grid, false);
         gridChanged = true;
         break;
-      case "couleursIdentiques": // colonneMonochrome
+      case "couleursIdentiques":
         const cols = [
           ...new Set(
             grid
@@ -447,7 +516,7 @@ export const GameLogic = {
 
   getBubbleCoords: (r, c, rad) => ({
     x: rad + c * rad * 2 + (r % 2) * rad,
-    y: rad + r * rad * 2 * 0.866, // Suppression de l'offset vertical
+    y: rad + r * rad * 2 * 0.866,
   }),
 
   getNeighborCoords(r, c) {
@@ -491,7 +560,6 @@ export const GameLogic = {
           }
         }
 
-    // Si on n'a rien trouvé (bulle flottante ou tir raté au plafond)
     if (!best) {
       let cCol = -1,
         cDist = Infinity;

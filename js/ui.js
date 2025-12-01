@@ -2,7 +2,6 @@ import { Config } from "./config.js";
 import { Game } from "./game.js";
 import { FirebaseController } from "./firebaseController.js";
 import { GameLogic } from "./gameLogic.js";
-import { Drawing } from "./drawing.js"; // Import pour redessiner immédiatement
 
 export const UI = {
   announcementTimeout: null,
@@ -10,11 +9,6 @@ export const UI = {
   renderOpponents() {
     const grid = document.getElementById("opponents-grid");
     if (!grid) return;
-    
-    // Pour éviter de reconstruire tout le DOM à chaque frame (ce qui cause des clignotements),
-    // on pourrait vérifier si le contenu a changé. Mais ici, le plus important est resize.
-    
-    // (Note: Pour simplifier, je garde la reconstruction, mais le fix du flash est dans resize)
     grid.innerHTML = "";
     
     const opponents = Array.from(Game.players.values()).filter(
@@ -29,7 +23,7 @@ export const UI = {
       grid.appendChild(slot);
     }
 
-    // Ligne 2
+    // Ligne 2 : Annonce + 4 autres
     const announcement = document.createElement("div");
     announcement.id = "spell-announcement";
     announcement.className = "opponent-view flex flex-col items-center justify-center text-center p-1 overflow-hidden relative";
@@ -45,7 +39,6 @@ export const UI = {
       grid.appendChild(slot);
     }
 
-    // On appelle resize, mais la fonction elle-même sera intelligente
     requestAnimationFrame(() => this.resizeAllCanvases());
   },
 
@@ -125,36 +118,30 @@ export const UI = {
     const mainCanvas = document.getElementById("gameCanvas");
 
     if (container && mainCanvas) {
+      // 1. On prend la taille réelle du conteneur (définie par le CSS/HTML)
+      const w = container.clientWidth;
       const h = container.clientHeight;
-      // On arrondit pour éviter les flous de sous-pixels
-      const w = Math.floor(h * 0.55); 
-      const heightInt = Math.floor(h);
-
-      // >>> CORRECTION FLASH : On ne redimensionne QUE si ça a changé <<<
-      if (mainCanvas.width !== w || mainCanvas.height !== heightInt) {
-          mainCanvas.width = w;
-          mainCanvas.height = heightInt;
-          mainCanvas.style.width = `${w}px`;
-          mainCanvas.style.height = `${heightInt}px`;
-
-          const radW = w / 17;
-          Game.bubbleRadius = radW * 0.95;
-          
-          // Force un redessin immédiat pour éviter une frame noire
-          Drawing.drawAll();
-      }
+      
+      // 2. On applique cette taille au canvas
+      mainCanvas.width = w;
+      mainCanvas.height = h;
+      
+      // 3. On calcule le rayon des boules pour qu'elles rentrent TOUTES
+      // - 17 unités de large (8 colonnes + décalage)
+      // - 25 unités de haut (12 lignes + canon + marges)
+      const radFromWidth = w / 17;
+      const radFromHeight = h / 26; // Un peu de marge verticale
+      
+      // On prend le plus petit rayon pour être sûr que ça ne déborde jamais
+      Game.bubbleRadius = Math.min(radFromWidth, radFromHeight) * 0.95;
     }
 
     Game.players.forEach((p) => {
       if (p.id !== Game.localPlayer?.id && p.canvas) {
         const parent = p.canvas.parentElement;
         if(parent) {
-            const w = parent.clientWidth;
-            const h = parent.clientHeight;
-            if(p.canvas.width !== w || p.canvas.height !== h) {
-                p.canvas.width = w;
-                p.canvas.height = h;
-            }
+            p.canvas.width = parent.clientWidth;
+            p.canvas.height = parent.clientHeight;
         }
       }
     });

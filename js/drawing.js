@@ -21,16 +21,19 @@ export const Drawing = {
     const rad = isMain ? Game.bubbleRadius : (canvas.width / 17) * 0.95;
     if (!rad || rad < 1) return;
 
-    // FOND DAMIER
-    const tileSize = canvas.width / 8;
-    const rows = Math.ceil(canvas.height / tileSize);
+    // --- 1. FOND PATCHWORK IRRÉGULIER ---
+    // On dessine des rectangles (pas des carrés) pour varier
+    const tileW = canvas.width / 5; // 5 colonnes de fond
+    const tileH = tileW * 0.7; // Rectangles horizontaux
+    const rows = Math.ceil(canvas.height / tileH);
+
     for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < 8; c++) {
-        ctx.fillStyle =
-          (r + c) % 2 === 0
-            ? Config.BACKGROUND_CHECKER.light
-            : Config.BACKGROUND_CHECKER.dark;
-        ctx.fillRect(c * tileSize, r * tileSize, tileSize, tileSize);
+      for (let c = 0; c < 5; c++) {
+        // Formule déterministe pour choisir une couleur parmi les 4, sans random()
+        // (r + c*3) % 4 permet d'éviter les diagonales trop évidentes
+        const colorIndex = (r + c * 3) % Config.PATCHWORK_ORANGES.length;
+        ctx.fillStyle = Config.PATCHWORK_ORANGES[colorIndex];
+        ctx.fillRect(c * tileW, r * tileH, tileW, tileH);
       }
     }
 
@@ -46,7 +49,8 @@ export const Drawing = {
   },
 
   drawLobbyState(ctx, canvas, player, isMain) {
-    ctx.fillStyle = "rgba(0,0,0,0.3)";
+    // Voile sombre sur le patchwork
+    ctx.fillStyle = "rgba(0,0,0,0.4)";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     (Game.lobbyMarbles || []).forEach((marble) => {
@@ -75,36 +79,31 @@ export const Drawing = {
   },
 
   drawGameState(ctx, canvas, player, rad, isMain) {
-    // Calcul de la Ligne Noire (Basée sur la grille)
     const gridPixelHeight = Config.GAME_OVER_ROW * (rad * 1.732) + rad;
     const deadLineY = gridPixelHeight + 10;
 
-    // Fond Dashboard (Zone Morte)
-    ctx.fillStyle = "#9a3412"; // Orange sombre
+    // Fond Dashboard
+    ctx.fillStyle = "#7c2d12"; // Orange/Marron très foncé
     ctx.fillRect(0, deadLineY, canvas.width, canvas.height - deadLineY);
 
-    // --- CANON ADAPTATIF ---
-    // On calcule l'espace disponible entre la ligne noire et la barre de sorts
-    const spellBarHeight = 40;
-    const availableHeight = canvas.height - deadLineY - spellBarHeight;
-    const cannonPivotY = canvas.height - spellBarHeight;
-    const centerX = canvas.width / 2;
-
-    // Le rayon du canon doit toucher la ligne noire
-    // Donc rayon = distance entre pivot et ligne noire
-    const cannonRadius = Math.abs(cannonPivotY - deadLineY);
-
+    // --- CANON (Grand format) ---
     if (isMain) {
-      // Dessin de l'éventail (Arc de cercle)
+      const spellBarHeight = 40;
+      // Le pivot est tout en bas (au dessus des sorts)
+      const cannonPivotY = canvas.height - spellBarHeight;
+      const centerX = canvas.width / 2;
+
+      // Rayon = tout l'espace disponible
+      const cannonRadius = cannonPivotY - deadLineY;
+
       ctx.beginPath();
-      ctx.arc(centerX, cannonPivotY, cannonRadius, Math.PI, 0); // Demi-cercle
-      ctx.fillStyle = "rgba(255, 255, 255, 0.15)";
+      ctx.arc(centerX, cannonPivotY, cannonRadius, Math.PI, 0);
+      ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
       ctx.fill();
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
       ctx.lineWidth = 2;
       ctx.stroke();
 
-      // Rayons décoratifs
       for (let i = 0; i <= 6; i++) {
         const angle = Math.PI + (i * Math.PI) / 6;
         ctx.beginPath();
@@ -118,17 +117,14 @@ export const Drawing = {
         ctx.stroke();
       }
 
-      // Mise à jour de la logique
       Game.cannonPosition = { x: centerX, y: cannonPivotY };
 
       if (player.isAlive && !player.launcherBubble && !player.shotBubble) {
         GameLogic.loadBubbles(player);
       }
 
-      // Aiguille (Touche la ligne noire)
       this.drawCannonNeedle(ctx, player, Game.cannonPosition, cannonRadius);
 
-      // Boules Canon
       if (player.launcherBubble)
         this.drawBubble(
           ctx,
@@ -139,8 +135,9 @@ export const Drawing = {
           true
         );
       if (player.nextBubble) {
+        // "NEXT" affiché à l'intérieur de l'arc, sur le côté
         const nextX = Game.cannonPosition.x + rad * 3;
-        const nextY = Game.cannonPosition.y - 15;
+        const nextY = Game.cannonPosition.y - 20;
         this.drawBubble(ctx, player.nextBubble, rad * 0.8, nextX, nextY);
       }
       if (player.shotBubble)
@@ -153,7 +150,7 @@ export const Drawing = {
         );
     }
 
-    // Ligne Noire (Par dessus le tout)
+    // Ligne Noire
     ctx.beginPath();
     ctx.moveTo(0, deadLineY);
     ctx.lineTo(canvas.width, deadLineY);
@@ -187,7 +184,7 @@ export const Drawing = {
     ctx.fillStyle = "#020617";
     ctx.fillRect(0, spellY, canvas.width, spellH);
     ctx.fillStyle = "white";
-    ctx.font = "bold 11px Arial";
+    ctx.font = "bold 10px Arial";
     ctx.textAlign = "left";
     ctx.fillText("SORTILEGES", 2, spellY + 24);
 
@@ -252,15 +249,13 @@ export const Drawing = {
     ctx.translate(pos.x, pos.y);
     ctx.rotate(player.launcher.angle + Math.PI / 2);
 
-    // Aiguille
     ctx.fillStyle = "#10b981"; // Vert
     ctx.beginPath();
     ctx.moveTo(-2, 0);
     ctx.lineTo(2, 0);
-    ctx.lineTo(0, -length); // Utilise la longueur calculée (rayon canon)
+    ctx.lineTo(0, -length);
     ctx.fill();
 
-    // Base
     ctx.fillStyle = "black";
     ctx.beginPath();
     ctx.moveTo(-4, 0);

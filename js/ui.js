@@ -24,7 +24,7 @@ export const UI = {
       grid.appendChild(slot);
     }
 
-    // Ligne 2 : Annonces (Orange)
+    // Ligne 2 : Annonces
     const announcement = document.createElement("div");
     announcement.id = "spell-announcement";
     announcement.className =
@@ -140,7 +140,7 @@ export const UI = {
 
     if (container && mainCanvas) {
       const h = container.clientHeight;
-      const w = Math.floor(h * 0.6); // Ratio Portrait fixe
+      const w = Math.floor(h * 0.6);
       const heightInt = Math.floor(h);
 
       if (mainCanvas.width !== w || mainCanvas.height !== heightInt) {
@@ -149,18 +149,16 @@ export const UI = {
         mainCanvas.style.width = `${w}px`;
         mainCanvas.style.height = `${heightInt}px`;
 
-        // --- CORRECTION CRITIQUE DU RATIO ---
-        // On calcule le rayon pour que la grille ne prenne que 72% de la hauteur max.
-        // Le reste (28%) sera pour le canon.
-        // Hauteur Grille = 11.5 lignes * rad * 1.732
-
-        const maxGridHeight = heightInt * 0.72;
+        // --- MODIFICATION RATIO ---
+        // On limite la hauteur de la grille à 62% de l'écran.
+        // Le reste (38%) est pour le dashboard.
+        const maxGridHeight = heightInt * 0.62;
         const radFromHeight =
           maxGridHeight / ((Config.GAME_OVER_ROW + 0.5) * 1.732);
 
-        const radFromWidth = w / 17; // 17 unités de large (8 boules)
+        const radFromWidth = w / 17;
 
-        // On prend le plus petit pour être sûr que tout rentre
+        // On prend le plus petit pour que tout rentre
         Game.bubbleRadius = Math.min(radFromWidth, radFromHeight);
 
         Drawing.drawAll();

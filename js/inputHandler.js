@@ -11,31 +11,59 @@ export const InputHandler = {
     window.addEventListener("mousemove", this.handleMouseMove.bind(this));
     window.addEventListener("resize", UI.resizeAllCanvases);
     window.addEventListener("beforeunload", this.handleBeforeUnload.bind(this));
-    document
-      .getElementById("chat-input")
-      .addEventListener("keydown", this.handleChat.bind(this));
 
-    // Clic principal
-    document.getElementById("gameCanvas").addEventListener("click", (e) => {
-      const p = Game.localPlayer;
-      if (!p) return;
+    const chatInput = document.getElementById("chat-input");
+    if (chatInput)
+      chatInput.addEventListener("keydown", this.handleChat.bind(this));
 
-      if (Game.state === "waiting") {
-        const newReadyState = !p.isReady;
-        FirebaseController.updatePlayerDoc(p.id, {
-          isReady: newReadyState,
-          lastActive: Date.now(),
-        });
-      } else if (Game.state === "playing" && p.isAlive) {
-        // Tir avec la souris au clic (optionnel, sinon flèche haut)
-        this.handleShoot();
-      }
-    });
+    // CLIC PRINCIPAL (Jeu ou Prêt)
+    const canvas = document.getElementById("gameCanvas");
+    if (canvas) {
+      canvas.addEventListener("click", (e) => {
+        const p = Game.localPlayer;
+        if (!p) return;
 
-    // Clic adversaires (pour lancer des sorts plus tard)
-    document.getElementById("opponents-grid").addEventListener("click", (e) => {
-      // Logique sorts à venir
-    });
+        // Si en attente : Clic = Je suis prêt
+        if (Game.state === "waiting") {
+          const newReadyState = !p.isReady;
+          // On met à jour l'objet local tout de suite pour réactivité immédiate
+          p.isReady = newReadyState;
+
+          FirebaseController.updatePlayerDoc(p.id, {
+            isReady: newReadyState,
+            lastActive: Date.now(),
+          });
+
+          // Petit son ou feedback visuel ici
+          Drawing.drawAll();
+        }
+        // Si en jeu : Clic = Tirer
+        else if (Game.state === "playing" && p.isAlive) {
+          this.handleShoot();
+        }
+      });
+    }
+
+    // Clic Grille Adversaires (Pour lancer des sorts)
+    const oppGrid = document.getElementById("opponents-grid");
+    if (oppGrid) {
+      oppGrid.addEventListener("click", (e) => {
+        const p = Game.localPlayer;
+        if (!p || Game.state !== "playing" || !p.isAlive) return;
+
+        // On cherche si on a cliqué sur une vue adversaire
+        const view = e.target.closest(".opponent-view");
+        if (view && view.dataset.playerId) {
+          const targetId = view.dataset.playerId;
+          // Si on a des sorts, on lance le premier (FIFO)
+          if (p.spells && p.spells.length > 0) {
+            // Index 0 car FIFO
+            const spellToCast = p.spells[0];
+            GameLogic.castSpecificSpell(Game.players.get(targetId), 0);
+          }
+        }
+      });
+    }
   },
 
   handleKeyDown(e) {
@@ -73,23 +101,15 @@ export const InputHandler = {
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
-    // CORRECTION : On utilise la position réelle du canon définie par Drawing
-    // Si pas encore définie (premier frame), on prend une valeur par défaut
-    const launcherX = Game.cannonPosition
-      ? Game.cannonPosition.x
-      : mainCanvas.width / 2;
-    const launcherY = Game.cannonPosition
-      ? Game.cannonPosition.y
-      : mainCanvas.height - 50;
+    // Utilise la position calculée par Drawing.js, sinon fallback centre/bas
+    const cannonPos = Game.cannonPosition || {
+      x: mainCanvas.width / 2,
+      y: mainCanvas.height - 50,
+    };
 
-    // Calcul de l'angle
-    // atan2(dy, dx)
-    // On veut que -PI/2 soit "Haut".
-    let angle = Math.atan2(mouseY - launcherY, mouseX - launcherX);
+    let angle = Math.atan2(mouseY - cannonPos.y, mouseX - cannonPos.x);
 
-    // On limite l'angle pour ne pas tirer vers le bas ou trop plat
-    // Plage acceptée : de -PI (gauche) à 0 (droite), mais on restreint un peu
-    // ex: -3.0 (gauche max) à -0.1 (droite max)
+    // Restrictions d'angle (ne pas tirer vers le bas)
     if (angle > -0.1) angle = -0.1;
     if (angle < -Math.PI + 0.1) angle = -Math.PI + 0.1;
 
@@ -107,31 +127,24 @@ export const InputHandler = {
       return;
 
     const mainCanvas = document.getElementById("gameCanvas");
-    if (!mainCanvas) return;
 
-    // Transfert de la bulle lanceur vers la bulle tirée
     p.shotBubble = p.launcherBubble;
     p.launcherBubble = null;
 
-    const speed = Game.bubbleRadius * 1.5; // Vitesse de tir
+    const speed = Game.bubbleRadius * 1.5; // Vitesse rapide
     p.shotBubble.isStatic = false;
-
-    // Calcul Vecteur Vitesse
-    // Utilise l'angle actuel du lanceur
     p.shotBubble.vx = Math.cos(p.launcher.angle) * speed;
     p.shotBubble.vy = Math.sin(p.launcher.angle) * speed;
 
-    // Position de départ : Celle du canon
-    p.shotBubble.x = Game.cannonPosition
-      ? Game.cannonPosition.x
-      : mainCanvas.width / 2;
-    p.shotBubble.y = Game.cannonPosition
-      ? Game.cannonPosition.y
-      : mainCanvas.height - 50;
+    // Départ du canon
+    const startPos = Game.cannonPosition || {
+      x: mainCanvas.width / 2,
+      y: mainCanvas.height - 50,
+    };
+    p.shotBubble.x = startPos.x;
+    p.shotBubble.y = startPos.y;
 
     FirebaseController.updatePlayerDoc(p.id, { lastActive: Date.now() });
-
-    // Recharger la prochaine bulle tout de suite (visuel)
     GameLogic.loadBubbles(p);
   },
 
@@ -140,6 +153,19 @@ export const InputHandler = {
       const input = e.target;
       const msg = input.value.trim();
       if (msg && Game.localPlayer) {
+        if (msg.startsWith("/canon ")) {
+          const parts = msg.split(" ");
+          if (parts.length === 2) {
+            const val = parseFloat(parts[1]);
+            if (!isNaN(val)) {
+              Game.currentRotationSpeed =
+                Config.LAUNCHER_ROTATION_SPEED * (val / 5);
+              UI.addChatMessage("Système", `Vitesse canon: ${val}`);
+            }
+          }
+          input.value = "";
+          return;
+        }
         UI.addChatMessage(Game.localPlayer.name, msg);
         input.value = "";
       }

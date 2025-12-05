@@ -9,7 +9,7 @@ import { roomId } from './main.js';
 
 export const FirebaseController = {
     db: null, auth: null, unsubscribePlayers: null, unsubscribeGameSession: null,
-    
+
     async init() {
         const firebaseConfig = {
             apiKey: "AIzaSyCIMWeeRs9ZWh8izEtzV_P53ar95mNqZOw", authDomain: "marbleous-azur.firebaseapp.com",
@@ -33,12 +33,12 @@ export const FirebaseController = {
             window.location.href = 'index.html';
         }
     },
-    
+
     async joinGame() {
         if (!this.auth.currentUser) return;
         const localPlayerId = this.auth.currentUser.uid;
         let initialGrid = GameLogic.createInitialGrid();
-        const initialPlayerData = { 
+        const initialPlayerData = {
             name: `Joueur_${localPlayerId.substring(0, 4)}`, isAlive: true, isReady: false, team: 0,
             grid: JSON.stringify(initialGrid), score: 0, level: 1, spells: [], statusEffects: {},
             lastActive: Date.now()
@@ -58,6 +58,20 @@ export const FirebaseController = {
                 if (currentCount === 0) { roomData.gameState = 'waiting'; }
                 transaction.set(roomRef, roomData, { merge: true });
             });
+
+            // GESTION DECONNEXION (Ghost Players)
+            const { onDisconnect } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js");
+            // Note: onDisconnect fonctionne avec Realtime Database, pas Firestore directement pour la présence.
+            // Firestore n'a pas de "onDisconnect" natif simple comme RTDB.
+            // Cependant, on peut utiliser une astuce ou simplement s'assurer que le nettoyage est fait.
+            // Pour ce projet, si on n'a pas RTDB configuré, on doit renforcer le beforeunload.
+            // MAIS, le user dit "c'est une catastrophe", donc on va essayer de faire mieux.
+            // Si on ne peut pas utiliser RTDB, on va améliorer le nettoyage manuel.
+
+            // Correction: Firestore n'a PAS de onDisconnect. Il faut utiliser Realtime Database pour la présence fiable.
+            // Si le projet n'a pas RTDB activé, on est coincé avec beforeunload.
+            // On va supposer qu'on peut améliorer le beforeunload avec sendBeacon.
+
             this.listenForGameChanges();
             Game.gameLoop();
         } catch (e) {
@@ -66,15 +80,23 @@ export const FirebaseController = {
             window.location.href = 'index.html';
         }
     },
-    
+
     listenForGameChanges() {
         if (this.unsubscribePlayers) this.unsubscribePlayers();
         const playersCollection = collection(this.db, "rooms", roomId, "players");
         this.unsubscribePlayers = onSnapshot(playersCollection, (snapshot) => {
             const serverIds = new Set();
+            const now = Date.now();
             snapshot.docs.forEach(doc => {
-                serverIds.add(doc.id);
                 const data = doc.data();
+                // Filtre anti-fantôme : Si inactif depuis > 15 secondes, on l'ignore (et on pourrait le supprimer)
+                if (now - (data.lastActive || 0) > 15000) {
+                    // Optionnel : Nettoyage actif
+                    // if (doc.id !== this.auth.currentUser.uid) this.deletePlayerDoc(doc.id);
+                    return;
+                }
+
+                serverIds.add(doc.id);
                 if (!Game.players.has(doc.id)) {
                     const newPlayer = new Player(doc.id, data);
                     if (doc.id !== this.auth.currentUser.uid) {
@@ -87,12 +109,16 @@ export const FirebaseController = {
             });
             for (const id of Game.players.keys()) if (!serverIds.has(id)) Game.players.delete(id);
             Game.localPlayer = Game.players.get(this.auth.currentUser.uid);
+
+            // Démarrage du heartbeat si pas encore fait
+            if (Game.localPlayer && !Game.heartbeatInterval) GameLogic.startHeartbeat();
+
             const alivePlayers = Array.from(Game.players.values()).filter(p => p.isAlive);
             if (Game.state === 'playing' && alivePlayers.length <= 1 && Game.players.size > 1) {
                 this.updateSessionDoc({ gameState: 'waiting' });
             }
-            UI.renderOpponents(); 
-            UI.updatePlayerStats(); 
+            UI.renderOpponents();
+            UI.updatePlayerStats();
             UI.checkVoteStatus();
             UI.resizeAllCanvases();
         });
@@ -114,16 +140,16 @@ export const FirebaseController = {
     async updatePlayerDoc(playerId, data) { await setDoc(doc(this.db, "rooms", roomId, "players", playerId), data, { merge: true }); },
     async updateSessionDoc(data) { await setDoc(doc(this.db, "rooms", roomId), data, { merge: true }); },
     async deletePlayerDoc(playerId) {
-         const roomRef = doc(this.db, "rooms", roomId);
-         const playerRef = doc(this.db, "rooms", roomId, "players", playerId);
-         try {
-             await runTransaction(this.db, async (transaction) => {
-                 const roomDoc = await transaction.get(roomRef);
-                 if (!roomDoc.exists()) return;
-                 const newPlayerCount = Math.max(0, (roomDoc.data().playerCount || 1) - 1);
-                 transaction.delete(playerRef);
-                 transaction.update(roomRef, { playerCount: newPlayerCount });
-             });
-         } catch (e) { console.error("Erreur pour quitter la salle: ", e); }
+        const roomRef = doc(this.db, "rooms", roomId);
+        const playerRef = doc(this.db, "rooms", roomId, "players", playerId);
+        try {
+            await runTransaction(this.db, async (transaction) => {
+                const roomDoc = await transaction.get(roomRef);
+                if (!roomDoc.exists()) return;
+                const newPlayerCount = Math.max(0, (roomDoc.data().playerCount || 1) - 1);
+                transaction.delete(playerRef);
+                transaction.update(roomRef, { playerCount: newPlayerCount });
+            });
+        } catch (e) { console.error("Erreur pour quitter la salle: ", e); }
     }
 };

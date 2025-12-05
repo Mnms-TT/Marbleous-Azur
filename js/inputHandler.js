@@ -51,12 +51,13 @@ export const InputHandler = {
         const view = e.target.closest(".opponent-view");
         if (view && view.dataset.playerId && view.id !== "spell-announcement") {
           const targetId = view.dataset.playerId;
+          const targetPlayer = Game.players.get(targetId);
+
           // Si on a des sorts, on lance le premier (FIFO)
-          if (p.spells && p.spells.length > 0) {
+          if (p.spells && p.spells.length > 0 && targetPlayer) {
             // Index 0 car FIFO
-            const spellToCast = p.spells[0];
-            // Logique future : GameLogic.castSpell(p, targetId);
-            console.log("Cible sélectionnée:", targetId);
+            GameLogic.castSpecificSpell(targetPlayer, 0);
+            console.log(`Sort lancé sur ${targetPlayer.name}`);
           }
         }
       });

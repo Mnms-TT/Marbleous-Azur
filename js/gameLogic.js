@@ -96,7 +96,7 @@ export const GameLogic = {
     color:
       color ||
       Config.BUBBLE_COLORS[
-        Math.floor(Math.random() * Config.BUBBLE_COLORS.length)
+      Math.floor(Math.random() * Config.BUBBLE_COLORS.length)
       ],
     spell,
     isSpellBubble: !!spell,
@@ -119,7 +119,7 @@ export const GameLogic = {
           vy: Math.random() * 2 + 1, // Vitesse de chute
           color:
             Config.BUBBLE_COLORS[
-              Math.floor(Math.random() * Config.BUBBLE_COLORS.length)
+            Math.floor(Math.random() * Config.BUBBLE_COLORS.length)
             ],
         });
       }
@@ -359,7 +359,7 @@ export const GameLogic = {
       )
         player.launcherBubble.color =
           Config.BUBBLE_COLORS[
-            Math.floor(Math.random() * Config.BUBBLE_COLORS.length)
+          Math.floor(Math.random() * Config.BUBBLE_COLORS.length)
           ];
     }
   },
@@ -371,7 +371,8 @@ export const GameLogic = {
       spellIndex === null ||
       spellIndex < 0 ||
       spellIndex >= Game.localPlayer.spells.length ||
-      !targetPlayer
+      !targetPlayer ||
+      (targetPlayer.team !== undefined && targetPlayer.team === Game.localPlayer.team)
     )
       return;
     const spellName = Game.localPlayer.spells[spellIndex];
@@ -452,7 +453,7 @@ export const GameLogic = {
             .slice(0, Math.random() < 0.7 ? 1 : 2);
           const newColor =
             Config.BUBBLE_COLORS[
-              Math.floor(Math.random() * Config.BUBBLE_COLORS.length)
+            Math.floor(Math.random() * Config.BUBBLE_COLORS.length)
             ];
           for (const c of colsToChange)
             for (let r = 0; r < Config.GRID_ROWS; r++)
@@ -677,4 +678,15 @@ export const GameLogic = {
     if (player.isAlive)
       await FirebaseController.updatePlayerDoc(player.id, { isAlive: false });
   },
+
+  startHeartbeat() {
+    if (Game.heartbeatInterval) clearInterval(Game.heartbeatInterval);
+    Game.heartbeatInterval = setInterval(() => {
+      if (Game.localPlayer && FirebaseController.auth.currentUser) {
+        FirebaseController.updatePlayerDoc(FirebaseController.auth.currentUser.uid, {
+          lastActive: Date.now()
+        });
+      }
+    }, 5000);
+  }
 };

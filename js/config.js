@@ -81,5 +81,5 @@ export const Config = {
 
   SPELL_SPAWN_CHANCE: 0.5,
   FPS: 60,
-  LAUNCHER_ROTATION_SPEED: 0.05,
+  LAUNCHER_ROTATION_SPEED: 0.014, // Vitesse réduite (5/9 de 0.05, puis divisé par 2)
 };

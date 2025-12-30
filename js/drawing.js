@@ -21,20 +21,8 @@ export const Drawing = {
     const rad = isMain ? Game.bubbleRadius : (canvas.width / 17) * 0.95;
     if (!rad || rad < 1) return;
 
-    // --- 1. FOND MOSAÏQUE ORANGE (Style Arcade) ---
-    const tileSize = 20;
-    const cols = Math.ceil(canvas.width / tileSize);
-    const rows = Math.ceil(canvas.height / tileSize);
-
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const seed = Math.sin(c * 12.9898 + r * 78.233) * 43758.5453;
-        const rand = seed - Math.floor(seed);
-        const colorIndex = Math.floor(rand * Config.PATCHWORK_ORANGES.length);
-        ctx.fillStyle = Config.PATCHWORK_ORANGES[colorIndex];
-        ctx.fillRect(c * tileSize, r * tileSize, tileSize, tileSize);
-      }
-    }
+    // --- Effacer le canvas (transparent pour voir le fond orange CSS) ---
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     const isGameActive = Game.state === "playing" || Game.state === "countdown";
 
@@ -43,39 +31,112 @@ export const Drawing = {
     } else {
       this.drawGameState(ctx, canvas, player, rad, isMain);
     }
+  },
 
-    if (isMain) this.drawSpellBar(ctx, canvas, player);
+  drawLobbyState(ctx, canvas, player, isMain) {
+    // Le fond orange est géré par le CSS, pas besoin de dessiner de fond
+
+    // Animation de pluie de billes
+    if (Game.lobbyMarbles && Game.lobbyMarbles.length > 0) {
+      Game.lobbyMarbles.forEach((marble) => {
+        const grad = ctx.createRadialGradient(
+          marble.x - marble.r / 3,
+          marble.y - marble.r / 3,
+          marble.r / 4,
+          marble.x,
+          marble.y,
+          marble.r
+        );
+        grad.addColorStop(0, marble.color.main);
+        grad.addColorStop(1, marble.color.shadow);
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(marble.x, marble.y, marble.r, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Reflet
+        ctx.fillStyle = "rgba(255,255,255,0.4)";
+        ctx.beginPath();
+        ctx.ellipse(
+          marble.x - marble.r * 0.3,
+          marble.y - marble.r * 0.3,
+          marble.r * 0.2,
+          marble.r * 0.1,
+          Math.PI / 4,
+          0,
+          Math.PI * 2
+        );
+        ctx.fill();
+      });
+    }
+
+    // Affichage du statut du joueur (principal uniquement)
+    if (isMain && player) {
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+
+      // Cadre de statut
+      const boxWidth = canvas.width * 0.8;
+      const boxHeight = 120;
+      const boxX = centerX - boxWidth / 2;
+      const boxY = centerY - boxHeight / 2;
+
+      // Fond du cadre
+      ctx.fillStyle = player.isReady
+        ? "rgba(34, 197, 94, 0.9)"
+        : "rgba(251, 146, 60, 0.9)";
+      this.roundRect(ctx, boxX, boxY, boxWidth, boxHeight, 12);
+      ctx.fill();
+
+      // Bordure
+      ctx.strokeStyle = "white";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // Nom du joueur
+      ctx.fillStyle = "white";
+      ctx.font = "bold 18px Inter, Arial, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(player.name || "Joueur", centerX, boxY + 35);
+
+      // Statut
+      ctx.font = "bold 24px Inter, Arial, sans-serif";
+      const statusText = player.isReady ? "✓ PRÊT" : "Cliquez pour être PRÊT";
+      ctx.fillText(statusText, centerX, boxY + 75);
+
+      // Indicateur d'équipe
+      if (player.team !== undefined) {
+        const teamColor = Config.TEAM_COLORS[player.team] || "#3B82F6";
+        ctx.beginPath();
+        ctx.arc(boxX + 25, boxY + 25, 12, 0, Math.PI * 2);
+        ctx.fillStyle = teamColor;
+        ctx.fill();
+        ctx.strokeStyle = "white";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+    }
   },
 
   drawGameState(ctx, canvas, player, rad, isMain) {
     // Calcul de la ligne de séparation (Game Over Line)
-    // Elle doit être à la 12ème rangée (Config.GAME_OVER_ROW = 11)
     const gridPixelHeight = (Config.GAME_OVER_ROW + 0.5) * (rad * 1.732) + rad;
     const deadLineY = gridPixelHeight + 10;
 
-    // --- DASHBOARD (Zone sous la ligne noire) ---
-    // On remplit tout le bas du canvas à partir de la ligne noire
-    if (deadLineY < canvas.height) {
-      const grad = ctx.createLinearGradient(0, deadLineY, 0, canvas.height);
-      grad.addColorStop(0, "#9f1239"); // Rouge/Rose foncé
-      grad.addColorStop(1, "#881337"); // Plus sombre
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, deadLineY, canvas.width, canvas.height - deadLineY);
-    }
+    // Le fond orange est géré par CSS, pas de dashboard dessiné ici
 
     // --- CANON (Viseur Radar) ---
     if (isMain) {
       // Le canon est positionné dans la zone dashboard
       // On le centre horizontalement
       const centerX = canvas.width / 2;
-      // Le pivot est en bas du canvas (ou un peu au dessus)
-      const spellBarHeight = 40;
-      const cannonPivotY = canvas.height - spellBarHeight - 10;
+      // Le pivot est en bas du canvas avec une petite marge
+      const cannonPivotY = canvas.height - 15;
 
       // Rayon du radar : Doit tenir entre la ligne noire et le pivot
       // On le limite pour qu'il ne soit pas trop grand
-      const maxRadius = Math.min(150, cannonPivotY - deadLineY - 10);
-      const cannonRadius = Math.max(50, maxRadius);
+      const maxRadius = Math.min(120, cannonPivotY - deadLineY - 15);
+      const cannonRadius = Math.max(40, maxRadius);
 
       // 1. Fond semi-transparent (Eventail)
       ctx.save();
@@ -222,36 +283,56 @@ export const Drawing = {
 
   drawBubble(ctx, b, rad, x, y) {
     if (!b || !b.color) return;
-    const grad = ctx.createRadialGradient(
-      x - rad / 3,
-      y - rad / 3,
-      rad / 4,
-      x,
-      y,
-      rad
-    );
-    grad.addColorStop(0, b.color.main);
-    grad.addColorStop(1, b.color.shadow);
-    ctx.fillStyle = grad;
+
+    // Contour noir (style arcade)
     ctx.beginPath();
     ctx.arc(x, y, rad, 0, Math.PI * 2);
+    ctx.fillStyle = "#000";
     ctx.fill();
-    ctx.fillStyle = "rgba(255,255,255,0.6)";
+
+    // Bulle principale avec dégradé radial
+    const grad = ctx.createRadialGradient(
+      x - rad * 0.35,
+      y - rad * 0.35,
+      rad * 0.1,
+      x,
+      y,
+      rad * 0.9
+    );
+    grad.addColorStop(0, b.color.main);
+    grad.addColorStop(0.7, b.color.main);
+    grad.addColorStop(1, b.color.shadow);
+
+    ctx.beginPath();
+    ctx.arc(x, y, rad * 0.88, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Reflet principal (style arcade brillant)
+    ctx.fillStyle = "rgba(255,255,255,0.7)";
     ctx.beginPath();
     ctx.ellipse(
       x - rad * 0.3,
-      y - rad * 0.3,
-      rad * 0.25,
+      y - rad * 0.35,
+      rad * 0.28,
       rad * 0.15,
       Math.PI / 4,
       0,
       Math.PI * 2
     );
     ctx.fill();
+
+    // Petit reflet secondaire
+    ctx.fillStyle = "rgba(255,255,255,0.4)";
+    ctx.beginPath();
+    ctx.arc(x - rad * 0.15, y - rad * 0.2, rad * 0.08, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Icône de sort si applicable
     if (b.isSpellBubble && b.spell && Game.spellIcons[b.spell]) {
       const icon = Game.spellIcons[b.spell];
       if (icon.complete)
-        ctx.drawImage(icon, x - rad * 0.7, y - rad * 0.7, rad * 1.4, rad * 1.4);
+        ctx.drawImage(icon, x - rad * 0.6, y - rad * 0.6, rad * 1.2, rad * 1.2);
     }
   },
 

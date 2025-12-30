@@ -2,13 +2,12 @@ const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore } = require("firebase-admin/firestore");
 
-// Initialise l'application pour avoir accès à la base de données
 initializeApp();
 
-// Cette fonction est planifiée pour s'exécuter toutes les 5 minutes
-exports.cleanupInactivePlayers = onSchedule("every 5 minutes", async (event) => {
+// Cette fonction est planifiée pour s'exécuter toutes les minutes
+exports.cleanupInactivePlayers = onSchedule("every 1 minutes", async (event) => {
   const db = getFirestore();
-  const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
+  const oneMinuteAgo = Date.now() - (1 * 60 * 1000);
 
   console.log("Exécution du nettoyage des joueurs inactifs...");
 
@@ -28,13 +27,13 @@ exports.cleanupInactivePlayers = onSchedule("every 5 minutes", async (event) => 
     const playersRef = roomRef.collection("players");
 
     // 3. Trouver les joueurs inactifs dans la salle
-    const inactivePlayersQuery = playersRef.where("lastActive", "<", fiveMinutesAgo);
-    
+    const inactivePlayersQuery = playersRef.where("lastActive", "<", oneMinuteAgo);
+
     const promise = inactivePlayersQuery.get().then(async (snapshot) => {
       if (snapshot.empty) {
         return;
       }
-      
+
       // 4. Supprimer les joueurs inactifs et mettre à jour le compteur
       await db.runTransaction(async (transaction) => {
         const currentRoomDoc = await transaction.get(roomRef);
@@ -42,7 +41,7 @@ exports.cleanupInactivePlayers = onSchedule("every 5 minutes", async (event) => 
 
         const currentCount = currentRoomDoc.data().playerCount || 0;
         const inactiveCount = snapshot.size;
-        
+
         snapshot.forEach((playerDoc) => {
           transaction.delete(playerDoc.ref);
         });

@@ -86,11 +86,10 @@ export const UI = {
     <div class="flex flex-col items-center justify-center w-full h-full bg-orange-600 p-1">
         <div class="flex flex-wrap justify-center gap-1 mb-1">
             ${Config.TEAM_COLORS.map(
-              (c, i) =>
-                `<button style="background:${c}; width:12px; height:12px; border-radius:50%; border:${
-                  Game.localPlayer.team === i ? "2px solid white" : "none"
-                }" onclick="window.handleTeamChange(${i})"></button>`
-            ).join("")}
+      (c, i) =>
+        `<button style="background:${c}; width:12px; height:12px; border-radius:50%; border:${Game.localPlayer.team === i ? "2px solid white" : "none"
+        }" onclick="window.handleTeamChange(${i})"></button>`
+    ).join("")}
         </div>
         <button class="bg-black/40 hover:bg-black/60 text-white text-[9px] font-bold px-2 py-1 rounded border border-white/20" onclick="document.getElementById('gameCanvas').click()">GO</button>
     </div>`;
@@ -132,39 +131,31 @@ export const UI = {
         "<span class='text-white font-bold text-xs'>Annonces</span>";
   },
 
-  updatePlayerStats() {},
+  updatePlayerStats() { },
 
   resizeAllCanvases() {
     const container = document.getElementById("canvas-container");
     const mainCanvas = document.getElementById("gameCanvas");
 
     if (container && mainCanvas) {
-      const h = container.clientHeight;
-      const w = Math.floor(h * 0.6);
-      const heightInt = Math.floor(h);
+      // Le canvas prend TOUTE la largeur et hauteur du conteneur
+      const canvasW = container.clientWidth;
+      const canvasH = container.clientHeight;
 
-      if (mainCanvas.width !== w || mainCanvas.height !== heightInt) {
-        mainCanvas.width = w;
-        mainCanvas.height = heightInt;
-        mainCanvas.style.width = `${w}px`;
-        mainCanvas.style.height = `${heightInt}px`;
+      if (mainCanvas.width !== canvasW || mainCanvas.height !== canvasH) {
+        mainCanvas.width = canvasW;
+        mainCanvas.height = canvasH;
 
-        // --- MODIFICATION RATIO ---
-        // On limite la hauteur de la grille à 62% de l'écran.
-        // Le reste (38%) est pour le dashboard.
-        const maxGridHeight = heightInt * 0.62;
-        const radFromHeight =
-          maxGridHeight / ((Config.GAME_OVER_ROW + 0.5) * 1.732);
+        // Calculer le rayon pour que les bulles remplissent toute la LARGEUR
+        // La grille de 8 colonnes + offset nécessite 17 rayons de large
+        const radius = canvasW / 17;
 
-        const radFromWidth = w / 17;
-
-        // On prend le plus petit pour que tout rentre
-        Game.bubbleRadius = Math.min(radFromWidth, radFromHeight);
-
+        Game.bubbleRadius = radius;
         Drawing.drawAll();
       }
     }
 
+    // Redimensionner les canvas des adversaires
     Game.players.forEach((p) => {
       if (p.id !== Game.localPlayer?.id && p.canvas) {
         const parent = p.canvas.parentElement;
@@ -178,9 +169,40 @@ export const UI = {
         }
       }
     });
+
+    // Mettre à jour la barre de sorts
+    this.updateSpellsBar();
   },
 
-  updateSpellAnnouncement(caster, spellInfo, target) {},
+  updateSpellsBar() {
+    const spellSlots = document.querySelectorAll("#spells-bar .spell-slot");
+    if (!spellSlots.length || !Game.localPlayer) return;
+
+    spellSlots.forEach((slot, i) => {
+      slot.innerHTML = "";
+      slot.style.backgroundColor = "rgba(30, 41, 59, 0.8)";
+
+      if (Game.localPlayer.spells && Game.localPlayer.spells[i]) {
+        const spellName = Game.localPlayer.spells[i];
+        const spellInfo = Config.SPELLS[spellName];
+        if (spellInfo) {
+          const icon = Game.spellIcons[spellName];
+          if (icon && icon.complete) {
+            const img = document.createElement("img");
+            img.src = icon.src;
+            img.style.width = "100%";
+            img.style.height = "100%";
+            img.style.objectFit = "contain";
+            slot.appendChild(img);
+          } else {
+            slot.style.backgroundColor = spellInfo.color;
+          }
+        }
+      }
+    });
+  },
+
+  updateSpellAnnouncement(caster, spellInfo, target) { },
   preloadSpellIcons: () =>
     Object.values(Config.SPELLS).forEach((s) => {
       const i = new Image();

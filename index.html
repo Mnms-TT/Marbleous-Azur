@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,17 +10,18 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        body { 
-            font-family: 'Inter', sans-serif; 
-            background-color: #0c1445; 
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0c1445;
         }
+
         .room-card {
             background-color: #fb923c;
-            background-image: 
-                linear-gradient(rgba(255,255,255,.07) 2px, transparent 2px),
-                linear-gradient(90deg, rgba(255,255,255,.07) 2px, transparent 2px);
+            background-image:
+                linear-gradient(rgba(255, 255, 255, .07) 2px, transparent 2px),
+                linear-gradient(90deg, rgba(255, 255, 255, .07) 2px, transparent 2px);
             background-size: 100px 100px, 100px 100px;
-            background-position:-2px -2px, -2px -2px;
+            background-position: -2px -2px, -2px -2px;
             border: 2px solid #ffffff;
             border-radius: 0.5rem;
             aspect-ratio: 8 / 11;
@@ -31,35 +33,39 @@
             align-items: center;
             text-align: center;
         }
+
         .room-card:hover {
             transform: scale(1.05);
             box-shadow: 0 0 20px #fde047;
         }
+
         .room-card.full {
             cursor: not-allowed;
-            background-color: #7f1d1d; /* Rouge sombre pour indiquer que c'est plein */
+            background-color: #7f1d1d;
+            /* Rouge sombre pour indiquer que c'est plein */
             background-image: none;
         }
+
         .room-card.full:hover {
             transform: none;
             box-shadow: none;
         }
     </style>
 </head>
+
 <body class="text-white">
 
     <div class="container mx-auto p-6 sm:p-8">
         <h1 class="text-4xl sm:text-5xl font-bold text-center mb-8">Hall d'accueil</h1>
         <div id="rooms-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 md:gap-6">
-            </div>
+        </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-        // Mettez votre configuration Firebase ici
         const firebaseConfig = {
             apiKey: "AIzaSyCIMWeeRs9ZWh8izEtzV_P53ar95mNqZOw",
             authDomain: "marbleous-azur.firebaseapp.com",
@@ -74,7 +80,9 @@
         const db = getFirestore(app);
         const auth = getAuth(app);
 
-        // Connexion anonyme de l'utilisateur
+        // Seuil d'inactivité : 30 secondes
+        const INACTIVITY_THRESHOLD = 30 * 1000;
+
         signInAnonymously(auth).catch(error => {
             console.error("Erreur d'authentification anonyme:", error);
             alert("Impossible de se connecter au service. Veuillez rafraîchir la page.");
@@ -91,78 +99,130 @@
         const MAX_ROOMS = 10;
         const MAX_PLAYERS_PER_ROOM = 10;
 
+        // Cache pour stocker le nombre de joueurs actifs par salle
+        const activePlayersCache = new Map();
+        // Unsubscribers pour les listeners de joueurs
+        const playerUnsubscribers = new Map();
+
         /**
          * Initialise le lobby en écoutant les changements sur les salles.
          */
         function initializeLobby() {
-            const roomsCollection = collection(db, "rooms");
-            onSnapshot(roomsCollection, (snapshot) => {
-                let roomsData = new Map();
-                snapshot.forEach(doc => {
-                    roomsData.set(doc.id, doc.data());
-                });
-                
-                updateRoomsGrid(roomsData);
-            });
+            // Écouter chaque salle individuellement pour obtenir le compte réel des joueurs
+            for (let i = 1; i <= MAX_ROOMS; i++) {
+                const roomId = `salle_${i}`;
+                listenToRoomPlayers(roomId);
+            }
         }
 
         /**
-         * Met à jour l'affichage de la grille des salles.
-         * @param {Map<string, object>} roomsData - Les données actuelles des salles.
+         * Écoute les joueurs d'une salle et compte uniquement les actifs.
          */
-        function updateRoomsGrid(roomsData) {
-            roomsGrid.innerHTML = ''; // Vide la grille avant de la redessiner
-            
-            for (let i = 1; i <= MAX_ROOMS; i++) {
-                const roomId = `salle_${i}`;
-                const roomData = roomsData.get(roomId);
-                createRoomCard(roomId, roomData);
+        function listenToRoomPlayers(roomId) {
+            const playersCollection = collection(db, "rooms", roomId, "players");
+
+            // Annuler l'ancien listener si existant
+            if (playerUnsubscribers.has(roomId)) {
+                playerUnsubscribers.get(roomId)();
+            }
+
+            const unsubscribe = onSnapshot(playersCollection, (snapshot) => {
+                const now = Date.now();
+                let activeCount = 0;
+                const ghostPlayers = [];
+
+                snapshot.docs.forEach(playerDoc => {
+                    const data = playerDoc.data();
+                    const lastActive = data.lastActive || 0;
+
+                    // Joueur actif = lastActive < seuil d'inactivité
+                    if (now - lastActive < INACTIVITY_THRESHOLD) {
+                        activeCount++;
+                    } else {
+                        // Marquer comme fantôme pour nettoyage
+                        ghostPlayers.push(playerDoc.id);
+                    }
+                });
+
+                // Nettoyer les fantômes automatiquement (si on est connecté)
+                if (ghostPlayers.length > 0 && auth.currentUser) {
+                    cleanupGhostPlayers(roomId, ghostPlayers);
+                }
+
+                activePlayersCache.set(roomId, activeCount);
+                updateRoomCard(roomId, activeCount);
+            });
+
+            playerUnsubscribers.set(roomId, unsubscribe);
+        }
+
+        /**
+         * Supprime les joueurs fantômes d'une salle.
+         */
+        async function cleanupGhostPlayers(roomId, ghostPlayerIds) {
+            try {
+                const batch = writeBatch(db);
+                ghostPlayerIds.forEach(playerId => {
+                    const playerRef = doc(db, "rooms", roomId, "players", playerId);
+                    batch.delete(playerRef);
+                });
+
+                // Mettre à jour le compteur de la salle
+                const roomRef = doc(db, "rooms", roomId);
+                const currentCount = activePlayersCache.get(roomId) || 0;
+                batch.set(roomRef, { playerCount: currentCount }, { merge: true });
+
+                await batch.commit();
+                console.log(`Nettoyé ${ghostPlayerIds.length} fantôme(s) de ${roomId}`);
+            } catch (e) {
+                console.error("Erreur nettoyage fantômes:", e);
             }
         }
-        
+
         /**
-         * Crée et ajoute une carte de salle à la grille.
-         * @param {string} roomId - L'identifiant de la salle (ex: "salle_1").
-         * @param {object} roomData - Les données de la salle depuis Firestore.
+         * Met à jour une carte de salle spécifique.
          */
-        function createRoomCard(roomId, roomData) {
-            const card = document.createElement('div');
-            card.className = 'room-card p-4';
-            
+        function updateRoomCard(roomId, playerCount) {
+            let card = document.getElementById(`room-${roomId}`);
             const roomNumber = roomId.split('_')[1];
-            const name = roomData?.name || `Salle ${roomNumber}`;
-            const playerCount = roomData?.playerCount || 0;
-            
+            const name = `Salle ${roomNumber}`;
+
+            if (!card) {
+                card = document.createElement('div');
+                card.id = `room-${roomId}`;
+                card.className = 'room-card p-4';
+                roomsGrid.appendChild(card);
+            }
+
             card.innerHTML = `
                 <h2 class="text-xl sm:text-2xl font-bold mb-2">${name}</h2>
                 <p class="text-base sm:text-lg font-semibold">Joueurs</p>
                 <p class="text-3xl sm:text-4xl font-bold my-2">${playerCount} / ${MAX_PLAYERS_PER_ROOM}</p>
             `;
 
+            card.classList.remove('full');
             if (playerCount >= MAX_PLAYERS_PER_ROOM) {
                 card.classList.add('full');
                 card.innerHTML += '<p class="mt-2 font-bold text-red-300">Pleine</p>';
+                card.onclick = null;
             } else {
                 card.onclick = () => joinRoom(roomId);
             }
-            
-            roomsGrid.appendChild(card);
         }
 
         /**
          * Redirige le joueur vers la page de jeu de la salle sélectionnée.
-         * @param {string} roomId - L'identifiant de la salle à rejoindre.
          */
         function joinRoom(roomId) {
             if (!auth.currentUser) {
                 alert("Vous n'êtes pas connecté. Veuillez rafraîchir la page.");
                 return;
             }
-            // Redirige vers la page de jeu avec l'ID de la salle en paramètre
             window.location.href = `game.html?roomId=${roomId}`;
         }
 
     </script>
 
 </body>
+
 </html>

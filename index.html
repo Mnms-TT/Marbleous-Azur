@@ -80,8 +80,8 @@
         const db = getFirestore(app);
         const auth = getAuth(app);
 
-        // Seuil d'inactivité : 30 secondes
-        const INACTIVITY_THRESHOLD = 30 * 1000;
+        // Seuil d'inactivité : 60 secondes (économie de quota Firebase)
+        const INACTIVITY_THRESHOLD = 60 * 1000;
 
         signInAnonymously(auth).catch(error => {
             console.error("Erreur d'authentification anonyme:", error);

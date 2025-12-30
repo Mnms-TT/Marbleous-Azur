@@ -687,6 +687,6 @@ export const GameLogic = {
           lastActive: Date.now()
         });
       }
-    }, 3000); // Heartbeat toutes les 3 secondes
+    }, 30000); // Heartbeat toutes les 30 secondes (économie de quota)
   }
 };

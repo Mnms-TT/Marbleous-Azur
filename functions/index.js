@@ -4,10 +4,10 @@ const { getFirestore } = require("firebase-admin/firestore");
 
 initializeApp();
 
-// Cette fonction est planifiée pour s'exécuter toutes les minutes
-exports.cleanupInactivePlayers = onSchedule("every 1 minutes", async (event) => {
+// Cette fonction est planifiée pour s'exécuter toutes les 5 minutes (économie de quota)
+exports.cleanupInactivePlayers = onSchedule("every 5 minutes", async (event) => {
   const db = getFirestore();
-  const oneMinuteAgo = Date.now() - (1 * 60 * 1000);
+  const twoMinutesAgo = Date.now() - (2 * 60 * 1000);
 
   console.log("Exécution du nettoyage des joueurs inactifs...");
 
@@ -27,7 +27,7 @@ exports.cleanupInactivePlayers = onSchedule("every 1 minutes", async (event) => 
     const playersRef = roomRef.collection("players");
 
     // 3. Trouver les joueurs inactifs dans la salle
-    const inactivePlayersQuery = playersRef.where("lastActive", "<", oneMinuteAgo);
+    const inactivePlayersQuery = playersRef.where("lastActive", "<", twoMinutesAgo);
 
     const promise = inactivePlayersQuery.get().then(async (snapshot) => {
       if (snapshot.empty) {

@@ -2,9 +2,9 @@
 <html lang="fr">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Marbleous - Hall d'accueil</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Marbleous - Accueil</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -17,212 +17,239 @@
         html,
         body {
             height: 100%;
+            width: 100%;
+            overflow: hidden;
+            background: #000;
             font-family: 'Inter', sans-serif;
-            background: #0c1445;
-            color: white;
+        }
+
+        #game-wrapper {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #0a0a15;
+        }
+
+        /* Même layout que game.html */
+        #game-container {
+            aspect-ratio: 4 / 3;
+            max-width: 100vw;
+            max-height: 100vh;
+            display: grid;
+            grid-template-columns: 28% 72%;
+            grid-template-rows: 65% 35%;
             overflow: hidden;
         }
 
-        #lobby-container {
-            width: 100%;
-            height: 100%;
+        @media (min-aspect-ratio: 4/3) {
+            #game-container {
+                height: 100vh;
+                width: auto;
+            }
+        }
+
+        @media (max-aspect-ratio: 4/3) {
+            #game-container {
+                width: 100vw;
+                height: auto;
+            }
+        }
+
+        /* Zone jeu solo (gauche) - même patchwork que game.html */
+        #player-zone {
+            grid-column: 1;
+            grid-row: 1;
             display: flex;
             flex-direction: column;
-            padding: 8px;
+            background:
+                repeating-linear-gradient(to right,
+                    rgba(120, 60, 0, 0.4) 0px, rgba(120, 60, 0, 0.4) 2px,
+                    transparent 2px, transparent 60px),
+                repeating-linear-gradient(to bottom,
+                    rgba(120, 60, 0, 0.4) 0px, rgba(120, 60, 0, 0.4) 2px,
+                    transparent 2px, transparent 80px),
+                linear-gradient(145deg, #fb923c 0%, #f97316 25%, #fdba74 50%, #ea580c 75%, #fb923c 100%);
+            background-size: 60px 80px, 60px 80px, 100% 100%;
+            overflow: hidden;
         }
 
-        /* Barre du haut */
-        #top-bar {
+        #solo-area {
+            flex: 1;
             display: flex;
-            gap: 10px;
+            flex-direction: column;
             align-items: center;
-            padding: 6px 10px;
-            background: linear-gradient(to bottom, #2563eb, #1e40af);
-            border: 2px solid #3b82f6;
-            border-radius: 4px;
-            margin-bottom: 8px;
-            flex-wrap: wrap;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
         }
 
-        #top-bar label {
-            font-size: 12px;
-            color: #93c5fd;
-        }
-
-        #top-bar input,
-        #top-bar select {
-            background: #1e3a8a;
-            border: 1px solid #3b82f6;
+        #solo-area h1 {
+            font-size: 28px;
+            font-weight: bold;
             color: white;
-            padding: 4px 8px;
-            font-size: 12px;
-            border-radius: 3px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            margin-bottom: 10px;
+        }
+
+        #solo-area p {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 20px;
+        }
+
+        #pseudo-input {
+            width: 80%;
+            max-width: 200px;
+            padding: 10px;
+            font-size: 14px;
+            border: 2px solid #fff;
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.3);
+            color: white;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        #pseudo-input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
         }
 
         #btn-play {
             background: linear-gradient(to bottom, #22c55e, #16a34a);
             border: 2px solid #4ade80;
             color: white;
-            padding: 6px 16px;
+            padding: 12px 30px;
+            font-size: 16px;
             font-weight: bold;
-            border-radius: 4px;
+            border-radius: 8px;
             cursor: pointer;
-            margin-left: auto;
         }
 
         #btn-play:hover {
             background: #16a34a;
         }
 
-        /* Zone principale */
-        #main-area {
-            flex: 1;
-            display: grid;
-            grid-template-columns: 160px 1fr 280px;
-            gap: 8px;
-            min-height: 0;
+        #spells-bar {
+            height: 34px;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            padding: 0 8px;
+            gap: 4px;
+            border-top: 1px solid #444;
         }
 
-        /* Panneau joueurs en ligne (gauche) */
-        #players-panel {
-            background: linear-gradient(to bottom, #1e3a8a, #0c1445);
-            border: 2px solid #3b82f6;
-            border-radius: 4px;
+        #spells-bar span {
+            font-size: 11px;
+            color: #f97316;
+            font-weight: bold;
+            margin-right: 6px;
+        }
+
+        /* Zone salles (droite) - comme adversaires dans game.html */
+        #rooms-zone {
+            grid-column: 2;
+            grid-row: 1;
+            background: linear-gradient(180deg, #1e3a8a 0%, #0c1445 100%);
             display: flex;
             flex-direction: column;
             overflow: hidden;
         }
 
-        #players-panel h3 {
-            background: #2563eb;
-            padding: 6px 10px;
-            font-size: 13px;
-            font-weight: bold;
+        #rooms-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 12px;
+            background: rgba(0, 0, 0, 0.3);
             border-bottom: 1px solid #3b82f6;
         }
 
-        #players-list {
-            flex: 1;
-            overflow-y: auto;
-            padding: 6px;
-            font-size: 11px;
-        }
-
-        .player-item {
-            padding: 2px 4px;
+        #rooms-header span {
+            font-size: 12px;
             color: #93c5fd;
         }
 
-        .player-item.online {
-            color: #4ade80;
+        #rooms-grid {
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 6px;
+            padding: 8px;
+            overflow: hidden;
         }
 
-        /* Zone centrale (aperçu du jeu) */
-        #game-preview {
-            background:
-                repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.08) 0px, rgba(0, 0, 0, 0.08) 1px, transparent 1px, transparent 24px),
-                repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.08) 0px, rgba(0, 0, 0, 0.08) 1px, transparent 1px, transparent 24px),
-                linear-gradient(135deg, #f97316, #fb923c, #ea580c);
-            border: 2px solid #fdba74;
+        .room-card {
+            background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+            border: 2px solid #3b82f6;
             border-radius: 4px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            position: relative;
-        }
-
-        #game-preview-title {
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            text-align: center;
-            font-size: 24px;
-            font-weight: bold;
-            color: white;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-        }
-
-        /* Panneau des salles (droite) */
-        #rooms-panel {
-            background: linear-gradient(to bottom, #1e3a8a, #0c1445);
-            border: 2px solid #3b82f6;
-            border-radius: 4px;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-
-        #rooms-panel h3 {
-            background: #2563eb;
-            padding: 6px 10px;
-            font-size: 13px;
-            font-weight: bold;
-            border-bottom: 1px solid #3b82f6;
-        }
-
-        #rooms-grid {
-            flex: 1;
-            overflow-y: auto;
-            padding: 6px;
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 6px;
-        }
-
-        .room-card {
-            background: linear-gradient(to bottom, #f97316, #ea580c);
-            border: 2px solid #fdba74;
-            border-radius: 4px;
-            padding: 8px;
-            text-align: center;
             cursor: pointer;
-            transition: transform 0.15s, box-shadow 0.15s;
+            transition: transform 0.15s, border-color 0.15s;
         }
 
         .room-card:hover {
             transform: scale(1.03);
-            box-shadow: 0 0 10px #fde047;
+            border-color: #60a5fa;
+        }
+
+        .room-card.active {
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            border-color: #fdba74;
+        }
+
+        .room-card h4 {
+            font-size: 11px;
+            font-weight: bold;
+            color: white;
+        }
+
+        .room-card .count {
+            font-size: 14px;
+            font-weight: bold;
+            color: #fbbf24;
         }
 
         .room-card.full {
-            background: linear-gradient(to bottom, #991b1b, #7f1d1d);
+            background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);
             border-color: #f87171;
             cursor: not-allowed;
         }
 
-        .room-card h4 {
-            font-size: 12px;
-            font-weight: bold;
-            margin-bottom: 4px;
-        }
-
-        .room-card .count {
-            font-size: 16px;
-            font-weight: bold;
-        }
-
-        /* Zone chat (bas) */
-        #chat-panel {
-            height: 140px;
-            background: linear-gradient(to bottom, #1e3a8a, #0c1445);
-            border: 2px solid #3b82f6;
-            border-radius: 4px;
-            margin-top: 8px;
+        /* Zone chat (bas, pleine largeur) */
+        #chat-zone {
+            grid-column: 1 / 3;
+            grid-row: 2;
+            background: linear-gradient(180deg, #1e3a8a 0%, #0c1445 100%);
             display: flex;
             flex-direction: column;
+            border-top: 2px solid #3b82f6;
+        }
+
+        #chat-header {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 12px;
+            background: rgba(0, 0, 0, 0.3);
+            font-size: 12px;
+            color: #93c5fd;
         }
 
         #chat-messages {
             flex: 1;
             overflow-y: auto;
-            padding: 6px 10px;
+            padding: 8px 12px;
             font-size: 12px;
-            min-height: 0;
         }
 
         .chat-msg {
-            margin-bottom: 2px;
+            margin-bottom: 3px;
         }
 
         .chat-msg .author {
@@ -237,7 +264,7 @@
         #chat-input-area {
             display: flex;
             gap: 8px;
-            padding: 6px;
+            padding: 8px;
             border-top: 1px solid #3b82f6;
         }
 
@@ -246,274 +273,244 @@
             background: #1e3a8a;
             border: 1px solid #3b82f6;
             color: white;
-            padding: 6px 10px;
+            padding: 8px 12px;
             font-size: 12px;
-            border-radius: 3px;
+            border-radius: 4px;
         }
 
         #btn-send {
-            background: linear-gradient(to bottom, #3b82f6, #2563eb);
-            border: 1px solid #60a5fa;
+            background: #f97316;
+            border: none;
             color: white;
-            padding: 6px 14px;
+            padding: 8px 16px;
             font-weight: bold;
-            border-radius: 3px;
+            border-radius: 4px;
             cursor: pointer;
         }
     </style>
 </head>
 
 <body>
-    <div id="lobby-container">
-        <!-- Barre du haut -->
-        <div id="top-bar">
-            <label>Pseudo:</label>
-            <input type="text" id="pseudo-input" placeholder="Joueur" maxlength="15">
-            <label>Serveur:</label>
-            <select id="server-select">
-                <option value="1">Serveur 1</option>
-            </select>
-            <button id="btn-play">JOUER</button>
-        </div>
-
-        <!-- Zone principale -->
-        <div id="main-area">
-            <!-- Joueurs en ligne -->
-            <div id="players-panel">
-                <h3>👥 En ligne</h3>
-                <div id="players-list">
-                    <div class="player-item online">Chargement...</div>
+    <div id="game-wrapper">
+        <div id="game-container">
+            <!-- Zone solo (comme player-zone dans game.html) -->
+            <div id="player-zone">
+                <div id="solo-area">
+                    <h1>🎮 MARBLEOUS</h1>
+                    <p>Entrez votre pseudo et rejoignez une salle</p>
+                    <input type="text" id="pseudo-input" placeholder="Votre pseudo..." maxlength="15">
+                    <button id="btn-play">▶ JOUER</button>
+                </div>
+                <div id="spells-bar">
+                    <span>SORTILEGES</span>
                 </div>
             </div>
 
-            <!-- Aperçu du jeu -->
-            <div id="game-preview">
-                <div id="game-preview-title">
-                    🎮 MARBLEOUS<br>
-                    <span style="font-size: 14px; font-weight: normal;">Cliquez sur une salle pour jouer</span>
+            <!-- Zone salles (comme opponents-zone dans game.html) -->
+            <div id="rooms-zone">
+                <div id="rooms-header">
+                    <span>accueil</span>
+                    <span id="online-count">0 en ligne</span>
                 </div>
-            </div>
-
-            <!-- Salles -->
-            <div id="rooms-panel">
-                <h3>🚪 Salles</h3>
                 <div id="rooms-grid"></div>
             </div>
-        </div>
 
-        <!-- Chat global -->
-        <div id="chat-panel">
-            <div id="chat-messages">
-                <div class="chat-msg"><span class="author">Système:</span> <span class="text">Bienvenue dans le lobby !
-                        Choisissez une salle pour jouer.</span></div>
-            </div>
-            <div id="chat-input-area">
-                <input type="text" id="chat-input" placeholder="Écrire un message...">
-                <button id="btn-send">Envoyer</button>
+            <!-- Chat global -->
+            <div id="chat-zone">
+                <div id="chat-header">
+                    <span>Chat global</span>
+                </div>
+                <div id="chat-messages">
+                    <div class="chat-msg"><span class="author">Système:</span> <span class="text">Bienvenue ! Cliquez
+                            sur une salle pour rejoindre.</span></div>
+                </div>
+                <div id="chat-input-area">
+                    <input type="text" id="chat-input" placeholder="Écrire un message...">
+                    <button id="btn-send">Envoyer</button>
+                </div>
             </div>
         </div>
     </div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, getDocs, writeBatch, addDoc, orderBy, query, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, onSnapshot, doc, writeBatch, addDoc, orderBy, query, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyCIMWeeRs9ZWh8izEtzV_P53ar95mNqZOw",
-            authDomain: "marbleous-azur.firebaseapp.com",
-            projectId: "marbleous-azur",
-            storageBucket: "marbleous-azur.appspot.com",
-            messagingSenderId: "297375682236",
-            appId: "1:297375682236:web:765a8de117fdf961cdcab9",
-            measurementId: "G-N1WVEB753N"
-        };
+    const firebaseConfig = {
+      apiKey: "AIzaSyCIMWeeRs9ZWh8izEtzV_P53ar95mNqZOw",
+      authDomain: "marbleous-azur.firebaseapp.com",
+      projectId: "marbleous-azur",
+      storageBucket: "marbleous-azur.appspot.com",
+      messagingSenderId: "297375682236",
+      appId: "1:297375682236:web:765a8de117fdf961cdcab9"
+    };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
 
-        const INACTIVITY_THRESHOLD = 60 * 1000;
-        const MAX_ROOMS = 10;
-        const MAX_PLAYERS_PER_ROOM = 10;
+    const INACTIVITY_THRESHOLD = 60000;
+    const MAX_ROOMS = 10;
+    const MAX_PLAYERS_PER_ROOM = 10;
 
-        const roomsGrid = document.getElementById('rooms-grid');
-        const playersList = document.getElementById('players-list');
-        const chatMessages = document.getElementById('chat-messages');
-        const chatInput = document.getElementById('chat-input');
-        const pseudoInput = document.getElementById('pseudo-input');
-        const btnPlay = document.getElementById('btn-play');
-        const btnSend = document.getElementById('btn-send');
+    const roomsGrid = document.getElementById('rooms-grid');
+    const chatMessages = document.getElementById('chat-messages');
+    const chatInput = document.getElementById('chat-input');
+    const pseudoInput = document.getElementById('pseudo-input');
+    const btnPlay = document.getElementById('btn-play');
+    const btnSend = document.getElementById('btn-send');
+    const onlineCount = document.getElementById('online-count');
 
-        const activePlayersCache = new Map();
-        const playerUnsubscribers = new Map();
-        const allPlayers = new Map();
+    const activePlayersCache = new Map();
+    const playerUnsubscribers = new Map();
+    let totalOnline = 0;
 
-        // Pseudo sauvegardé
-        pseudoInput.value = localStorage.getItem('marbleous_pseudo') || '';
-        pseudoInput.addEventListener('change', () => {
-            localStorage.setItem('marbleous_pseudo', pseudoInput.value);
+    // Charger pseudo sauvegardé
+    pseudoInput.value = localStorage.getItem('marbleous_pseudo') || '';
+    pseudoInput.addEventListener('input', () => {
+      localStorage.setItem('marbleous_pseudo', pseudoInput.value);
+    });
+
+    signInAnonymously(auth).catch(console.error);
+
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        initializeLobby();
+        listenToChat();
+      }
+    });
+
+    function initializeLobby() {
+      for (let i = 1; i <= MAX_ROOMS; i++) {
+        listenToRoomPlayers(`salle_${i}`);
+      }
+    }
+
+    function listenToRoomPlayers(roomId) {
+      const playersCollection = collection(db, "rooms", roomId, "players");
+      
+      if (playerUnsubscribers.has(roomId)) {
+        playerUnsubscribers.get(roomId)();
+      }
+
+      const unsubscribe = onSnapshot(playersCollection, (snapshot) => {
+        const now = Date.now();
+        let activeCount = 0;
+        const ghostPlayers = [];
+
+        snapshot.docs.forEach(playerDoc => {
+          const data = playerDoc.data();
+          if (now - (data.lastActive || 0) < INACTIVITY_THRESHOLD) {
+            activeCount++;
+          } else {
+            ghostPlayers.push(playerDoc.id);
+          }
         });
 
-        signInAnonymously(auth).catch(error => {
-            console.error("Erreur d'authentification:", error);
+        if (ghostPlayers.length > 0 && auth.currentUser) {
+          cleanupGhostPlayers(roomId, ghostPlayers);
+        }
+
+        activePlayersCache.set(roomId, activeCount);
+        updateRoomCard(roomId, activeCount);
+        updateOnlineCount();
+      });
+
+      playerUnsubscribers.set(roomId, unsubscribe);
+    }
+
+    async function cleanupGhostPlayers(roomId, ghostPlayerIds) {
+      try {
+        const batch = writeBatch(db);
+        ghostPlayerIds.forEach(id => batch.delete(doc(db, "rooms", roomId, "players", id)));
+        await batch.commit();
+      } catch (e) { console.error(e); }
+    }
+
+    function updateRoomCard(roomId, playerCount) {
+      let card = document.getElementById(`room-${roomId}`);
+      const roomNumber = roomId.split('_')[1];
+
+      if (!card) {
+        card = document.createElement('div');
+        card.id = `room-${roomId}`;
+        card.className = 'room-card';
+        roomsGrid.appendChild(card);
+      }
+
+      const isFull = playerCount >= MAX_PLAYERS_PER_ROOM;
+      const hasPlayers = playerCount > 0;
+      card.className = `room-card ${isFull ? 'full' : ''} ${hasPlayers ? 'active' : ''}`;
+      card.innerHTML = `
+        <h4>Salle ${roomNumber}</h4>
+        <div class="count">${playerCount}/${MAX_PLAYERS_PER_ROOM}</div>
+      `;
+      card.onclick = isFull ? null : () => joinRoom(roomId);
+    }
+
+    function updateOnlineCount() {
+      totalOnline = 0;
+      activePlayersCache.forEach(count => totalOnline += count);
+      onlineCount.textContent = `${totalOnline} en ligne`;
+    }
+
+    function joinRoom(roomId) {
+      if (!auth.currentUser) {
+        alert("Non connecté. Rafraîchissez.");
+        return;
+      }
+      const pseudo = pseudoInput.value.trim() || 'Joueur';
+      localStorage.setItem('marbleous_pseudo', pseudo);
+      window.location.href = `game.html?roomId=${roomId}&name=${encodeURIComponent(pseudo)}`;
+    }
+
+    btnPlay.onclick = () => {
+      for (let i = 1; i <= MAX_ROOMS; i++) {
+        const count = activePlayersCache.get(`salle_${i}`) || 0;
+        if (count < MAX_PLAYERS_PER_ROOM) {
+          joinRoom(`salle_${i}`);
+          return;
+        }
+      }
+      alert("Toutes les salles sont pleines !");
+    };
+
+    // Chat global
+    function listenToChat() {
+      const chatRef = collection(db, "globalChat");
+      const q = query(chatRef, orderBy("timestamp", "desc"), limit(50));
+      
+      onSnapshot(q, (snapshot) => {
+        const msgs = [];
+        snapshot.docs.forEach(doc => msgs.unshift(doc.data()));
+        
+        chatMessages.innerHTML = msgs.map(m => 
+          `<div class="chat-msg"><span class="author">${m.author}:</span> <span class="text">${m.text}</span></div>`
+        ).join('');
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      });
+    }
+
+    async function sendMessage() {
+      const text = chatInput.value.trim();
+      if (!text || !auth.currentUser) return;
+      
+      const author = pseudoInput.value.trim() || 'Joueur';
+      try {
+        await addDoc(collection(db, "globalChat"), {
+          author, text,
+          timestamp: Date.now(),
+          uid: auth.currentUser.uid
         });
+        chatInput.value = '';
+      } catch (e) { console.error(e); }
+    }
 
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                initializeLobby();
-                listenToChat();
-            }
-        });
-
-        function initializeLobby() {
-            for (let i = 1; i <= MAX_ROOMS; i++) {
-                listenToRoomPlayers(`salle_${i}`);
-            }
-        }
-
-        function listenToRoomPlayers(roomId) {
-            const playersCollection = collection(db, "rooms", roomId, "players");
-
-            if (playerUnsubscribers.has(roomId)) {
-                playerUnsubscribers.get(roomId)();
-            }
-
-            const unsubscribe = onSnapshot(playersCollection, (snapshot) => {
-                const now = Date.now();
-                let activeCount = 0;
-                const ghostPlayers = [];
-
-                snapshot.docs.forEach(playerDoc => {
-                    const data = playerDoc.data();
-                    const lastActive = data.lastActive || 0;
-
-                    if (now - lastActive < INACTIVITY_THRESHOLD) {
-                        activeCount++;
-                        allPlayers.set(playerDoc.id, { name: data.name || 'Joueur', room: roomId });
-                    } else {
-                        ghostPlayers.push(playerDoc.id);
-                        allPlayers.delete(playerDoc.id);
-                    }
-                });
-
-                if (ghostPlayers.length > 0 && auth.currentUser) {
-                    cleanupGhostPlayers(roomId, ghostPlayers);
-                }
-
-                activePlayersCache.set(roomId, activeCount);
-                updateRoomCard(roomId, activeCount);
-                updatePlayersList();
-            });
-
-            playerUnsubscribers.set(roomId, unsubscribe);
-        }
-
-        async function cleanupGhostPlayers(roomId, ghostPlayerIds) {
-            try {
-                const batch = writeBatch(db);
-                ghostPlayerIds.forEach(playerId => {
-                    batch.delete(doc(db, "rooms", roomId, "players", playerId));
-                });
-                await batch.commit();
-            } catch (e) {
-                console.error("Erreur nettoyage:", e);
-            }
-        }
-
-        function updateRoomCard(roomId, playerCount) {
-            let card = document.getElementById(`room-${roomId}`);
-            const roomNumber = roomId.split('_')[1];
-
-            if (!card) {
-                card = document.createElement('div');
-                card.id = `room-${roomId}`;
-                card.className = 'room-card';
-                roomsGrid.appendChild(card);
-            }
-
-            const isFull = playerCount >= MAX_PLAYERS_PER_ROOM;
-            card.className = `room-card ${isFull ? 'full' : ''}`;
-            card.innerHTML = `
-                <h4>Salle ${roomNumber}</h4>
-                <div class="count">${playerCount}/${MAX_PLAYERS_PER_ROOM}</div>
-            `;
-            card.onclick = isFull ? null : () => joinRoom(roomId);
-        }
-
-        function updatePlayersList() {
-            const players = Array.from(allPlayers.values());
-            if (players.length === 0) {
-                playersList.innerHTML = '<div class="player-item">Aucun joueur</div>';
-            } else {
-                playersList.innerHTML = players.map(p =>
-                    `<div class="player-item online">• ${p.name}</div>`
-                ).join('');
-            }
-        }
-
-        function joinRoom(roomId) {
-            if (!auth.currentUser) {
-                alert("Non connecté. Rafraîchissez la page.");
-                return;
-            }
-            const pseudo = pseudoInput.value.trim() || 'Joueur';
-            localStorage.setItem('marbleous_pseudo', pseudo);
-            window.location.href = `game.html?roomId=${roomId}&name=${encodeURIComponent(pseudo)}`;
-        }
-
-        btnPlay.onclick = () => {
-            // Trouver la première salle non pleine
-            for (let i = 1; i <= MAX_ROOMS; i++) {
-                const count = activePlayersCache.get(`salle_${i}`) || 0;
-                if (count < MAX_PLAYERS_PER_ROOM) {
-                    joinRoom(`salle_${i}`);
-                    return;
-                }
-            }
-            alert("Toutes les salles sont pleines !");
-        };
-
-        // Chat global
-        function listenToChat() {
-            const chatRef = collection(db, "globalChat");
-            const q = query(chatRef, orderBy("timestamp", "desc"), limit(50));
-
-            onSnapshot(q, (snapshot) => {
-                const msgs = [];
-                snapshot.docs.forEach(doc => {
-                    msgs.unshift(doc.data());
-                });
-
-                chatMessages.innerHTML = msgs.map(m =>
-                    `<div class="chat-msg"><span class="author">${m.author}:</span> <span class="text">${m.text}</span></div>`
-                ).join('');
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-            });
-        }
-
-        async function sendMessage() {
-            const text = chatInput.value.trim();
-            if (!text || !auth.currentUser) return;
-
-            const author = pseudoInput.value.trim() || 'Joueur';
-            try {
-                await addDoc(collection(db, "globalChat"), {
-                    author,
-                    text,
-                    timestamp: Date.now(),
-                    uid: auth.currentUser.uid
-                });
-                chatInput.value = '';
-            } catch (e) {
-                console.error("Erreur envoi message:", e);
-            }
-        }
-
-        btnSend.onclick = sendMessage;
-        chatInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') sendMessage();
-        });
+    btnSend.onclick = sendMessage;
+    chatInput.addEventListener('keypress', e => {
+      if (e.key === 'Enter') sendMessage();
+    });
     </script>
 </body>
 

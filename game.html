@@ -66,12 +66,18 @@
       grid-row: 1;
       display: flex;
       flex-direction: column;
-      /* Grands patchs orange avec dégradés comme référence */
+      /* Patchwork rectangulaire avec bordures visibles */
       background:
-        linear-gradient(135deg,
-          #fb923c 0%, #f97316 15%, #fdba74 30%, #ea580c 45%,
-          #fb923c 50%, #f97316 65%, #fdba74 80%, #ea580c 100%);
-      background-size: 200% 200%;
+        /* Grille de séparation entre rectangles */
+        repeating-linear-gradient(to right,
+          rgba(120, 60, 0, 0.4) 0px, rgba(120, 60, 0, 0.4) 2px,
+          transparent 2px, transparent 60px),
+        repeating-linear-gradient(to bottom,
+          rgba(120, 60, 0, 0.4) 0px, rgba(120, 60, 0, 0.4) 2px,
+          transparent 2px, transparent 80px),
+        /* Dégradé de fond orange */
+        linear-gradient(145deg, #fb923c 0%, #f97316 25%, #fdba74 50%, #ea580c 75%, #fb923c 100%);
+      background-size: 60px 80px, 60px 80px, 100% 100%;
       overflow: hidden;
     }
 

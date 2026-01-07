@@ -6,64 +6,317 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Marbleous - Hall d'accueil</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
         body {
+            height: 100%;
             font-family: 'Inter', sans-serif;
-            background-color: #0c1445;
+            background: #0c1445;
+            color: white;
+            overflow: hidden;
+        }
+
+        #lobby-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            padding: 8px;
+        }
+
+        /* Barre du haut */
+        #top-bar {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            padding: 6px 10px;
+            background: linear-gradient(to bottom, #2563eb, #1e40af);
+            border: 2px solid #3b82f6;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+
+        #top-bar label {
+            font-size: 12px;
+            color: #93c5fd;
+        }
+
+        #top-bar input,
+        #top-bar select {
+            background: #1e3a8a;
+            border: 1px solid #3b82f6;
+            color: white;
+            padding: 4px 8px;
+            font-size: 12px;
+            border-radius: 3px;
+        }
+
+        #btn-play {
+            background: linear-gradient(to bottom, #22c55e, #16a34a);
+            border: 2px solid #4ade80;
+            color: white;
+            padding: 6px 16px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: auto;
+        }
+
+        #btn-play:hover {
+            background: #16a34a;
+        }
+
+        /* Zone principale */
+        #main-area {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 160px 1fr 280px;
+            gap: 8px;
+            min-height: 0;
+        }
+
+        /* Panneau joueurs en ligne (gauche) */
+        #players-panel {
+            background: linear-gradient(to bottom, #1e3a8a, #0c1445);
+            border: 2px solid #3b82f6;
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #players-panel h3 {
+            background: #2563eb;
+            padding: 6px 10px;
+            font-size: 13px;
+            font-weight: bold;
+            border-bottom: 1px solid #3b82f6;
+        }
+
+        #players-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 6px;
+            font-size: 11px;
+        }
+
+        .player-item {
+            padding: 2px 4px;
+            color: #93c5fd;
+        }
+
+        .player-item.online {
+            color: #4ade80;
+        }
+
+        /* Zone centrale (aperçu du jeu) */
+        #game-preview {
+            background:
+                repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.08) 0px, rgba(0, 0, 0, 0.08) 1px, transparent 1px, transparent 24px),
+                repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.08) 0px, rgba(0, 0, 0, 0.08) 1px, transparent 1px, transparent 24px),
+                linear-gradient(135deg, #f97316, #fb923c, #ea580c);
+            border: 2px solid #fdba74;
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        #game-preview-title {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Panneau des salles (droite) */
+        #rooms-panel {
+            background: linear-gradient(to bottom, #1e3a8a, #0c1445);
+            border: 2px solid #3b82f6;
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #rooms-panel h3 {
+            background: #2563eb;
+            padding: 6px 10px;
+            font-size: 13px;
+            font-weight: bold;
+            border-bottom: 1px solid #3b82f6;
+        }
+
+        #rooms-grid {
+            flex: 1;
+            overflow-y: auto;
+            padding: 6px;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
         }
 
         .room-card {
-            background-color: #fb923c;
-            background-image:
-                linear-gradient(rgba(255, 255, 255, .07) 2px, transparent 2px),
-                linear-gradient(90deg, rgba(255, 255, 255, .07) 2px, transparent 2px);
-            background-size: 100px 100px, 100px 100px;
-            background-position: -2px -2px, -2px -2px;
-            border: 2px solid #ffffff;
-            border-radius: 0.5rem;
-            aspect-ratio: 8 / 11;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
+            background: linear-gradient(to bottom, #f97316, #ea580c);
+            border: 2px solid #fdba74;
+            border-radius: 4px;
+            padding: 8px;
             text-align: center;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
         }
 
         .room-card:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 20px #fde047;
+            transform: scale(1.03);
+            box-shadow: 0 0 10px #fde047;
         }
 
         .room-card.full {
+            background: linear-gradient(to bottom, #991b1b, #7f1d1d);
+            border-color: #f87171;
             cursor: not-allowed;
-            background-color: #7f1d1d;
-            /* Rouge sombre pour indiquer que c'est plein */
-            background-image: none;
         }
 
-        .room-card.full:hover {
-            transform: none;
-            box-shadow: none;
+        .room-card h4 {
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .room-card .count {
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        /* Zone chat (bas) */
+        #chat-panel {
+            height: 140px;
+            background: linear-gradient(to bottom, #1e3a8a, #0c1445);
+            border: 2px solid #3b82f6;
+            border-radius: 4px;
+            margin-top: 8px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 6px 10px;
+            font-size: 12px;
+            min-height: 0;
+        }
+
+        .chat-msg {
+            margin-bottom: 2px;
+        }
+
+        .chat-msg .author {
+            color: #fbbf24;
+            font-weight: bold;
+        }
+
+        .chat-msg .text {
+            color: #e2e8f0;
+        }
+
+        #chat-input-area {
+            display: flex;
+            gap: 8px;
+            padding: 6px;
+            border-top: 1px solid #3b82f6;
+        }
+
+        #chat-input {
+            flex: 1;
+            background: #1e3a8a;
+            border: 1px solid #3b82f6;
+            color: white;
+            padding: 6px 10px;
+            font-size: 12px;
+            border-radius: 3px;
+        }
+
+        #btn-send {
+            background: linear-gradient(to bottom, #3b82f6, #2563eb);
+            border: 1px solid #60a5fa;
+            color: white;
+            padding: 6px 14px;
+            font-weight: bold;
+            border-radius: 3px;
+            cursor: pointer;
         }
     </style>
 </head>
 
-<body class="text-white">
+<body>
+    <div id="lobby-container">
+        <!-- Barre du haut -->
+        <div id="top-bar">
+            <label>Pseudo:</label>
+            <input type="text" id="pseudo-input" placeholder="Joueur" maxlength="15">
+            <label>Serveur:</label>
+            <select id="server-select">
+                <option value="1">Serveur 1</option>
+            </select>
+            <button id="btn-play">JOUER</button>
+        </div>
 
-    <div class="container mx-auto p-6 sm:p-8">
-        <h1 class="text-4xl sm:text-5xl font-bold text-center mb-8">Hall d'accueil</h1>
-        <div id="rooms-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 md:gap-6">
+        <!-- Zone principale -->
+        <div id="main-area">
+            <!-- Joueurs en ligne -->
+            <div id="players-panel">
+                <h3>👥 En ligne</h3>
+                <div id="players-list">
+                    <div class="player-item online">Chargement...</div>
+                </div>
+            </div>
+
+            <!-- Aperçu du jeu -->
+            <div id="game-preview">
+                <div id="game-preview-title">
+                    🎮 MARBLEOUS<br>
+                    <span style="font-size: 14px; font-weight: normal;">Cliquez sur une salle pour jouer</span>
+                </div>
+            </div>
+
+            <!-- Salles -->
+            <div id="rooms-panel">
+                <h3>🚪 Salles</h3>
+                <div id="rooms-grid"></div>
+            </div>
+        </div>
+
+        <!-- Chat global -->
+        <div id="chat-panel">
+            <div id="chat-messages">
+                <div class="chat-msg"><span class="author">Système:</span> <span class="text">Bienvenue dans le lobby !
+                        Choisissez une salle pour jouer.</span></div>
+            </div>
+            <div id="chat-input-area">
+                <input type="text" id="chat-input" placeholder="Écrire un message...">
+                <button id="btn-send">Envoyer</button>
+            </div>
         </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, getDocs, writeBatch, addDoc, orderBy, query, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
         const firebaseConfig = {
@@ -80,48 +333,48 @@
         const db = getFirestore(app);
         const auth = getAuth(app);
 
-        // Seuil d'inactivité : 60 secondes (économie de quota Firebase)
         const INACTIVITY_THRESHOLD = 60 * 1000;
+        const MAX_ROOMS = 10;
+        const MAX_PLAYERS_PER_ROOM = 10;
+
+        const roomsGrid = document.getElementById('rooms-grid');
+        const playersList = document.getElementById('players-list');
+        const chatMessages = document.getElementById('chat-messages');
+        const chatInput = document.getElementById('chat-input');
+        const pseudoInput = document.getElementById('pseudo-input');
+        const btnPlay = document.getElementById('btn-play');
+        const btnSend = document.getElementById('btn-send');
+
+        const activePlayersCache = new Map();
+        const playerUnsubscribers = new Map();
+        const allPlayers = new Map();
+
+        // Pseudo sauvegardé
+        pseudoInput.value = localStorage.getItem('marbleous_pseudo') || '';
+        pseudoInput.addEventListener('change', () => {
+            localStorage.setItem('marbleous_pseudo', pseudoInput.value);
+        });
 
         signInAnonymously(auth).catch(error => {
-            console.error("Erreur d'authentification anonyme:", error);
-            alert("Impossible de se connecter au service. Veuillez rafraîchir la page.");
+            console.error("Erreur d'authentification:", error);
         });
 
         auth.onAuthStateChanged(user => {
             if (user) {
-                console.log("Connecté avec l'UID:", user.uid);
                 initializeLobby();
+                listenToChat();
             }
         });
 
-        const roomsGrid = document.getElementById('rooms-grid');
-        const MAX_ROOMS = 10;
-        const MAX_PLAYERS_PER_ROOM = 10;
-
-        // Cache pour stocker le nombre de joueurs actifs par salle
-        const activePlayersCache = new Map();
-        // Unsubscribers pour les listeners de joueurs
-        const playerUnsubscribers = new Map();
-
-        /**
-         * Initialise le lobby en écoutant les changements sur les salles.
-         */
         function initializeLobby() {
-            // Écouter chaque salle individuellement pour obtenir le compte réel des joueurs
             for (let i = 1; i <= MAX_ROOMS; i++) {
-                const roomId = `salle_${i}`;
-                listenToRoomPlayers(roomId);
+                listenToRoomPlayers(`salle_${i}`);
             }
         }
 
-        /**
-         * Écoute les joueurs d'une salle et compte uniquement les actifs.
-         */
         function listenToRoomPlayers(roomId) {
             const playersCollection = collection(db, "rooms", roomId, "players");
 
-            // Annuler l'ancien listener si existant
             if (playerUnsubscribers.has(roomId)) {
                 playerUnsubscribers.get(roomId)();
             }
@@ -135,94 +388,133 @@
                     const data = playerDoc.data();
                     const lastActive = data.lastActive || 0;
 
-                    // Joueur actif = lastActive < seuil d'inactivité
                     if (now - lastActive < INACTIVITY_THRESHOLD) {
                         activeCount++;
+                        allPlayers.set(playerDoc.id, { name: data.name || 'Joueur', room: roomId });
                     } else {
-                        // Marquer comme fantôme pour nettoyage
                         ghostPlayers.push(playerDoc.id);
+                        allPlayers.delete(playerDoc.id);
                     }
                 });
 
-                // Nettoyer les fantômes automatiquement (si on est connecté)
                 if (ghostPlayers.length > 0 && auth.currentUser) {
                     cleanupGhostPlayers(roomId, ghostPlayers);
                 }
 
                 activePlayersCache.set(roomId, activeCount);
                 updateRoomCard(roomId, activeCount);
+                updatePlayersList();
             });
 
             playerUnsubscribers.set(roomId, unsubscribe);
         }
 
-        /**
-         * Supprime les joueurs fantômes d'une salle.
-         */
         async function cleanupGhostPlayers(roomId, ghostPlayerIds) {
             try {
                 const batch = writeBatch(db);
                 ghostPlayerIds.forEach(playerId => {
-                    const playerRef = doc(db, "rooms", roomId, "players", playerId);
-                    batch.delete(playerRef);
+                    batch.delete(doc(db, "rooms", roomId, "players", playerId));
                 });
-
-                // Mettre à jour le compteur de la salle
-                const roomRef = doc(db, "rooms", roomId);
-                const currentCount = activePlayersCache.get(roomId) || 0;
-                batch.set(roomRef, { playerCount: currentCount }, { merge: true });
-
                 await batch.commit();
-                console.log(`Nettoyé ${ghostPlayerIds.length} fantôme(s) de ${roomId}`);
             } catch (e) {
-                console.error("Erreur nettoyage fantômes:", e);
+                console.error("Erreur nettoyage:", e);
             }
         }
 
-        /**
-         * Met à jour une carte de salle spécifique.
-         */
         function updateRoomCard(roomId, playerCount) {
             let card = document.getElementById(`room-${roomId}`);
             const roomNumber = roomId.split('_')[1];
-            const name = `Salle ${roomNumber}`;
 
             if (!card) {
                 card = document.createElement('div');
                 card.id = `room-${roomId}`;
-                card.className = 'room-card p-4';
+                card.className = 'room-card';
                 roomsGrid.appendChild(card);
             }
 
+            const isFull = playerCount >= MAX_PLAYERS_PER_ROOM;
+            card.className = `room-card ${isFull ? 'full' : ''}`;
             card.innerHTML = `
-                <h2 class="text-xl sm:text-2xl font-bold mb-2">${name}</h2>
-                <p class="text-base sm:text-lg font-semibold">Joueurs</p>
-                <p class="text-3xl sm:text-4xl font-bold my-2">${playerCount} / ${MAX_PLAYERS_PER_ROOM}</p>
+                <h4>Salle ${roomNumber}</h4>
+                <div class="count">${playerCount}/${MAX_PLAYERS_PER_ROOM}</div>
             `;
+            card.onclick = isFull ? null : () => joinRoom(roomId);
+        }
 
-            card.classList.remove('full');
-            if (playerCount >= MAX_PLAYERS_PER_ROOM) {
-                card.classList.add('full');
-                card.innerHTML += '<p class="mt-2 font-bold text-red-300">Pleine</p>';
-                card.onclick = null;
+        function updatePlayersList() {
+            const players = Array.from(allPlayers.values());
+            if (players.length === 0) {
+                playersList.innerHTML = '<div class="player-item">Aucun joueur</div>';
             } else {
-                card.onclick = () => joinRoom(roomId);
+                playersList.innerHTML = players.map(p =>
+                    `<div class="player-item online">• ${p.name}</div>`
+                ).join('');
             }
         }
 
-        /**
-         * Redirige le joueur vers la page de jeu de la salle sélectionnée.
-         */
         function joinRoom(roomId) {
             if (!auth.currentUser) {
-                alert("Vous n'êtes pas connecté. Veuillez rafraîchir la page.");
+                alert("Non connecté. Rafraîchissez la page.");
                 return;
             }
-            window.location.href = `game.html?roomId=${roomId}`;
+            const pseudo = pseudoInput.value.trim() || 'Joueur';
+            localStorage.setItem('marbleous_pseudo', pseudo);
+            window.location.href = `game.html?roomId=${roomId}&name=${encodeURIComponent(pseudo)}`;
         }
 
-    </script>
+        btnPlay.onclick = () => {
+            // Trouver la première salle non pleine
+            for (let i = 1; i <= MAX_ROOMS; i++) {
+                const count = activePlayersCache.get(`salle_${i}`) || 0;
+                if (count < MAX_PLAYERS_PER_ROOM) {
+                    joinRoom(`salle_${i}`);
+                    return;
+                }
+            }
+            alert("Toutes les salles sont pleines !");
+        };
 
+        // Chat global
+        function listenToChat() {
+            const chatRef = collection(db, "globalChat");
+            const q = query(chatRef, orderBy("timestamp", "desc"), limit(50));
+
+            onSnapshot(q, (snapshot) => {
+                const msgs = [];
+                snapshot.docs.forEach(doc => {
+                    msgs.unshift(doc.data());
+                });
+
+                chatMessages.innerHTML = msgs.map(m =>
+                    `<div class="chat-msg"><span class="author">${m.author}:</span> <span class="text">${m.text}</span></div>`
+                ).join('');
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            });
+        }
+
+        async function sendMessage() {
+            const text = chatInput.value.trim();
+            if (!text || !auth.currentUser) return;
+
+            const author = pseudoInput.value.trim() || 'Joueur';
+            try {
+                await addDoc(collection(db, "globalChat"), {
+                    author,
+                    text,
+                    timestamp: Date.now(),
+                    uid: auth.currentUser.uid
+                });
+                chatInput.value = '';
+            } catch (e) {
+                console.error("Erreur envoi message:", e);
+            }
+        }
+
+        btnSend.onclick = sendMessage;
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+    </script>
 </body>
 
 </html>

@@ -284,48 +284,43 @@ export const Drawing = {
   drawBubble(ctx, b, rad, x, y) {
     if (!b || !b.color) return;
 
-    // Contour noir (style arcade)
+    // Contour fin (style Bust-A-Move classique)
     ctx.beginPath();
     ctx.arc(x, y, rad, 0, Math.PI * 2);
-    ctx.fillStyle = "#000";
+    ctx.fillStyle = "#222";
     ctx.fill();
 
-    // Bulle principale avec dégradé radial
+    // Bulle principale avec dégradé simple
     const grad = ctx.createRadialGradient(
-      x - rad * 0.35,
-      y - rad * 0.35,
+      x - rad * 0.3,
+      y - rad * 0.3,
       rad * 0.1,
       x,
       y,
-      rad * 0.9
+      rad * 0.95
     );
+    // Couleur vive puis ombre sur le bord
     grad.addColorStop(0, b.color.main);
-    grad.addColorStop(0.7, b.color.main);
+    grad.addColorStop(0.85, b.color.main);
     grad.addColorStop(1, b.color.shadow);
 
     ctx.beginPath();
-    ctx.arc(x, y, rad * 0.88, 0, Math.PI * 2);
+    ctx.arc(x, y, rad * 0.96, 0, Math.PI * 2); // Bordure très fine (4%)
     ctx.fillStyle = grad;
     ctx.fill();
 
-    // Reflet principal (style arcade brillant)
-    ctx.fillStyle = "rgba(255,255,255,0.7)";
+    // Reflet brillant (ovale en haut à gauche)
+    ctx.fillStyle = "rgba(255,255,255,0.5)";
     ctx.beginPath();
     ctx.ellipse(
-      x - rad * 0.3,
-      y - rad * 0.35,
-      rad * 0.28,
-      rad * 0.15,
+      x - rad * 0.25,
+      y - rad * 0.3,
+      rad * 0.22,
+      rad * 0.12,
       Math.PI / 4,
       0,
       Math.PI * 2
     );
-    ctx.fill();
-
-    // Petit reflet secondaire
-    ctx.fillStyle = "rgba(255,255,255,0.4)";
-    ctx.beginPath();
-    ctx.arc(x - rad * 0.15, y - rad * 0.2, rad * 0.08, 0, Math.PI * 2);
     ctx.fill();
 
     // Icône de sort si applicable

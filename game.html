@@ -66,20 +66,12 @@
       grid-row: 1;
       display: flex;
       flex-direction: column;
-      /* Patchwork carré style Bust-A-Move classique */
+      /* Grands patchs orange avec dégradés comme référence */
       background:
-        repeating-linear-gradient(0deg,
-          rgba(0, 0, 0, 0.08) 0px, rgba(0, 0, 0, 0.08) 1px,
-          transparent 1px, transparent 24px),
-        repeating-linear-gradient(90deg,
-          rgba(0, 0, 0, 0.08) 0px, rgba(0, 0, 0, 0.08) 1px,
-          transparent 1px, transparent 24px),
-        repeating-linear-gradient(0deg,
-          #f97316 0px, #f97316 24px,
-          #fb923c 24px, #fb923c 48px,
-          #ea580c 48px, #ea580c 72px,
-          #fdba74 72px, #fdba74 96px);
-      background-size: 24px 24px, 24px 24px, 96px 96px;
+        linear-gradient(135deg,
+          #fb923c 0%, #f97316 15%, #fdba74 30%, #ea580c 45%,
+          #fb923c 50%, #f97316 65%, #fdba74 80%, #ea580c 100%);
+      background-size: 200% 200%;
       overflow: hidden;
     }
 

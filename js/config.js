@@ -1,14 +1,14 @@
 export const Config = {
   // Couleurs exactes de l'image de référence Bust-A-Move
   BUBBLE_COLORS: [
-    { main: "#ff3388", shadow: "#cc1166" }, // Rose/Magenta vif
-    { main: "#ffee00", shadow: "#ccbb00" }, // Jaune vif
-    { main: "#33dd33", shadow: "#22aa22" }, // Vert vif
-    { main: "#33dddd", shadow: "#22aaaa" }, // Cyan/Turquoise
-    { main: "#3366ff", shadow: "#2244cc" }, // Bleu
-    { main: "#aa44dd", shadow: "#7722aa" }, // Violet/Mauve
-    { main: "#ff3333", shadow: "#cc1111" }, // Rouge (pas orange)
-    { main: "#333333", shadow: "#111111" }, // Noir/Gris foncé
+    { main: "#E84C8A", shadow: "#C03068" }, // Rose/Magenta
+    { main: "#F5D033", shadow: "#D4B020" }, // Jaune
+    { main: "#4DB748", shadow: "#3A9038" }, // Vert
+    { main: "#4ACBD5", shadow: "#38A0A8" }, // Cyan/Turquoise
+    { main: "#3B6BC6", shadow: "#2A4F9A" }, // Bleu
+    { main: "#9B59B6", shadow: "#7A4490" }, // Violet
+    { main: "#F5A623", shadow: "#D4881A" }, // Orange
+    { main: "#5D5D5D", shadow: "#3D3D3D" }, // Gris
   ],
 
   // Palette Patchwork orange (carrés variés comme référence)

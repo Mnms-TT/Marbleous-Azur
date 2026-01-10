@@ -133,9 +133,8 @@ export const Drawing = {
   },
 
   drawGameState(ctx, canvas, player, rad, isMain) {
-    // Calcul de la ligne de séparation (Game Over Line)
-    const gridPixelHeight = (Config.GAME_OVER_ROW + 0.5) * (rad * 1.732) + rad;
-    const deadLineY = gridPixelHeight; // Ligne juste au-dessus de la rangée game over
+    // Calcul de la ligne de séparation (entre rangée 10 et 11)
+    const deadLineY = (Config.GAME_OVER_ROW) * (rad * 1.732) + rad;
 
     // Le fond orange est géré par CSS, pas de dashboard dessiné ici
 
@@ -230,12 +229,12 @@ export const Drawing = {
         );
     }
 
-    // --- LIGNE NOIRE (Barre de Game Over) ---
+    // --- LIGNE BLANCHE (Barre de Game Over) ---
     ctx.beginPath();
     ctx.moveTo(0, deadLineY);
     ctx.lineTo(canvas.width, deadLineY);
-    ctx.strokeStyle = "black";
-    ctx.lineWidth = 2; // Ligne fine
+    ctx.strokeStyle = "white";
+    ctx.lineWidth = 1; // Ligne très fine
     ctx.stroke();
 
     // Grille

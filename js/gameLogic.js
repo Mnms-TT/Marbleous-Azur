@@ -391,7 +391,11 @@ export const GameLogic = {
 
   async applySpellEffect(target, spell) {
     if (!target?.isAlive || !spell) return;
-    if (target.id === Game.localPlayer.id) UI.triggerScreenShake("high");
+
+    // Si le sort est reçu par le joueur local, déclencher le tremblement
+    if (target.id === Game.localPlayer.id) {
+      UI.triggerShake(1);
+    }
 
     const DURATION = 10000;
     let effects = { ...target.statusEffects };

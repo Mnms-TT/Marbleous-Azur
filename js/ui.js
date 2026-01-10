@@ -211,7 +211,41 @@ export const UI = {
     });
   },
 
-  updateSpellAnnouncement(caster, spellInfo, target) { },
+  updateSpellAnnouncement(caster, spellInfo, target) {
+    const announcement = document.getElementById("spell-announcement");
+    if (!announcement || !spellInfo) return;
+
+    // Format: Caster (haut), Spell (milieu), Target (bas)
+    announcement.innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:2px;text-align:center;">
+        <div style="font-size:10px;color:#94a3b8;">⚔️ ${caster}</div>
+        <div style="font-size:14px;font-weight:bold;color:${spellInfo.color || '#fff'}">${spellInfo.name}</div>
+        <div style="font-size:10px;color:#fbbf24;">→ ${target}</div>
+      </div>
+    `;
+
+    // Effacer après 3 secondes
+    setTimeout(() => {
+      if (announcement) announcement.innerHTML = "";
+    }, 3000);
+  },
+
+  // Déclenche un tremblement sur le canvas du joueur
+  triggerShake(intensity = 1) {
+    const canvas = document.getElementById("gameCanvas");
+    if (!canvas) return;
+
+    // Nettoyer l'animation précédente
+    canvas.classList.remove("shaking", "shaking-intense");
+
+    if (intensity >= 3) {
+      canvas.classList.add("shaking-intense");
+      setTimeout(() => canvas.classList.remove("shaking-intense"), intensity * 500);
+    } else {
+      canvas.classList.add("shaking");
+      setTimeout(() => canvas.classList.remove("shaking"), 500);
+    }
+  },
   preloadSpellIcons: () =>
     Object.entries(Config.SPELLS).forEach(([key, spell]) => {
       const i = new Image();

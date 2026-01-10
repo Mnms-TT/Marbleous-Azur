@@ -372,8 +372,7 @@ export const GameLogic = {
       spellIndex === null ||
       spellIndex < 0 ||
       spellIndex >= Game.localPlayer.spells.length ||
-      !targetPlayer ||
-      (targetPlayer.team !== undefined && targetPlayer.team === Game.localPlayer.team)
+      !targetPlayer
     )
       return;
     const spellName = Game.localPlayer.spells[spellIndex];

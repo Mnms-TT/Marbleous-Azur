@@ -8,7 +8,7 @@ export const Config = {
     { main: "#bd36d9", shadow: "#972bad" }, // Violet (Nuke)
     { main: "#b6b4b9", shadow: "#919094" }, // Gris
     { main: "#2d2d2d", shadow: "#1a1a1a" }, // Noir
-    { main: "#e63946", shadow: "#b82d38" }, // Rouge (à confirmer)
+    { main: "#fc3e4e", shadow: "#ca3240" }, // Rouge
   ],
 
   // Palette Patchwork orange (carrés variés comme référence)
@@ -94,7 +94,7 @@ export const Config = {
     "#bd36d9": "nukeBomb",              // Violet -> Nuke Bomb
     "#b6b4b9": "toutesMemeCouleur",     // Gris -> Toutes même couleur
     "#2d2d2d": "nettoyage",             // Noir -> Nettoyage
-    "#e63946": "plateauRenverse",       // Rouge -> Plateau renversé
+    "#fc3e4e": "plateauRenverse",       // Rouge -> Plateau renversé
   },
 
   MAX_SPELLS: 7,

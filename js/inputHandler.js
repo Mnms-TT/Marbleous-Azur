@@ -19,6 +19,7 @@ export const InputHandler = {
     // CLIC PRINCIPAL (Jeu ou Prêt)
     const canvas = document.getElementById("gameCanvas");
     if (canvas) {
+      // Clic gauche = Tirer ou se mettre prêt
       canvas.addEventListener("click", (e) => {
         const p = Game.localPlayer;
         if (!p) return;
@@ -33,17 +34,23 @@ export const InputHandler = {
             lastActive: Date.now(),
           });
         }
-        // Si en jeu : Clic gauche = Tirer, Clic droit créé séparément
+        // Si en jeu : Clic gauche = Tirer
         else if (Game.state === "playing" && p.isAlive) {
-          // Si on a des sorts et qu'on clique avec Shift = lancer le sort sur soi
-          if (e.shiftKey && p.spells && p.spells.length > 0) {
-            // LIFO: utiliser le DERNIER sort (index = length - 1)
-            const lastSpellIndex = p.spells.length - 1;
-            GameLogic.castSpecificSpell(p, lastSpellIndex);
-            console.log(`Sort lancé sur soi-même`);
-          } else {
-            this.handleShoot();
-          }
+          this.handleShoot();
+        }
+      });
+
+      // CLIC DROIT = Lancer le sort sur soi-même
+      canvas.addEventListener("contextmenu", (e) => {
+        e.preventDefault(); // Empêcher le menu contextuel
+        const p = Game.localPlayer;
+        if (!p || Game.state !== "playing" || !p.isAlive) return;
+
+        // Si on a des sorts, lancer le dernier (LIFO)
+        if (p.spells && p.spells.length > 0) {
+          const lastSpellIndex = p.spells.length - 1;
+          GameLogic.castSpecificSpell(p, lastSpellIndex);
+          console.log(`Sort lancé sur soi-même (LIFO index: ${lastSpellIndex})`);
         }
       });
     }

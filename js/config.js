@@ -100,7 +100,7 @@ export const Config = {
   MAX_SPELLS: 7,
   GRID_ROWS: 12,
   GRID_COLS: 8,
-  GAME_OVER_ROW: 11, // Ligne noire position originale
+  GAME_OVER_ROW: 10, // Ligne noire remontée (rangée 10 sur 12)
 
   SPELL_SPAWN_CHANCE: 0.33, // 1/3 de chance
   FPS: 60,

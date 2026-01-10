@@ -204,10 +204,10 @@ export const UI = {
 
   updateSpellAnnouncement(caster, spellInfo, target) { },
   preloadSpellIcons: () =>
-    Object.values(Config.SPELLS).forEach((s) => {
+    Object.entries(Config.SPELLS).forEach(([key, spell]) => {
       const i = new Image();
-      i.src = s.icon;
-      Game.spellIcons[s.name] = i;
+      i.src = spell.icon;
+      Game.spellIcons[key] = i; // Utiliser la clé (ex: "plateauRenverse") pas le nom affiché
     }),
   addChatMessage(name, msg) {
     const chat = document.getElementById("chat-messages");

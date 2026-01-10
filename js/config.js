@@ -7,7 +7,7 @@ export const Config = {
     { main: "#33dddd", shadow: "#22aaaa" }, // Cyan/Turquoise
     { main: "#3366ff", shadow: "#2244cc" }, // Bleu
     { main: "#aa44dd", shadow: "#7722aa" }, // Violet/Mauve
-    { main: "#ff6633", shadow: "#cc4411" }, // Orange
+    { main: "#ff3333", shadow: "#cc1111" }, // Rouge (pas orange)
     { main: "#333333", shadow: "#111111" }, // Noir/Gris foncé
   ],
 
@@ -100,7 +100,7 @@ export const Config = {
   MAX_SPELLS: 7,
   GRID_ROWS: 12,
   GRID_COLS: 8,
-  GAME_OVER_ROW: 10, // Ligne noire remontée (rangée 10 sur 12)
+  GAME_OVER_ROW: 11, // 11 rangées autorisées, game over à la 12ème
 
   SPELL_SPAWN_CHANCE: 0.33, // 1/3 de chance
   FPS: 60,

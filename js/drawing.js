@@ -337,11 +337,20 @@ export const Drawing = {
     );
     ctx.fill();
 
-    // Icône de sort si applicable
-    if (b.isSpellBubble && b.spell && Game.spellIcons[b.spell]) {
+    // Indicateur visuel de sort (étoile blanche)
+    if (b.isSpellBubble && b.spell) {
+      // Dessiner une étoile blanche sur la bulle
+      ctx.fillStyle = "white";
+      ctx.font = `bold ${rad * 0.8}px sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("★", x, y);
+
+      // Dessiner aussi l'icône si disponible
       const icon = Game.spellIcons[b.spell];
-      if (icon.complete)
-        ctx.drawImage(icon, x - rad * 0.6, y - rad * 0.6, rad * 1.2, rad * 1.2);
+      if (icon && icon.complete) {
+        ctx.drawImage(icon, x - rad * 0.5, y - rad * 0.5, rad, rad);
+      }
     }
   },
 

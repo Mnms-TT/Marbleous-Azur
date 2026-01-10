@@ -267,7 +267,8 @@ export const GameLogic = {
 
     // Rotation Canon
     let rotSpeed = Game.currentRotationSpeed;
-    if (Game.localPlayer.statusEffects.canonEndommage) {
+    if (Game.localPlayer.statusEffects.canonCasse) {
+      // Comportement aléatoire du canon
       rotSpeed *= 0.4;
       Game.localPlayer.launcher.angle += (Math.random() - 0.5) * 0.08;
     }
@@ -287,9 +288,9 @@ export const GameLogic = {
       b.vx = b.vx || 0;
       b.vy = b.vy || 0;
 
-      // Effet vent
-      if (Game.localPlayer.statusEffects.plateauIncline)
-        b.vx += 0.15 * Game.localPlayer.statusEffects.plateauIncline.direction;
+      // Effet plateau renversé (tir dévié)
+      if (Game.localPlayer.statusEffects.plateauRenverse)
+        b.vx += 0.15 * Game.localPlayer.statusEffects.plateauRenverse.direction;
 
       b.x += b.vx;
       b.y += b.vy;
@@ -350,8 +351,8 @@ export const GameLogic = {
       FirebaseController.updatePlayerDoc(player.id, {
         statusEffects: player.statusEffects,
       });
-    if (player.statusEffects.variationCouleurs) {
-      // Ex-canonArcEnCiel
+    if (player.statusEffects.variationCouleur) {
+      // La couleur de la bulle à tirer change constamment
       player.variationColorTimer = (player.variationColorTimer || 0) + 1;
       if (
         player.variationColorTimer % (Config.FPS / 2) === 0 &&
@@ -400,22 +401,26 @@ export const GameLogic = {
     let grid = target.grid.map((r) => [...r]);
 
     switch (spell) {
-      case "canonEndommage":
-      case "variationCouleurs":
-        effects[spell] = { endTime: Date.now() + DURATION };
-        break;
-      case "plateauIncline":
-        effects[spell] = {
+      // SORTS OFFENSIFS
+      case "plateauRenverse":
+        // Tir imprévisible - angle modifié aléatoirement
+        effects.plateauRenverse = {
           endTime: Date.now() + DURATION,
           direction: Math.random() < 0.5 ? -1 : 1,
         };
         break;
-      case "annulationSorts":
+
+      case "canonCasse":
+        // Comportement aléatoire du canon
+        effects.canonCasse = { endTime: Date.now() + DURATION };
+        break;
+
+      case "disparitionSorts":
+        // Supprime 1 sort de la file + toutes les bulles sorts à l'écran
         if (target.spells.length > 0) {
           target.spells.shift();
           spellsChanged = true;
         }
-        // Nettoyer les sorts sur le plateau
         for (let r = 0; r < Config.GRID_ROWS; r++)
           for (let c = 0; c < Config.GRID_COLS; c++)
             if (grid[r][c]?.isSpellBubble) {
@@ -424,56 +429,44 @@ export const GameLogic = {
               gridChanged = true;
             }
         break;
-      case "apparitionLigne":
-        // Décalage vers le bas
+
+      case "variationCouleur":
+        // La couleur de la bulle à tirer change constamment
+        effects.variationCouleur = { endTime: Date.now() + DURATION };
+        break;
+
+      case "boulesSupplementaires":
+        // Ajoute ~10 bulles sur l'écran de l'adversaire
         for (let i = 0; i < 2; i++) {
+          // Décaler toutes les lignes vers le bas
           for (let r = Config.GRID_ROWS - 1; r > 0; r--)
             for (let c = 0; c < Config.GRID_COLS; c++) {
               grid[r][c] = grid[r - 1][c];
               if (grid[r][c]) grid[r][c].r = r;
             }
+          // Nouvelle ligne en haut
           for (let c = 0; c < Config.GRID_COLS; c++)
-            grid[0][c] = Math.random() > 0.5 ? this.createBubble(0, c) : null;
+            grid[0][c] = Math.random() > 0.4 ? this.createBubble(0, c) : null;
         }
         this.handleAvalanche({ grid }, grid, false);
         gridChanged = true;
         break;
-      case "couleursIdentiques":
-        const cols = [
-          ...new Set(
-            grid
-              .flat()
-              .filter((b) => b)
-              .map((b) => b.c)
-          ),
-        ];
-        if (cols.length > 0) {
-          const colsToChange = cols
-            .sort(() => 0.5 - Math.random())
-            .slice(0, Math.random() < 0.7 ? 1 : 2);
-          const newColor =
-            Config.BUBBLE_COLORS[
-            Math.floor(Math.random() * Config.BUBBLE_COLORS.length)
-            ];
-          for (const c of colsToChange)
-            for (let r = 0; r < Config.GRID_ROWS; r++)
-              if (grid[r][c]) grid[r][c].color = newColor;
-          gridChanged = true;
-        }
-        break;
+
+      // SORTS DÉFENSIFS
       case "nukeBomb": {
+        // Élimine beaucoup de bulles (30-80% aléatoire)
         const bubbles = [];
         for (let r = 0; r < Config.GRID_ROWS; r++)
           for (let c = 0; c < Config.GRID_COLS; c++)
             if (grid[r][c]) bubbles.push({ r, c });
-        const toDestroy = Math.floor(bubbles.length * 0.3);
+        const destroyPercent = 0.3 + Math.random() * 0.5; // 30% à 80%
+        const toDestroy = Math.floor(bubbles.length * destroyPercent);
         bubbles.sort(() => 0.5 - Math.random());
         for (let i = 0; i < toDestroy; i++) {
           const b = bubbles[i];
           const { x, y } = this.getBubbleCoords(b.r, b.c, Game.bubbleRadius);
           (target.effects = target.effects || []).push({
-            x,
-            y,
+            x, y,
             type: "pop",
             radius: Game.bubbleRadius,
             life: 15,
@@ -485,9 +478,34 @@ export const GameLogic = {
         gridChanged = true;
         break;
       }
-      case "disparitionLignes": {
+
+      case "toutesMemeCouleur": {
+        // Certaines bulles deviennent de la même couleur
+        const bubbles = [];
+        for (let r = 0; r < Config.GRID_ROWS; r++)
+          for (let c = 0; c < Config.GRID_COLS; c++)
+            if (grid[r][c] && !grid[r][c].isSpellBubble)
+              bubbles.push(grid[r][c]);
+        if (bubbles.length > 0) {
+          const newColor = Config.BUBBLE_COLORS[
+            Math.floor(Math.random() * Config.BUBBLE_COLORS.length)
+          ];
+          // Change 30-60% des bulles
+          const toChange = Math.floor(bubbles.length * (0.3 + Math.random() * 0.3));
+          bubbles.sort(() => 0.5 - Math.random());
+          for (let i = 0; i < toChange; i++) {
+            bubbles[i].color = newColor;
+          }
+          gridChanged = true;
+        }
+        break;
+      }
+
+      case "nettoyage": {
+        // Supprime 2-3 rangées du bas
+        const rowsToRemove = 2 + Math.floor(Math.random() * 2); // 2 ou 3
         let rowsCleared = 0;
-        for (let r = Config.GRID_ROWS - 1; r >= 0 && rowsCleared < 2; r--) {
+        for (let r = Config.GRID_ROWS - 1; r >= 0 && rowsCleared < rowsToRemove; r--) {
           const hasBubble = grid[r].some((cell) => cell !== null);
           if (hasBubble) {
             for (let c = 0; c < Config.GRID_COLS; c++)

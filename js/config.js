@@ -23,58 +23,78 @@ export const Config = {
 
   TEAM_COLORS: ["#3B82F6", "#22C55E", "#F97316", "#EC4899", "#8B5CF6"],
 
+  // Sorts offensifs (à lancer sur adversaires)
+  // Sorts défensifs (à lancer sur soi/équipe) - symbole vert
   SPELLS: {
-    plateauIncline: {
-      name: "Plateau Incliné",
+    // OFFENSIFS
+    plateauRenverse: {
+      name: "Plateau renversé",
       icon: "icons/sort_tilt.png",
       color: "#ff4466",
+      type: "offensive",
+      description: "Tir imprévisible - angle modifié aléatoirement"
     },
-    canonEndommage: {
-      name: "Canon endommagé",
+    canonCasse: {
+      name: "Canon cassé",
       icon: "icons/sort_canon.png",
       color: "#ffdd00",
+      type: "offensive",
+      description: "Comportement aléatoire du canon"
     },
-    annulationSorts: {
-      name: "Annulation de Sorts",
+    disparitionSorts: {
+      name: "Disparition de sorts",
       icon: "icons/sort_cancel.png",
       color: "#44dd44",
+      type: "offensive",
+      description: "Supprime 1 sort + bulles sorts à l'écran"
     },
-    variationCouleurs: {
-      name: "Variation de couleurs",
+    variationCouleur: {
+      name: "Variation de couleur",
       icon: "icons/sort_rainbow.png",
       color: "#44ddff",
+      type: "offensive",
+      description: "Couleurs changent constamment"
     },
-    apparitionLigne: {
-      name: "Apparition de boules",
+    boulesSupplementaires: {
+      name: "Boules supplémentaires",
       icon: "icons/sort_addline.png",
       color: "#4488ff",
+      type: "offensive",
+      description: "Ajoute ~10 bulles à l'adversaire"
     },
+    // DÉFENSIFS
     nukeBomb: {
-      name: "NukeBomb",
+      name: "Nuke Bomb",
       icon: "icons/sort_nuke.png",
       color: "#dd44ff",
+      type: "defensive",
+      description: "Élimine beaucoup de bulles"
     },
-    couleursIdentiques: {
-      name: "Couleurs identiques",
+    toutesMemeCouleur: {
+      name: "Toutes même couleur",
       icon: "icons/sort_monocolor.png",
       color: "#ff8844",
+      type: "defensive",
+      description: "Certaines bulles deviennent même couleur"
     },
-    disparitionLignes: {
-      name: "Disparition de Lignes",
+    nettoyage: {
+      name: "Nettoyage",
       icon: "icons/sort_removeline.png",
       color: "#8866ff",
+      type: "defensive",
+      description: "Supprime 2-3 rangées de bulles"
     },
   },
 
   COLOR_TO_SPELL_MAP: {
-    "#ff4466": "plateauIncline",
-    "#ffdd00": "canonEndommage",
-    "#44dd44": "annulationSorts",
-    "#44ddff": "variationCouleurs",
-    "#4488ff": "apparitionLigne",
+    "#ff4466": "plateauRenverse",
+    "#ffdd00": "canonCasse",
+    "#44dd44": "disparitionSorts",
+    "#44ddff": "variationCouleur",
+    "#4488ff": "boulesSupplementaires",
     "#dd44ff": "nukeBomb",
-    "#ff8844": "couleursIdentiques",
-    "#8866ff": "disparitionLignes",
+    "#ff8844": "toutesMemeCouleur",
+    "#8866ff": "nettoyage",
   },
 
   MAX_SPELLS: 7,

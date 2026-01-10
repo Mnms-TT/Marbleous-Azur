@@ -267,14 +267,43 @@ export const GameLogic = {
 
     // Rotation Canon
     let rotSpeed = Game.currentRotationSpeed;
-    if (Game.localPlayer.statusEffects.canonCasse) {
-      // Comportement aléatoire du canon
-      rotSpeed *= 0.4;
-      Game.localPlayer.launcher.angle += (Math.random() - 0.5) * 0.08;
-    }
+    const canonEffect = Game.localPlayer.statusEffects.canonCasse;
 
-    if (Game.keys.left) Game.localPlayer.launcher.angle -= rotSpeed;
-    if (Game.keys.right) Game.localPlayer.launcher.angle += rotSpeed;
+    if (canonEffect) {
+      const variant = canonEffect.variant || 0;
+
+      switch (variant) {
+        case 0: // Inversé - gauche/droite inversés
+          if (Game.keys.left) Game.localPlayer.launcher.angle += rotSpeed;
+          if (Game.keys.right) Game.localPlayer.launcher.angle -= rotSpeed;
+          break;
+        case 1: // Bloqué - ne peut pas bouger
+          // On ne fait rien, pas de rotation
+          break;
+        case 2: // Aléatoire - mouvement erratique
+          rotSpeed *= 0.4;
+          Game.localPlayer.launcher.angle += (Math.random() - 0.5) * 0.08;
+          if (Game.keys.left) Game.localPlayer.launcher.angle -= rotSpeed;
+          if (Game.keys.right) Game.localPlayer.launcher.angle += rotSpeed;
+          break;
+        case 3: // Auto-tir - tire aléatoirement
+          if (Game.keys.left) Game.localPlayer.launcher.angle -= rotSpeed;
+          if (Game.keys.right) Game.localPlayer.launcher.angle += rotSpeed;
+          // Tir automatique toutes les 2-4 secondes environ
+          if (!canonEffect.nextAutoFire) {
+            canonEffect.nextAutoFire = Date.now() + 2000 + Math.random() * 2000;
+          }
+          if (Date.now() > canonEffect.nextAutoFire && !Game.localPlayer.shotBubble && Game.localPlayer.launcherBubble) {
+            this.shoot(Game.localPlayer);
+            canonEffect.nextAutoFire = Date.now() + 2000 + Math.random() * 2000;
+          }
+          break;
+      }
+    } else {
+      // Contrôles normaux
+      if (Game.keys.left) Game.localPlayer.launcher.angle -= rotSpeed;
+      if (Game.keys.right) Game.localPlayer.launcher.angle += rotSpeed;
+    }
 
     // Limites de rotation
     Game.localPlayer.launcher.angle = Math.max(
@@ -457,10 +486,19 @@ export const GameLogic = {
         };
         break;
 
-      case "canonCasse":
-        // Comportement aléatoire du canon
-        effects.canonCasse = { endTime: Date.now() + DURATION };
+      case "canonCasse": {
+        // 4 variantes du sort jaune
+        // 0: inversé (gauche/droite inversés)
+        // 1: bloqué (ne peut pas bouger)
+        // 2: aléatoire (mouvement erratique) 
+        // 3: auto-tir (tire aléatoirement)
+        const variant = Math.floor(Math.random() * 4);
+        effects.canonCasse = {
+          endTime: Date.now() + DURATION,
+          variant: variant
+        };
         break;
+      }
 
       case "disparitionSorts":
         // Supprime 1 sort de la file + toutes les bulles sorts à l'écran
@@ -478,7 +516,18 @@ export const GameLogic = {
         break;
 
       case "variationCouleur":
-        // La couleur de la bulle à tirer change constamment
+        // Change immédiatement TOUTES les couleurs des bulles du plateau (y compris sorts)
+        for (let r = 0; r < Config.GRID_ROWS; r++) {
+          for (let c = 0; c < Config.GRID_COLS; c++) {
+            if (grid[r][c]) {
+              // Nouvelle couleur aléatoire
+              const newColorIndex = Math.floor(Math.random() * Config.BUBBLE_COLORS.length);
+              grid[r][c].color = Config.BUBBLE_COLORS[newColorIndex];
+            }
+          }
+        }
+        gridChanged = true;
+        // Aussi la couleur de la bulle à tirer change constamment
         effects.variationCouleur = { endTime: Date.now() + DURATION };
         break;
 

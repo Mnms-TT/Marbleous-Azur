@@ -379,8 +379,12 @@ export const Drawing = {
     ctx.translate(pos.x, pos.y);
     ctx.rotate(player.launcher.angle + Math.PI / 2);
 
+    // Couleur de l'aiguille : Noir par défaut, Vert si sous sort jaune (canonCasse)
+    const hasCanonCasse = player.statusEffects?.canonCasse;
+    const needleColor = hasCanonCasse ? "#10b981" : "#1a1a1a"; // Vert ou Noir
+
     // Aiguille Triangulaire
-    ctx.fillStyle = "#10b981"; // Vert
+    ctx.fillStyle = needleColor;
     ctx.beginPath();
     ctx.moveTo(0, -length); // Pointe
     ctx.lineTo(-5, 0); // Base gauche
@@ -388,13 +392,13 @@ export const Drawing = {
     ctx.closePath();
     ctx.fill();
 
-    // Contour noir
-    ctx.strokeStyle = "black";
+    // Contour
+    ctx.strokeStyle = hasCanonCasse ? "#064e3b" : "#000";
     ctx.lineWidth = 1;
     ctx.stroke();
 
     // Base pivot
-    ctx.fillStyle = "black";
+    ctx.fillStyle = "#1a1a1a";
     ctx.beginPath();
     ctx.arc(0, 0, 8, 0, Math.PI * 2);
     ctx.fill();

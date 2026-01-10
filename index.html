@@ -637,39 +637,123 @@
     };
 
     // Chat global
+    // DM target (set when clicking a player)
+    let dmTarget = null;
+
     function listenToChat() {
       const chatRef = collection(db, "globalChat");
       const q = query(chatRef, orderBy("timestamp", "desc"), limit(50));
 
       onSnapshot(q, (snapshot) => {
         const msgs = [];
-        snapshot.docs.forEach(doc => msgs.unshift(doc.data()));
+        const myUid = auth.currentUser?.uid;
 
-        chatMessages.innerHTML = msgs.map(m =>
-          `<div class="chat-msg"><span class="author">${m.author}:</span> <span class="text">${m.text}</span></div>`
-        ).join('');
+        snapshot.docs.forEach(doc => {
+          const m = doc.data();
+          // Afficher si: message public OU je suis l'expéditeur OU je suis le destinataire
+          if (!m.toUid || m.uid === myUid || m.toUid === myUid) {
+            msgs.unshift(m);
+          }
+        });
+
+        chatMessages.innerHTML = msgs.map(m => {
+          const isWhisper = m.toUid;
+          const whisperClass = isWhisper ? 'style="color:#a855f7;font-style:italic;"' : '';
+          const prefix = isWhisper ? `[DM ${m.toName ? 'à ' + m.toName : ''}] ` : '';
+          return `<div class="chat-msg" ${whisperClass}><span class="author">${m.author}:</span> <span class="text">${prefix}${m.text}</span></div>`;
+        }).join('');
         chatMessages.scrollTop = chatMessages.scrollHeight;
       });
     }
 
     async function sendMessage() {
-      const text = chatInput.value.trim();
+      let text = chatInput.value.trim();
       if (!text || !auth.currentUser) return;
 
       const author = pseudoInput.value.trim() || 'Joueur';
+      let toUid = null;
+      let toName = null;
+
+      // Check for /pseudo command
+      if (text.startsWith('/')) {
+        const spaceIndex = text.indexOf(' ');
+        if (spaceIndex > 1) {
+          const targetPseudo = text.substring(1, spaceIndex);
+          const messageText = text.substring(spaceIndex + 1).trim();
+
+          // Chercher le joueur par pseudo
+          let foundPlayer = null;
+          allOnlinePlayers.forEach((player, id) => {
+            if (player.name.toLowerCase() === targetPseudo.toLowerCase()) {
+              foundPlayer = { id, ...player };
+            }
+          });
+
+          if (foundPlayer) {
+            toUid = foundPlayer.id;
+            toName = foundPlayer.name;
+            text = messageText;
+          } else {
+            alert(`Joueur "${targetPseudo}" non trouvé.`);
+            return;
+          }
+        }
+      }
+
+      // Si DM target est défini (clic sur joueur)
+      if (dmTarget && !toUid) {
+        toUid = dmTarget.id;
+        toName = dmTarget.name;
+      }
+
       try {
-        await addDoc(collection(db, "globalChat"), {
+        const msgData = {
           author, text,
           timestamp: Date.now(),
           uid: auth.currentUser.uid
-        });
+        };
+
+        if (toUid) {
+          msgData.toUid = toUid;
+          msgData.toName = toName;
+        }
+
+        await addDoc(collection(db, "globalChat"), msgData);
         chatInput.value = '';
+        dmTarget = null; // Reset DM target
+        updateDMIndicator();
       } catch (e) { console.error(e); }
+    }
+
+    // Sélectionner un joueur pour DM
+    window.openDM = function (playerId, playerName) {
+      dmTarget = { id: playerId, name: playerName };
+      chatInput.placeholder = `Message privé à ${playerName}... (Entrée pour envoyer)`;
+      chatInput.focus();
+      updateDMIndicator();
+    };
+
+    function updateDMIndicator() {
+      if (dmTarget) {
+        chatInput.style.borderColor = '#a855f7';
+        chatInput.placeholder = `Message privé à ${dmTarget.name}...`;
+      } else {
+        chatInput.style.borderColor = '#3b82f6';
+        chatInput.placeholder = 'Écrire un message... (/pseudo pour DM)';
+      }
     }
 
     btnSend.onclick = sendMessage;
     chatInput.addEventListener('keypress', e => {
       if (e.key === 'Enter') sendMessage();
+    });
+
+    // Annuler DM avec Escape
+    chatInput.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        dmTarget = null;
+        updateDMIndicator();
+      }
     });
   </script>
 </body>

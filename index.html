@@ -373,10 +373,93 @@
       border-radius: 4px;
       cursor: pointer;
     }
+
+    /* Pseudo Entry Overlay */
+    #pseudo-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: linear-gradient(135deg, #0c1445 0%, #1e3a8a 50%, #312e81 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+
+    #pseudo-overlay.hidden {
+      display: none;
+    }
+
+    #pseudo-form {
+      background: rgba(0, 0, 0, 0.6);
+      border: 2px solid #f97316;
+      border-radius: 16px;
+      padding: 40px 50px;
+      text-align: center;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    #pseudo-form h1 {
+      color: #f97316;
+      font-size: 36px;
+      margin-bottom: 10px;
+    }
+
+    #pseudo-form p {
+      color: #94a3b8;
+      font-size: 14px;
+      margin-bottom: 25px;
+    }
+
+    #pseudo-form input {
+      width: 250px;
+      padding: 14px 18px;
+      font-size: 18px;
+      border: 2px solid #3b82f6;
+      border-radius: 8px;
+      background: #1e293b;
+      color: white;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    #pseudo-form input:focus {
+      outline: none;
+      border-color: #f97316;
+    }
+
+    #pseudo-form button {
+      background: linear-gradient(to bottom, #f97316, #ea580c);
+      border: 2px solid #fdba74;
+      color: white;
+      padding: 14px 40px;
+      font-size: 18px;
+      font-weight: bold;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+
+    #pseudo-form button:hover {
+      transform: scale(1.05);
+    }
   </style>
 </head>
 
 <body>
+  <!-- Écran de saisie du pseudo -->
+  <div id="pseudo-overlay">
+    <div id="pseudo-form">
+      <h1>🎮 MARBLEOUS</h1>
+      <p>Entrez votre pseudo pour rejoindre le lobby</p>
+      <input type="text" id="entry-pseudo" placeholder="Votre pseudo..." maxlength="15" autofocus>
+      <br>
+      <button id="btn-enter">ENTRER</button>
+    </div>
+  </div>
+
   <div id="game-wrapper">
     <div id="game-container">
       <!-- Zone solo (comme player-zone dans game.html) -->
@@ -457,18 +540,112 @@
     const btnPlay = document.getElementById('btn-play');
     const btnSend = document.getElementById('btn-send');
     const onlineCount = document.getElementById('online-count');
+    const pseudoOverlay = document.getElementById('pseudo-overlay');
+    const entryPseudo = document.getElementById('entry-pseudo');
+    const btnEnter = document.getElementById('btn-enter');
 
     const activePlayersCache = new Map();
     const playerUnsubscribers = new Map();
     let totalOnline = 0;
+    let myLobbyDocRef = null;
+    let currentPseudo = '';
 
-    // Charger pseudo sauvegardé
-    pseudoInput.value = localStorage.getItem('marbleous_pseudo') || '';
-    pseudoInput.addEventListener('input', () => {
-      localStorage.setItem('marbleous_pseudo', pseudoInput.value);
-    });
+    // Stockage de tous les joueurs pour la liste
+    const allOnlinePlayers = new Map();
+
+    // Charger pseudo sauvegardé dans l'overlay
+    entryPseudo.value = localStorage.getItem('marbleous_pseudo') || '';
 
     signInAnonymously(auth).catch(console.error);
+
+    // Gestion de l'entrée avec le pseudo
+    function enterLobby() {
+      const pseudo = entryPseudo.value.trim();
+      if (!pseudo) {
+        alert("Veuillez entrer un pseudo !");
+        return;
+      }
+      if (pseudo.length < 2) {
+        alert("Le pseudo doit avoir au moins 2 caractères.");
+        return;
+      }
+
+      currentPseudo = pseudo;
+      localStorage.setItem('marbleous_pseudo', pseudo);
+      pseudoInput.value = pseudo;
+
+      // Masquer l'overlay
+      pseudoOverlay.classList.add('hidden');
+
+      // S'inscrire dans le lobby
+      registerInLobby();
+    }
+
+    btnEnter.onclick = enterLobby;
+    entryPseudo.addEventListener('keypress', e => {
+      if (e.key === 'Enter') enterLobby();
+    });
+
+    // Inscription dans le lobby (collection lobbyPlayers)
+    async function registerInLobby() {
+      if (!auth.currentUser) return;
+
+      const { setDoc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
+
+      myLobbyDocRef = doc(db, "lobbyPlayers", auth.currentUser.uid);
+
+      await setDoc(myLobbyDocRef, {
+        name: currentPseudo,
+        lastActive: Date.now(),
+        uid: auth.currentUser.uid
+      });
+
+      // Heartbeat pour rester actif
+      setInterval(async () => {
+        if (myLobbyDocRef) {
+          await setDoc(myLobbyDocRef, {
+            name: currentPseudo,
+            lastActive: Date.now(),
+            uid: auth.currentUser.uid
+          }, { merge: true });
+        }
+      }, 10000);
+
+      // Écouter tous les joueurs du lobby
+      listenToLobbyPlayers();
+    }
+
+    // Écouter les joueurs dans le lobby
+    function listenToLobbyPlayers() {
+      const lobbyRef = collection(db, "lobbyPlayers");
+
+      onSnapshot(lobbyRef, (snapshot) => {
+        const now = Date.now();
+        allOnlinePlayers.clear();
+
+        snapshot.docs.forEach(playerDoc => {
+          const data = playerDoc.data();
+          if (now - (data.lastActive || 0) < INACTIVITY_THRESHOLD) {
+            allOnlinePlayers.set(playerDoc.id, {
+              name: data.name || 'Joueur',
+              lastActive: data.lastActive
+            });
+          }
+        });
+
+        totalOnline = allOnlinePlayers.size;
+        onlineCount.textContent = `${totalOnline} en ligne`;
+        updatePlayersList();
+      });
+    }
+
+    // Nettoyage à la fermeture de la page
+    window.addEventListener('beforeunload', async () => {
+      if (myLobbyDocRef) {
+        const { deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
+        await deleteDoc(myLobbyDocRef);
+      }
+    });
 
     auth.onAuthStateChanged(user => {
       if (user) {
@@ -559,9 +736,6 @@
       onlineCount.textContent = `${totalOnline} en ligne`;
       updatePlayersList();
     }
-
-    // Stockage de tous les joueurs pour la liste
-    const allOnlinePlayers = new Map();
 
     function updatePlayersList() {
       const playersList = document.getElementById('players-list');

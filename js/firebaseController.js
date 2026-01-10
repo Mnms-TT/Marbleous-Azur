@@ -52,6 +52,7 @@ export const FirebaseController = {
         };
         const roomRef = doc(this.db, "rooms", roomId);
         try {
+            let isSpectator = false;
             await runTransaction(this.db, async (transaction) => {
                 const roomDoc = await transaction.get(roomRef);
                 let currentCount = 0;
@@ -59,17 +60,24 @@ export const FirebaseController = {
                     const roomData = roomDoc.data();
                     currentCount = roomData.playerCount || 0;
                     if (currentCount >= 10) { throw "La salle est pleine !"; }
-                    // Bloquer si partie en cours
+                    // Si partie en cours, rejoindre en tant que spectateur
                     if (roomData.gameState === 'playing' || roomData.gameState === 'countdown') {
-                        throw "Partie en cours ! Attendez la fin de la manche.";
+                        isSpectator = true;
+                        initialPlayerData.isAlive = false;
+                        initialPlayerData.isSpectator = true;
                     }
                 }
                 const playerRef = doc(this.db, "rooms", roomId, "players", localPlayerId);
                 transaction.set(playerRef, initialPlayerData);
-                const roomData = { name: `Salle ${roomId.split('_')[1]}`, playerCount: currentCount + 1 };
-                if (currentCount === 0) { roomData.gameState = 'waiting'; }
-                transaction.set(roomRef, roomData, { merge: true });
+                const roomDataUpdate = { name: `Salle ${roomId.split('_')[1]}`, playerCount: currentCount + 1 };
+                if (currentCount === 0) { roomDataUpdate.gameState = 'waiting'; }
+                transaction.set(roomRef, roomDataUpdate, { merge: true });
             });
+
+            // Si spectateur, mettre le jeu en mode spectateur (waiting avec animation)
+            if (isSpectator) {
+                Game.state = 'spectating';
+            }
 
             // GESTION DECONNEXION (Ghost Players)
             const { onDisconnect } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js");
@@ -145,7 +153,13 @@ export const FirebaseController = {
                 Game.state = 'countdown'; UI.startCountdown();
             } else if (sessionData.gameState === 'playing' && currentGameState !== 'playing') {
                 UI.stopCountdown(); Game.start();
-            } else if (sessionData.gameState === 'waiting' && currentGameState !== 'waiting') {
+            } else if (sessionData.gameState === 'waiting' && (currentGameState !== 'waiting' || currentGameState === 'spectating')) {
+                // Spectateurs deviennent joueurs actifs
+                if (currentGameState === 'spectating' && Game.localPlayer) {
+                    Game.localPlayer.isSpectator = false;
+                    Game.localPlayer.isAlive = true;
+                    this.updatePlayerDoc(Game.localPlayer.id, { isSpectator: false, isAlive: true, isReady: false });
+                }
                 Game.resetForNewRound();
             }
         });

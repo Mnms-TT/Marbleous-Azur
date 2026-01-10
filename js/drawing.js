@@ -29,9 +29,28 @@ export const Drawing = {
       this.drawCountdownScreen(ctx, canvas);
     } else if (Game.state === "playing") {
       this.drawGameState(ctx, canvas, player, rad, isMain);
+    } else if (Game.state === "spectating") {
+      // Spectateur : afficher l'animation lobby + message
+      this.drawLobbyState(ctx, canvas, player, isMain);
+      this.drawSpectatorOverlay(ctx, canvas);
     } else {
       this.drawLobbyState(ctx, canvas, player, isMain);
     }
+  },
+
+  drawSpectatorOverlay(ctx, canvas) {
+    // Overlay semi-transparent avec message
+    ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.font = "bold 16px 'Outfit', sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#fbbf24";
+    ctx.fillText("⏳ PARTIE EN COURS", canvas.width / 2, canvas.height / 2 - 15);
+
+    ctx.font = "12px 'Outfit', sans-serif";
+    ctx.fillStyle = "#fff";
+    ctx.fillText("Vous rejoindrez à la prochaine manche", canvas.width / 2, canvas.height / 2 + 10);
   },
 
   drawCountdownScreen(ctx, canvas) {

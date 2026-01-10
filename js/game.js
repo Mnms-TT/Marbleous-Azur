@@ -91,7 +91,7 @@ export const Game = {
     if (elapsed >= frameInterval) {
       this.lastFrameTime = timestamp - (elapsed % frameInterval);
 
-      if (this.state === "waiting") {
+      if (this.state === "waiting" || this.state === "spectating") {
         GameLogic.updateLobbyAnimation();
       } else if (this.state === "playing") {
         GameLogic.updateLocalAnimations();

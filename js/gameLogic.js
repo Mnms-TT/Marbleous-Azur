@@ -288,9 +288,12 @@ export const GameLogic = {
       b.vx = b.vx || 0;
       b.vy = b.vy || 0;
 
-      // Effet plateau renversé (tir dévié)
-      if (Game.localPlayer.statusEffects.plateauRenverse)
-        b.vx += 0.15 * Game.localPlayer.statusEffects.plateauRenverse.direction;
+      // Effet plateau renversé - gravité latérale basée sur l'angle de rotation
+      if (Game.localPlayer.statusEffects.plateauRenverse) {
+        const rotAngle = Game.localPlayer.statusEffects.plateauRenverse.angle || 0;
+        const gravityEffect = Math.sin(rotAngle * Math.PI / 180) * 0.3;
+        b.vx += gravityEffect;
+      }
 
       b.x += b.vx;
       b.y += b.vy;
@@ -337,6 +340,45 @@ export const GameLogic = {
         if (b.y > mainCanvas.height + 100) p.fallingBubbles.splice(i, 1);
       })
     );
+
+    // Boules entrantes (sort boulesSupplementaires)
+    Game.players.forEach((p) => {
+      if (!p.incomingBubbles) p.incomingBubbles = [];
+
+      p.incomingBubbles.forEach((b, i) => {
+        const targetY = this.getBubbleCoords(b.targetRow, b.targetCol, Game.bubbleRadius).y;
+
+        b.y += b.vy;
+
+        // Si la bulle atteint sa destination
+        if (b.y >= targetY) {
+          // Décaler d'abord toutes les bulles vers le bas pour faire de la place
+          if (b.targetRow === 0) {
+            // Décaler la grille vers le bas
+            for (let r = Config.GRID_ROWS - 1; r > 0; r--) {
+              for (let c = 0; c < Config.GRID_COLS; c++) {
+                p.grid[r][c] = p.grid[r - 1][c];
+                if (p.grid[r][c]) p.grid[r][c].r = r;
+              }
+            }
+            // Nouvelle ligne vide en haut
+            for (let c = 0; c < Config.GRID_COLS; c++) {
+              p.grid[0][c] = null;
+            }
+          }
+
+          // Placer la bulle dans la grille
+          p.grid[b.targetRow][b.targetCol] = {
+            color: b.color,
+            r: b.targetRow,
+            c: b.targetCol,
+          };
+
+          // Retirer de la liste
+          p.incomingBubbles.splice(i, 1);
+        }
+      });
+    });
   },
 
   processStatusEffects(player) {
@@ -406,10 +448,12 @@ export const GameLogic = {
     switch (spell) {
       // SORTS OFFENSIFS
       case "plateauRenverse":
-        // Tir imprévisible - angle modifié aléatoirement
+        // Rotation du plateau entre 10 et 40 degrés
+        const rotationAngle = (10 + Math.random() * 30) * (Math.random() < 0.5 ? -1 : 1);
         effects.plateauRenverse = {
           endTime: Date.now() + DURATION,
-          direction: Math.random() < 0.5 ? -1 : 1,
+          angle: rotationAngle, // Angle en degrés
+          direction: rotationAngle > 0 ? 1 : -1,
         };
         break;
 
@@ -438,22 +482,33 @@ export const GameLogic = {
         effects.variationCouleur = { endTime: Date.now() + DURATION };
         break;
 
-      case "boulesSupplementaires":
-        // Ajoute ~10 bulles sur l'écran de l'adversaire
-        for (let i = 0; i < 2; i++) {
-          // Décaler toutes les lignes vers le bas
-          for (let r = Config.GRID_ROWS - 1; r > 0; r--)
-            for (let c = 0; c < Config.GRID_COLS; c++) {
-              grid[r][c] = grid[r - 1][c];
-              if (grid[r][c]) grid[r][c].r = r;
+
+      case "boulesSupplementaires": {
+        // Ajoute ~2 rangées de bulles qui tombent avec animation
+        const newFallingBubbles = [];
+        const numRows = 2;
+
+        for (let row = 0; row < numRows; row++) {
+          for (let c = 0; c < Config.GRID_COLS; c++) {
+            if (Math.random() > 0.3) { // 70% de chance d'avoir une bulle
+              const bubble = this.createBubble(row, c);
+              const { x } = this.getBubbleCoords(row, c, Game.bubbleRadius);
+              newFallingBubbles.push({
+                ...bubble,
+                x: x,
+                y: -50 - row * (Game.bubbleRadius * 2.2) - Math.random() * 30, // Départ au dessus de l'écran
+                targetRow: row,
+                targetCol: c,
+                vy: 2 + Math.random() * 2, // Vitesse de chute
+              });
             }
-          // Nouvelle ligne en haut
-          for (let c = 0; c < Config.GRID_COLS; c++)
-            grid[0][c] = Math.random() > 0.4 ? this.createBubble(0, c) : null;
+          }
         }
-        this.handleAvalanche({ grid }, grid, false);
-        gridChanged = true;
+
+        // Stocker les bulles qui tombent dans le player
+        target.incomingBubbles = (target.incomingBubbles || []).concat(newFallingBubbles);
         break;
+      }
 
       // SORTS DÉFENSIFS
       case "nukeBomb": {

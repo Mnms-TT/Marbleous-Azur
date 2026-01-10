@@ -229,6 +229,19 @@ export const Drawing = {
         );
     }
 
+    // --- Effet de rotation du plateau (plateauRenverse) ---
+    // Appliqué UNIQUEMENT à la grille et aux éléments du plateau, pas au canon
+    let rotationApplied = false;
+    if (isMain && Game.localPlayer?.statusEffects?.plateauRenverse) {
+      const rotAngle = Game.localPlayer.statusEffects.plateauRenverse.angle || 0;
+      ctx.save();
+      // Rotation autour du centre du canvas
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate(rotAngle * Math.PI / 180);
+      ctx.translate(-canvas.width / 2, -canvas.height / 2);
+      rotationApplied = true;
+    }
+
     // --- LIGNE BLANCHE (Barre de Game Over) ---
     ctx.beginPath();
     ctx.moveTo(0, deadLineY);
@@ -252,9 +265,17 @@ export const Drawing = {
     (player.fallingBubbles || []).forEach((b) =>
       this.drawBubble(ctx, b, rad, b.x, b.y)
     );
+
+    // Dessiner les bulles entrantes (sort boulesSupplementaires)
+    (player.incomingBubbles || []).forEach((b) =>
+      this.drawBubble(ctx, b, rad, b.x, b.y)
+    );
+
     (player.effects || []).forEach((e) => this.drawEffect(ctx, e));
 
     if (!player.isAlive) this.drawOverlayText(ctx, canvas, "PERDU", "red");
+
+    if (rotationApplied) ctx.restore();
   },
 
   drawSpellBar(ctx, canvas, player) {

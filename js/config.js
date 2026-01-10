@@ -1,14 +1,14 @@
 export const Config = {
-  // Couleurs exactes de l'image de référence Bust-A-Move
+  // Couleurs exactes données par l'utilisateur
   BUBBLE_COLORS: [
-    { main: "#E84C8A", shadow: "#C03068" }, // Rose/Magenta
-    { main: "#F5D033", shadow: "#D4B020" }, // Jaune
-    { main: "#4DB748", shadow: "#3A9038" }, // Vert
-    { main: "#4ACBD5", shadow: "#38A0A8" }, // Cyan/Turquoise
-    { main: "#3B6BC6", shadow: "#2A4F9A" }, // Bleu
-    { main: "#9B59B6", shadow: "#7A4490" }, // Violet
-    { main: "#F5A623", shadow: "#D4881A" }, // Orange
-    { main: "#5D5D5D", shadow: "#3D3D3D" }, // Gris
+    { main: "#fad402", shadow: "#c9a801" }, // Jaune
+    { main: "#1fc23f", shadow: "#189a32" }, // Vert
+    { main: "#26c9f9", shadow: "#1ea0c7" }, // Cyan/Bleu clair
+    { main: "#365edf", shadow: "#2b4bb2" }, // Bleu foncé
+    { main: "#bd36d9", shadow: "#972bad" }, // Violet (Nuke)
+    { main: "#b6b4b9", shadow: "#919094" }, // Gris
+    { main: "#2d2d2d", shadow: "#1a1a1a" }, // Noir
+    { main: "#e63946", shadow: "#b82d38" }, // Rouge (à confirmer)
   ],
 
   // Palette Patchwork orange (carrés variés comme référence)
@@ -87,14 +87,14 @@ export const Config = {
   },
 
   COLOR_TO_SPELL_MAP: {
-    "#E84C8A": "plateauRenverse",     // Rose -> Plateau renversé
-    "#F5D033": "canonCasse",           // Jaune -> Canon cassé
-    "#4DB748": "disparitionSorts",     // Vert -> Disparition de sorts
-    "#4ACBD5": "variationCouleur",     // Cyan -> Variation de couleur
-    "#3B6BC6": "boulesSupplementaires",// Bleu -> Boules supplémentaires
-    "#9B59B6": "nukeBomb",             // Violet -> Nuke Bomb
-    "#F5A623": "toutesMemeCouleur",    // Orange -> Toutes même couleur
-    "#5D5D5D": "nettoyage",            // Gris -> Nettoyage
+    "#fad402": "canonCasse",            // Jaune -> Canon cassé
+    "#1fc23f": "disparitionSorts",      // Vert -> Disparition de sorts
+    "#26c9f9": "variationCouleur",      // Cyan -> Variation de couleur
+    "#365edf": "boulesSupplementaires", // Bleu foncé -> Boules supplémentaires
+    "#bd36d9": "nukeBomb",              // Violet -> Nuke Bomb
+    "#b6b4b9": "toutesMemeCouleur",     // Gris -> Toutes même couleur
+    "#2d2d2d": "nettoyage",             // Noir -> Nettoyage
+    "#e63946": "plateauRenverse",       // Rouge -> Plateau renversé
   },
 
   MAX_SPELLS: 7,

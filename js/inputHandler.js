@@ -33,9 +33,17 @@ export const InputHandler = {
             lastActive: Date.now(),
           });
         }
-        // Si en jeu : Clic = Tirer
+        // Si en jeu : Clic gauche = Tirer, Clic droit créé séparément
         else if (Game.state === "playing" && p.isAlive) {
-          this.handleShoot();
+          // Si on a des sorts et qu'on clique avec Shift = lancer le sort sur soi
+          if (e.shiftKey && p.spells && p.spells.length > 0) {
+            // LIFO: utiliser le DERNIER sort (index = length - 1)
+            const lastSpellIndex = p.spells.length - 1;
+            GameLogic.castSpecificSpell(p, lastSpellIndex);
+            console.log(`Sort lancé sur soi-même`);
+          } else {
+            this.handleShoot();
+          }
         }
       });
     }
@@ -53,10 +61,10 @@ export const InputHandler = {
           const targetId = view.dataset.playerId;
           const targetPlayer = Game.players.get(targetId);
 
-          // Si on a des sorts, on lance le premier (FIFO)
+          // LIFO: utiliser le DERNIER sort (index = length - 1)
           if (p.spells && p.spells.length > 0 && targetPlayer) {
-            // Index 0 car FIFO
-            GameLogic.castSpecificSpell(targetPlayer, 0);
+            const lastSpellIndex = p.spells.length - 1;
+            GameLogic.castSpecificSpell(targetPlayer, lastSpellIndex);
             console.log(`Sort lancé sur ${targetPlayer.name}`);
           }
         }

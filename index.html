@@ -63,21 +63,11 @@
       grid-row: 1;
       display: flex;
       flex-direction: column;
-      /* Patchwork rectangles 6 colonnes x 12 rangées, dégradé subtil orange clair */
+      /* Patchwork 6 rectangles (2 colonnes x 3 rangées) */
       background:
-        repeating-linear-gradient(to bottom,
-          #fdc89e 0%, #fdc89e 8.33%,
-          #fdba74 8.33%, #fdba74 16.66%,
-          #fdc89e 16.66%, #fdc89e 25%,
-          #fb923c 25%, #fb923c 33.33%,
-          #fdba74 33.33%, #fdba74 41.66%,
-          #fdc89e 41.66%, #fdc89e 50%,
-          #fdba74 50%, #fdba74 58.33%,
-          #fdc89e 58.33%, #fdc89e 66.66%,
-          #fb923c 66.66%, #fb923c 75%,
-          #fdba74 75%, #fdba74 83.33%,
-          #fdc89e 83.33%, #fdc89e 91.66%,
-          #fdba74 91.66%, #fdba74 100%);
+        linear-gradient(to right, #fdba74 50%, #fb923c 50%) 0% 0% / 100% 33.33% no-repeat,
+        linear-gradient(to right, #fb923c 50%, #fdc89e 50%) 0% 33.33% / 100% 33.33% no-repeat,
+        linear-gradient(to right, #fdc89e 50%, #fdba74 50%) 0% 66.66% / 100% 33.34% no-repeat;
       overflow: hidden;
     }
 

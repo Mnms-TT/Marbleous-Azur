@@ -697,16 +697,16 @@ export const GameLogic = {
       // Choisir une bulle aléatoire
       const target = bubbles[Math.floor(Math.random() * bubbles.length)];
 
-      // Choisir un sort aléatoire parmi tous les sorts disponibles
-      const spellKeys = Object.keys(Config.SPELLS);
-      const randomSpell = spellKeys[Math.floor(Math.random() * spellKeys.length)];
+      // Le sort est déterminé par la COULEUR de la bulle
+      const spell = Config.COLOR_TO_SPELL_MAP[target.color.main];
+      if (spell) {
+        target.spell = spell;
+        target.isSpellBubble = true;
 
-      target.spell = randomSpell;
-      target.isSpellBubble = true;
-
-      await FirebaseController.updatePlayerDoc(player.id, {
-        grid: JSON.stringify(player.grid),
-      });
+        await FirebaseController.updatePlayerDoc(player.id, {
+          grid: JSON.stringify(player.grid),
+        });
+      }
     }
   },
 

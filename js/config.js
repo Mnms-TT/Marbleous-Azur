@@ -87,14 +87,14 @@ export const Config = {
   },
 
   COLOR_TO_SPELL_MAP: {
-    "#ff3388": "plateauRenverse",
-    "#ffee00": "canonCasse",
-    "#33dd33": "disparitionSorts",
-    "#33dddd": "variationCouleur",
-    "#3366ff": "boulesSupplementaires",
-    "#aa44dd": "nukeBomb",
-    "#ff6633": "toutesMemeCouleur",
-    "#333333": "nettoyage",
+    "#E84C8A": "plateauRenverse",     // Rose -> Plateau renversé
+    "#F5D033": "canonCasse",           // Jaune -> Canon cassé
+    "#4DB748": "disparitionSorts",     // Vert -> Disparition de sorts
+    "#4ACBD5": "variationCouleur",     // Cyan -> Variation de couleur
+    "#3B6BC6": "boulesSupplementaires",// Bleu -> Boules supplémentaires
+    "#9B59B6": "nukeBomb",             // Violet -> Nuke Bomb
+    "#F5A623": "toutesMemeCouleur",    // Orange -> Toutes même couleur
+    "#5D5D5D": "nettoyage",            // Gris -> Nettoyage
   },
 
   MAX_SPELLS: 7,

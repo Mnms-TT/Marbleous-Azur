@@ -105,4 +105,8 @@ export const Config = {
   SPELL_SPAWN_CHANCE: 0.33, // 1/3 de chance
   FPS: 60,
   LAUNCHER_ROTATION_SPEED: 0.014,
+
+  // Coefficient de redistribution des bulles - augmente avec le niveau
+  BASE_REDISTRIBUTION_COEF: 0.1, // Coefficient initial
+  REDISTRIBUTION_COEF_PER_LEVEL: 0.05, // +0.05 par niveau
 };

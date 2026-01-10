@@ -39,7 +39,7 @@ export const Game = {
           vy: Math.random() * 2 + 1,
           color:
             Config.BUBBLE_COLORS[
-              Math.floor(Math.random() * Config.BUBBLE_COLORS.length)
+            Math.floor(Math.random() * Config.BUBBLE_COLORS.length)
             ],
         });
       }
@@ -57,7 +57,7 @@ export const Game = {
 
     GameLogic.loadBubbles(this.localPlayer);
     FirebaseController.updatePlayerDoc(this.localPlayer.id, { isReady: false });
-    this.gameIntervals.push(setInterval(GameLogic.levelUp, 30000));
+    this.gameIntervals.push(setInterval(GameLogic.levelUp, 20000)); // Niveau monte toutes les 20s
     this.gameIntervals.push(setInterval(GameLogic.triggerGlobalAttack, 10000));
 
     UI.resizeAllCanvases();

@@ -396,11 +396,42 @@ export const Drawing = {
 
   drawEffect(ctx, e) {
     if (e.type === "pop") {
+      const alpha = Math.max(0, e.life / 10);
+
+      // Cercle extérieur en expansion
       ctx.beginPath();
       ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
-      ctx.strokeStyle = "white";
+      ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+      ctx.lineWidth = 2;
       ctx.stroke();
+
+      // Cercle intérieur coloré
+      if (e.color) {
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, e.radius * 0.6, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${this.hexToRgb(e.color)}, ${alpha * 0.5})`;
+        ctx.fill();
+      }
+
+      // Particules (étoiles)
+      const particleCount = 6;
+      for (let i = 0; i < particleCount; i++) {
+        const angle = (Math.PI * 2 / particleCount) * i + e.radius * 0.1;
+        const px = e.x + Math.cos(angle) * e.radius;
+        const py = e.y + Math.sin(angle) * e.radius;
+        ctx.beginPath();
+        ctx.arc(px, py, 2, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+        ctx.fill();
+      }
     }
+  },
+
+  hexToRgb(hex) {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ?
+      `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` :
+      "255, 255, 255";
   },
 
   drawOverlayText(ctx, canvas, mainText, color) {

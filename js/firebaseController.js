@@ -137,7 +137,20 @@ export const FirebaseController = {
 
             const alivePlayers = Array.from(Game.players.values()).filter(p => p.isAlive);
             if (Game.state === 'playing' && alivePlayers.length <= 1 && Game.players.size > 1) {
-                this.updateSessionDoc({ gameState: 'waiting' });
+                // Annoncer le gagnant
+                const winner = alivePlayers[0];
+                if (winner) {
+                    const teamColors = ['Jaune', 'Rouge', 'Vert', 'Bleu'];
+                    const teamName = teamColors[winner.team] || 'Inconnue';
+                    UI.addChatMessage('🏆 Système', `L'équipe ${teamName} a gagné ! (${winner.name})`);
+                } else {
+                    UI.addChatMessage('🏆 Système', 'Match nul ! Aucun survivant.');
+                }
+
+                // Délai avant reset pour que tout le monde voit le résultat
+                setTimeout(() => {
+                    this.updateSessionDoc({ gameState: 'waiting' });
+                }, 5000);
             }
             UI.renderOpponents();
             UI.updatePlayerStats();

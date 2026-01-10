@@ -79,8 +79,22 @@ export const Game = {
       FirebaseController.auth.currentUser.uid
     );
 
+    // Sync to Firebase so everyone can ready up again
+    if (this.localPlayer) {
+      FirebaseController.updatePlayerDoc(this.localPlayer.id, {
+        isAlive: true,
+        isReady: false,
+        grid: JSON.stringify(newGrid),
+        score: 0,
+        level: 1,
+        spells: [],
+        statusEffects: {}
+      });
+    }
+
     UI.renderOpponents();
     UI.updatePlayerStats();
+    UI.checkVoteStatus();
   },
 
   gameLoop(timestamp = 0) {

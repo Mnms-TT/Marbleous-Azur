@@ -533,29 +533,27 @@ export const GameLogic = {
 
 
       case "boulesSupplementaires": {
-        // Ajoute ~2 rangées de bulles qui tombent avec animation
-        const newFallingBubbles = [];
+        // Ajoute 2 rangées de bulles PAR LE BAS (pousse le plateau vers le haut)
         const numRows = 2;
 
-        for (let row = 0; row < numRows; row++) {
-          for (let c = 0; c < Config.GRID_COLS; c++) {
-            if (Math.random() > 0.3) { // 70% de chance d'avoir une bulle
-              const bubble = this.createBubble(row, c);
-              const { x } = this.getBubbleCoords(row, c, Game.bubbleRadius);
-              newFallingBubbles.push({
-                ...bubble,
-                x: x,
-                y: -50 - row * (Game.bubbleRadius * 2.2) - Math.random() * 30, // Départ au dessus de l'écran
-                targetRow: row,
-                targetCol: c,
-                vy: 2 + Math.random() * 2, // Vitesse de chute
-              });
+        // Décaler toutes les lignes vers le HAUT
+        for (let i = 0; i < numRows; i++) {
+          // Déplacer les lignes vers le haut (ligne 0 devient ligne -1, supprimée)
+          for (let r = 0; r < Config.GRID_ROWS - 1; r++) {
+            for (let c = 0; c < Config.GRID_COLS; c++) {
+              grid[r][c] = grid[r + 1][c];
+              if (grid[r][c]) grid[r][c].r = r;
             }
+          }
+
+          // Ajouter une nouvelle ligne complète EN BAS
+          const bottomRow = Config.GRID_ROWS - 1;
+          for (let c = 0; c < Config.GRID_COLS; c++) {
+            grid[bottomRow][c] = this.createBubble(bottomRow, c);
           }
         }
 
-        // Stocker les bulles qui tombent dans le player
-        target.incomingBubbles = (target.incomingBubbles || []).concat(newFallingBubbles);
+        gridChanged = true;
         break;
       }
 

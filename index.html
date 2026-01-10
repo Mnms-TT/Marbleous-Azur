@@ -90,42 +90,53 @@
     #solo-area {
       flex: 1;
       display: flex;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #practice-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    #practice-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       text-align: center;
-      padding: 20px;
+      background: rgba(0, 0, 0, 0.6);
+      cursor: pointer;
+      transition: opacity 0.3s;
     }
 
-    #solo-area h1 {
-      font-size: 28px;
+    #practice-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    #practice-overlay h2 {
+      font-size: 20px;
       font-weight: bold;
       color: white;
-      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+      margin-bottom: 8px;
+    }
+
+    #practice-overlay p {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.8);
       margin-bottom: 10px;
     }
 
-    #solo-area p {
-      font-size: 14px;
-      color: rgba(255, 255, 255, 0.8);
-      margin-bottom: 20px;
-    }
-
-    #pseudo-input {
-      width: 80%;
-      max-width: 200px;
-      padding: 10px;
-      font-size: 14px;
-      border: 2px solid #fff;
-      border-radius: 6px;
-      background: rgba(0, 0, 0, 0.3);
-      color: white;
-      text-align: center;
-      margin-bottom: 15px;
-    }
-
-    #pseudo-input::placeholder {
-      color: rgba(255, 255, 255, 0.5);
+    #practice-overlay small {
+      font-size: 11px;
+      color: #fbbf24;
     }
 
     #btn-play {
@@ -347,6 +358,19 @@
       color: #e2e8f0;
     }
 
+    .chat-msg.dm {
+      color: #a855f7;
+      font-style: italic;
+    }
+
+    .chat-msg.dm .author {
+      color: #c084fc;
+    }
+
+    .chat-msg.dm .text {
+      color: #a855f7;
+    }
+
     #chat-input-area {
       display: flex;
       gap: 8px;
@@ -465,10 +489,12 @@
       <!-- Zone solo (comme player-zone dans game.html) -->
       <div id="player-zone">
         <div id="solo-area">
-          <h1>🎮 MARBLEOUS</h1>
-          <p>Entrez votre pseudo et rejoignez une salle</p>
-          <input type="text" id="pseudo-input" placeholder="Votre pseudo..." maxlength="15">
-          <button id="btn-play">▶ JOUER</button>
+          <canvas id="practice-canvas"></canvas>
+          <div id="practice-overlay">
+            <h2>🎯 Zone d'échauffement</h2>
+            <p>Cliquez pour vous entraîner</p>
+            <small id="welcome-pseudo"></small>
+          </div>
         </div>
         <div id="spells-bar">
           <span>SORTILEGES</span>
@@ -536,13 +562,14 @@
     const roomsGrid = document.getElementById('rooms-grid');
     const chatMessages = document.getElementById('chat-messages');
     const chatInput = document.getElementById('chat-input');
-    const pseudoInput = document.getElementById('pseudo-input');
-    const btnPlay = document.getElementById('btn-play');
     const btnSend = document.getElementById('btn-send');
     const onlineCount = document.getElementById('online-count');
     const pseudoOverlay = document.getElementById('pseudo-overlay');
     const entryPseudo = document.getElementById('entry-pseudo');
     const btnEnter = document.getElementById('btn-enter');
+    const practiceOverlay = document.getElementById('practice-overlay');
+    const practiceCanvas = document.getElementById('practice-canvas');
+    const welcomePseudo = document.getElementById('welcome-pseudo');
 
     const activePlayersCache = new Map();
     const playerUnsubscribers = new Map();
@@ -572,7 +599,11 @@
 
       currentPseudo = pseudo;
       localStorage.setItem('marbleous_pseudo', pseudo);
-      pseudoInput.value = pseudo;
+
+      // Afficher le welcome message
+      if (welcomePseudo) {
+        welcomePseudo.textContent = `Bienvenue, ${pseudo} !`;
+      }
 
       // Masquer l'overlay
       pseudoOverlay.classList.add('hidden');
@@ -794,21 +825,18 @@
         alert("Non connecté. Rafraîchissez.");
         return;
       }
-      const pseudo = pseudoInput.value.trim() || 'Joueur';
-      localStorage.setItem('marbleous_pseudo', pseudo);
+      const pseudo = currentPseudo || 'Joueur';
       window.location.href = `game.html?roomId=${roomId}&name=${encodeURIComponent(pseudo)}`;
     }
 
-    btnPlay.onclick = () => {
-      for (let i = 1; i <= MAX_ROOMS; i++) {
-        const count = activePlayersCache.get(`salle_${i}`) || 0;
-        if (count < MAX_PLAYERS_PER_ROOM) {
-          joinRoom(`salle_${i}`);
-          return;
-        }
-      }
-      alert("Toutes les salles sont pleines !");
-    };
+    // Clic sur la zone d'échauffement pour jouer
+    if (practiceOverlay) {
+      practiceOverlay.onclick = () => {
+        practiceOverlay.classList.add('hidden');
+        // TODO: Initialiser un mini-jeu d'entraînement sur le canvas
+        // Pour l'instant on affiche juste le message
+      };
+    }
 
     // Chat global
     // DM target (set when clicking a player)
@@ -832,9 +860,9 @@
 
         chatMessages.innerHTML = msgs.map(m => {
           const isWhisper = m.toUid;
-          const whisperClass = isWhisper ? 'style="color:#a855f7;font-style:italic;"' : '';
+          const dmClass = isWhisper ? ' dm' : '';
           const prefix = isWhisper ? `[DM ${m.toName ? 'à ' + m.toName : ''}] ` : '';
-          return `<div class="chat-msg" ${whisperClass}><span class="author">${m.author}:</span> <span class="text">${prefix}${m.text}</span></div>`;
+          return `<div class="chat-msg${dmClass}"><span class="author">${m.author}:</span> <span class="text">${prefix}${m.text}</span></div>`;
         }).join('');
         chatMessages.scrollTop = chatMessages.scrollHeight;
       });
@@ -844,7 +872,7 @@
       let text = chatInput.value.trim();
       if (!text || !auth.currentUser) return;
 
-      const author = pseudoInput.value.trim() || 'Joueur';
+      const author = currentPseudo || 'Joueur';
       let toUid = null;
       let toName = null;
 

@@ -32,13 +32,13 @@
       background: #0a0a15;
     }
 
-    /* Même layout que game.html */
+    /* Même layout que game.html - avec colonne joueurs à droite */
     #game-container {
       aspect-ratio: 4 / 3;
       max-width: 100vw;
       max-height: 100vh;
       display: grid;
-      grid-template-columns: 28% 72%;
+      grid-template-columns: 28% 52% 20%;
       grid-template-rows: 65% 35%;
       overflow: hidden;
     }
@@ -234,9 +234,83 @@
       cursor: not-allowed;
     }
 
-    /* Zone chat (bas, pleine largeur) */
+    /* Zone joueurs connectés (droite) */
+    #players-zone {
+      grid-column: 3;
+      grid-row: 1;
+      background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+      display: flex;
+      flex-direction: column;
+      border-left: 2px solid #334155;
+      overflow: hidden;
+    }
+
+    #players-header {
+      padding: 8px 12px;
+      background: #334155;
+      border-bottom: 1px solid #475569;
+    }
+
+    #players-header h3 {
+      color: #fbbf24;
+      font-size: 13px;
+      font-weight: bold;
+      margin: 0;
+    }
+
+    #players-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+
+    .player-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 10px;
+      margin-bottom: 6px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .player-item:hover {
+      background: #334155;
+    }
+
+    .player-item .player-name {
+      color: #e2e8f0;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .player-item .player-status {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #22c55e;
+    }
+
+    .player-item .btn-dm {
+      background: #3b82f6;
+      border: none;
+      color: white;
+      font-size: 10px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .player-item .btn-dm:hover {
+      background: #2563eb;
+    }
+
+    /* Zone chat (bas, pleine largeur - 3 colonnes) */
     #chat-zone {
-      grid-column: 1 / 3;
+      grid-column: 1 / 4;
       grid-row: 2;
       background: linear-gradient(180deg, #1e3a8a 0%, #0c1445 100%);
       display: flex;
@@ -327,6 +401,16 @@
         <div id="rooms-grid"></div>
       </div>
 
+      <!-- Zone joueurs connectés -->
+      <div id="players-zone">
+        <div id="players-header">
+          <h3>👥 Joueurs en ligne</h3>
+        </div>
+        <div id="players-list">
+          <!-- Rempli dynamiquement -->
+        </div>
+      </div>
+
       <!-- Chat global -->
       <div id="chat-zone">
         <div id="chat-header">
@@ -415,8 +499,16 @@
           const data = playerDoc.data();
           if (now - (data.lastActive || 0) < INACTIVITY_THRESHOLD) {
             activeCount++;
+            // Ajouter à la liste des joueurs en ligne
+            allOnlinePlayers.set(playerDoc.id, {
+              name: data.name || 'Joueur',
+              roomId: roomId,
+              lastActive: data.lastActive
+            });
           } else {
             ghostPlayers.push(playerDoc.id);
+            // Retirer de la liste
+            allOnlinePlayers.delete(playerDoc.id);
           }
         });
 
@@ -465,7 +557,63 @@
       totalOnline = 0;
       activePlayersCache.forEach(count => totalOnline += count);
       onlineCount.textContent = `${totalOnline} en ligne`;
+      updatePlayersList();
     }
+
+    // Stockage de tous les joueurs pour la liste
+    const allOnlinePlayers = new Map();
+
+    function updatePlayersList() {
+      const playersList = document.getElementById('players-list');
+      if (!playersList) return;
+
+      // Collecter tous les joueurs depuis le cache
+      const players = [];
+      allOnlinePlayers.forEach((player, id) => {
+        if (id !== auth.currentUser?.uid) { // Ne pas afficher soi-même
+          players.push({ id, ...player });
+        }
+      });
+
+      if (players.length === 0) {
+        playersList.innerHTML = '<div style="color:#64748b;font-size:11px;text-align:center;padding:20px;">Aucun joueur en ligne</div>';
+        return;
+      }
+
+      playersList.innerHTML = players.map(p => `
+        <div class="player-item" data-id="${p.id}">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div class="player-status"></div>
+            <span class="player-name">${p.name || 'Joueur'}</span>
+          </div>
+          <button class="btn-dm" onclick="openDM('${p.id}', '${p.name || 'Joueur'}')">DM</button>
+        </div>
+      `).join('');
+    }
+
+    // DM - Ouvrir une conversation privée
+    window.openDM = function (playerId, playerName) {
+      const message = prompt(`Message privé pour ${playerName}:`);
+      if (!message || !message.trim()) return;
+
+      const myName = pseudoInput.value.trim() || 'Joueur';
+
+      // Envoyer le DM via Firebase
+      addDoc(collection(db, "directMessages"), {
+        from: auth.currentUser.uid,
+        fromName: myName,
+        to: playerId,
+        toName: playerName,
+        text: message.trim(),
+        timestamp: Date.now(),
+        read: false
+      }).then(() => {
+        alert(`Message envoyé à ${playerName} !`);
+      }).catch(err => {
+        console.error("Erreur DM:", err);
+        alert("Erreur lors de l'envoi du message.");
+      });
+    };
 
     function joinRoom(roomId) {
       if (!auth.currentUser) {

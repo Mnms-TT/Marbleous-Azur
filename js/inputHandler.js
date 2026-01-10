@@ -166,6 +166,22 @@ export const InputHandler = {
           input.value = "";
           return;
         }
+
+        // Commande /fps pour régler les FPS (30-300)
+        if (msg.toLowerCase().startsWith("/fps ")) {
+          const parts = msg.split(" ");
+          if (parts.length === 2) {
+            const val = parseInt(parts[1]);
+            if (!isNaN(val) && val >= 30 && val <= 300) {
+              Game.targetFPS = val;
+              UI.addChatMessage("Système", `FPS réglés à ${val}`);
+            } else {
+              UI.addChatMessage("Système", "FPS doit être entre 30 et 300");
+            }
+          }
+          input.value = "";
+          return;
+        }
         UI.addChatMessage(Game.localPlayer.name, msg);
         input.value = "";
       }

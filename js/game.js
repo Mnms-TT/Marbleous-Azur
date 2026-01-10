@@ -18,6 +18,8 @@ export const Game = {
   countdownInterval: null,
   lobbyMarbles: [],
   currentRotationSpeed: Config.LAUNCHER_ROTATION_SPEED,
+  targetFPS: 60,
+  lastFrameTime: 0,
 
   init() {
     this.initLobbyAnimation();
@@ -81,14 +83,23 @@ export const Game = {
     UI.updatePlayerStats();
   },
 
-  gameLoop() {
-    if (this.state === "waiting") {
-      GameLogic.updateLobbyAnimation();
-    } else if (this.state === "playing") {
-      GameLogic.updateLocalAnimations();
+  gameLoop(timestamp = 0) {
+    // Throttle based on target FPS
+    const frameInterval = 1000 / this.targetFPS;
+    const elapsed = timestamp - this.lastFrameTime;
+
+    if (elapsed >= frameInterval) {
+      this.lastFrameTime = timestamp - (elapsed % frameInterval);
+
+      if (this.state === "waiting") {
+        GameLogic.updateLobbyAnimation();
+      } else if (this.state === "playing") {
+        GameLogic.updateLocalAnimations();
+      }
+
+      Drawing.drawAll();
     }
 
-    Drawing.drawAll();
-    requestAnimationFrame(() => this.gameLoop());
+    requestAnimationFrame((t) => this.gameLoop(t));
   },
 };

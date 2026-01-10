@@ -178,12 +178,21 @@ export const UI = {
     const spellSlots = document.querySelectorAll("#spells-bar .spell-slot");
     if (!spellSlots.length || !Game.localPlayer) return;
 
+    const spells = Game.localPlayer.spells || [];
+    const numSlots = spellSlots.length;
+
+    // LIFO: le dernier sort (index length-1) doit être à DROITE (dernier slot)
+    // On affiche les sorts de gauche à droite, les plus récents à droite
     spellSlots.forEach((slot, i) => {
       slot.innerHTML = "";
       slot.style.backgroundColor = "rgba(30, 41, 59, 0.8)";
 
-      if (Game.localPlayer.spells && Game.localPlayer.spells[i]) {
-        const spellName = Game.localPlayer.spells[i];
+      // Calculer l'index du sort pour ce slot (les sorts les plus anciens à gauche)
+      // Slot 0 = sort le plus ancien, Slot 6 = sort le plus récent
+      const spellIndex = spells.length - numSlots + i;
+
+      if (spellIndex >= 0 && spellIndex < spells.length) {
+        const spellName = spells[spellIndex];
         const spellInfo = Config.SPELLS[spellName];
         if (spellInfo) {
           const icon = Game.spellIcons[spellName];

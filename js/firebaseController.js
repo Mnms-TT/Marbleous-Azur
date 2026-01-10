@@ -56,8 +56,13 @@ export const FirebaseController = {
                 const roomDoc = await transaction.get(roomRef);
                 let currentCount = 0;
                 if (roomDoc.exists()) {
-                    currentCount = roomDoc.data().playerCount || 0;
+                    const roomData = roomDoc.data();
+                    currentCount = roomData.playerCount || 0;
                     if (currentCount >= 10) { throw "La salle est pleine !"; }
+                    // Bloquer si partie en cours
+                    if (roomData.gameState === 'playing' || roomData.gameState === 'countdown') {
+                        throw "Partie en cours ! Attendez la fin de la manche.";
+                    }
                 }
                 const playerRef = doc(this.db, "rooms", roomId, "players", localPlayerId);
                 transaction.set(playerRef, initialPlayerData);

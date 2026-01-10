@@ -24,13 +24,27 @@ export const Drawing = {
     // --- Effacer le canvas (transparent pour voir le fond orange CSS) ---
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const isGameActive = Game.state === "playing" || Game.state === "countdown";
-
-    if (!isGameActive) {
-      this.drawLobbyState(ctx, canvas, player, isMain);
-    } else {
+    if (Game.state === "countdown") {
+      // Pendant le countdown, afficher un écran noir avec le compte
+      this.drawCountdownScreen(ctx, canvas);
+    } else if (Game.state === "playing") {
       this.drawGameState(ctx, canvas, player, rad, isMain);
+    } else {
+      this.drawLobbyState(ctx, canvas, player, isMain);
     }
+  },
+
+  drawCountdownScreen(ctx, canvas) {
+    // Fond semi-transparent noir
+    ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Message "Préparation..."
+    ctx.fillStyle = "white";
+    ctx.font = "bold 24px Inter, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("Préparation...", canvas.width / 2, canvas.height / 2);
   },
 
   drawLobbyState(ctx, canvas, player, isMain) {
@@ -121,7 +135,7 @@ export const Drawing = {
   drawGameState(ctx, canvas, player, rad, isMain) {
     // Calcul de la ligne de séparation (Game Over Line)
     const gridPixelHeight = (Config.GAME_OVER_ROW + 0.5) * (rad * 1.732) + rad;
-    const deadLineY = gridPixelHeight + 10;
+    const deadLineY = gridPixelHeight; // Ligne juste au-dessus de la rangée game over
 
     // Le fond orange est géré par CSS, pas de dashboard dessiné ici
 
@@ -221,7 +235,7 @@ export const Drawing = {
     ctx.moveTo(0, deadLineY);
     ctx.lineTo(canvas.width, deadLineY);
     ctx.strokeStyle = "black";
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 2; // Ligne fine
     ctx.stroke();
 
     // Grille

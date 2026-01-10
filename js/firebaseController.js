@@ -38,8 +38,15 @@ export const FirebaseController = {
         if (!this.auth.currentUser) return;
         const localPlayerId = this.auth.currentUser.uid;
         let initialGrid = GameLogic.createInitialGrid();
+
+        // Récupérer le pseudo depuis l'URL ou localStorage
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlName = urlParams.get('name');
+        const storedName = localStorage.getItem('marbleous_pseudo');
+        const playerName = urlName || storedName || `Joueur_${localPlayerId.substring(0, 4)}`;
+
         const initialPlayerData = {
-            name: `Joueur_${localPlayerId.substring(0, 4)}`, isAlive: true, isReady: false, team: 0,
+            name: playerName, isAlive: true, isReady: false, team: 0,
             grid: JSON.stringify(initialGrid), score: 0, level: 1, spells: [], statusEffects: {},
             lastActive: Date.now()
         };

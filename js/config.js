@@ -1,14 +1,14 @@
 export const Config = {
-  // Couleurs classiques Bust-A-Move (reference image)
+  // Couleurs exactes de l'image de référence Bust-A-Move
   BUBBLE_COLORS: [
-    { main: "#ff4466", shadow: "#cc2244" }, // Rouge/Rose
-    { main: "#ffdd00", shadow: "#ccaa00" }, // Jaune
-    { main: "#44dd44", shadow: "#22aa22" }, // Vert
-    { main: "#44ddff", shadow: "#22aacc" }, // Cyan
-    { main: "#4488ff", shadow: "#2266cc" }, // Bleu
-    { main: "#dd44ff", shadow: "#aa22cc" }, // Violet/Magenta
-    { main: "#ff8844", shadow: "#cc6622" }, // Orange
-    { main: "#8866ff", shadow: "#6644cc" }, // Violet foncé
+    { main: "#ff3388", shadow: "#cc1166" }, // Rose/Magenta vif
+    { main: "#ffee00", shadow: "#ccbb00" }, // Jaune vif
+    { main: "#33dd33", shadow: "#22aa22" }, // Vert vif
+    { main: "#33dddd", shadow: "#22aaaa" }, // Cyan/Turquoise
+    { main: "#3366ff", shadow: "#2244cc" }, // Bleu
+    { main: "#aa44dd", shadow: "#7722aa" }, // Violet/Mauve
+    { main: "#ff6633", shadow: "#cc4411" }, // Orange
+    { main: "#333333", shadow: "#111111" }, // Noir/Gris foncé
   ],
 
   // Palette Patchwork orange (carrés variés comme référence)
@@ -30,35 +30,35 @@ export const Config = {
     plateauRenverse: {
       name: "Plateau renversé",
       icon: "icons/sort_tilt.png",
-      color: "#ff4466",
+      color: "#ff3388",
       type: "offensive",
       description: "Tir imprévisible - angle modifié aléatoirement"
     },
     canonCasse: {
       name: "Canon cassé",
       icon: "icons/sort_canon.png",
-      color: "#ffdd00",
+      color: "#ffee00",
       type: "offensive",
       description: "Comportement aléatoire du canon"
     },
     disparitionSorts: {
       name: "Disparition de sorts",
       icon: "icons/sort_cancel.png",
-      color: "#44dd44",
+      color: "#33dd33",
       type: "offensive",
       description: "Supprime 1 sort + bulles sorts à l'écran"
     },
     variationCouleur: {
       name: "Variation de couleur",
       icon: "icons/sort_rainbow.png",
-      color: "#44ddff",
+      color: "#33dddd",
       type: "offensive",
       description: "Couleurs changent constamment"
     },
     boulesSupplementaires: {
       name: "Boules supplémentaires",
       icon: "icons/sort_addline.png",
-      color: "#4488ff",
+      color: "#3366ff",
       type: "offensive",
       description: "Ajoute ~10 bulles à l'adversaire"
     },
@@ -66,35 +66,35 @@ export const Config = {
     nukeBomb: {
       name: "Nuke Bomb",
       icon: "icons/sort_nuke.png",
-      color: "#dd44ff",
+      color: "#aa44dd",
       type: "defensive",
       description: "Élimine beaucoup de bulles"
     },
     toutesMemeCouleur: {
       name: "Toutes même couleur",
       icon: "icons/sort_monocolor.png",
-      color: "#ff8844",
+      color: "#ff6633",
       type: "defensive",
       description: "Certaines bulles deviennent même couleur"
     },
     nettoyage: {
       name: "Nettoyage",
       icon: "icons/sort_removeline.png",
-      color: "#8866ff",
+      color: "#333333",
       type: "defensive",
       description: "Supprime 2-3 rangées de bulles"
     },
   },
 
   COLOR_TO_SPELL_MAP: {
-    "#ff4466": "plateauRenverse",
-    "#ffdd00": "canonCasse",
-    "#44dd44": "disparitionSorts",
-    "#44ddff": "variationCouleur",
-    "#4488ff": "boulesSupplementaires",
-    "#dd44ff": "nukeBomb",
-    "#ff8844": "toutesMemeCouleur",
-    "#8866ff": "nettoyage",
+    "#ff3388": "plateauRenverse",
+    "#ffee00": "canonCasse",
+    "#33dd33": "disparitionSorts",
+    "#33dddd": "variationCouleur",
+    "#3366ff": "boulesSupplementaires",
+    "#aa44dd": "nukeBomb",
+    "#ff6633": "toutesMemeCouleur",
+    "#333333": "nettoyage",
   },
 
   MAX_SPELLS: 7,
@@ -102,7 +102,7 @@ export const Config = {
   GRID_COLS: 8,
   GAME_OVER_ROW: 11, // Ligne noire position originale
 
-  SPELL_SPAWN_CHANCE: 0.5,
+  SPELL_SPAWN_CHANCE: 0.33, // 1/3 de chance
   FPS: 60,
   LAUNCHER_ROTATION_SPEED: 0.014,
 };

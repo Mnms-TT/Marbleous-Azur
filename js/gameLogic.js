@@ -502,14 +502,27 @@ export const GameLogic = {
       }
 
       case "nettoyage": {
-        // Supprime 2-3 rangées du bas
+        // Supprime 2-3 rangées du bas ET donne les sorts présents
         const rowsToRemove = 2 + Math.floor(Math.random() * 2); // 2 ou 3
         let rowsCleared = 0;
+        target.spells = target.spells || [];
+
         for (let r = Config.GRID_ROWS - 1; r >= 0 && rowsCleared < rowsToRemove; r--) {
           const hasBubble = grid[r].some((cell) => cell !== null);
           if (hasBubble) {
-            for (let c = 0; c < Config.GRID_COLS; c++)
-              if (grid[r][c]) grid[r][c] = null;
+            for (let c = 0; c < Config.GRID_COLS; c++) {
+              const bubble = grid[r][c];
+              if (bubble) {
+                // Collecter les sorts présents dans les rangées supprimées
+                if (bubble.isSpellBubble && bubble.spell) {
+                  if (target.spells.length < Config.MAX_SPELLS) {
+                    target.spells.push(bubble.spell);
+                    spellsChanged = true;
+                  }
+                }
+                grid[r][c] = null;
+              }
+            }
             rowsCleared++;
           }
         }
@@ -668,19 +681,32 @@ export const GameLogic = {
   },
 
   async spawnSpellBubble(player) {
-    const bubbles = player.grid
+    // Privilégier les bulles du bas (rangées 6-11)
+    let bubbles = player.grid
       .flat()
       .filter((b) => b && !b.isSpellBubble && b.r > 5);
+
+    // Si pas assez de bulles en bas, prendre toutes les bulles
+    if (bubbles.length < 3) {
+      bubbles = player.grid
+        .flat()
+        .filter((b) => b && !b.isSpellBubble);
+    }
+
     if (bubbles.length > 0) {
+      // Choisir une bulle aléatoire
       const target = bubbles[Math.floor(Math.random() * bubbles.length)];
-      const spell = Config.COLOR_TO_SPELL_MAP[target.color.main];
-      if (spell) {
-        target.spell = spell;
-        target.isSpellBubble = true;
-        await FirebaseController.updatePlayerDoc(player.id, {
-          grid: JSON.stringify(player.grid),
-        });
-      }
+
+      // Choisir un sort aléatoire parmi tous les sorts disponibles
+      const spellKeys = Object.keys(Config.SPELLS);
+      const randomSpell = spellKeys[Math.floor(Math.random() * spellKeys.length)];
+
+      target.spell = randomSpell;
+      target.isSpellBubble = true;
+
+      await FirebaseController.updatePlayerDoc(player.id, {
+        grid: JSON.stringify(player.grid),
+      });
     }
   },
 

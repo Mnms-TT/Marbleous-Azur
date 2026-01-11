@@ -45,8 +45,11 @@ export const FirebaseController = {
         const storedName = localStorage.getItem('marbleous_pseudo');
         const playerName = urlName || storedName || `Joueur_${localPlayerId.substring(0, 4)}`;
 
+        // Équipe aléatoire à l'entrée (0-4)
+        const randomTeam = Math.floor(Math.random() * 5);
+
         const initialPlayerData = {
-            name: playerName, isAlive: true, isReady: false, team: 0,
+            name: playerName, isAlive: true, isReady: false, team: randomTeam,
             grid: JSON.stringify(initialGrid), score: 0, level: 1, spells: [], statusEffects: {},
             lastActive: Date.now()
         };

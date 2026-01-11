@@ -197,27 +197,28 @@ export const GameLogic = {
     await this.checkGameOver(player);
   },
 
-  // Gestion des attaques (envoi de boules grises)
+  // Gestion des attaques (envoi de boules aux ennemis)
   async triggerGlobalAttack() {
     if (Game.state !== "playing") return;
+
     for (const player of Game.players.values()) {
       if (player.isAlive && player.attackBubbleCounter >= 10) {
         const attackUnits = Math.floor(player.attackBubbleCounter / 10);
         const attackSize = attackUnits * Math.floor(player.level);
+
         if (attackSize > 0) {
-          // Trouver les cibles : tous les autres joueurs vivants
-          // Exclure les coéquipiers seulement s'il y en a d'autres dans l'équipe
-          const allOthers = Array.from(Game.players.values()).filter(
-            (p) => p.id !== player.id && p.isAlive
+          // Cibler UNIQUEMENT les ennemis (équipe différente)
+          const enemies = Array.from(Game.players.values()).filter(
+            (p) => p.id !== player.id && p.isAlive && p.team !== player.team
           );
-          const teammates = allOthers.filter(p => p.team === player.team);
-          const enemies = allOthers.filter(p => p.team !== player.team);
 
-          // Si pas d'ennemis (1v1 même équipe), attaquer tout le monde sauf soi
-          const targets = enemies.length > 0 ? enemies : allOthers;
+          console.log(`[ATTACK] ${player.name} envoie ${attackSize} boules à ${enemies.length} ennemis`);
 
-          for (const target of targets) this.addJunkBubbles(target, attackSize);
+          for (const enemy of enemies) {
+            this.addJunkBubbles(enemy, attackSize);
+          }
         }
+
         await FirebaseController.updatePlayerDoc(player.id, {
           attackBubbleCounter: player.attackBubbleCounter % 10,
         });
@@ -226,26 +227,33 @@ export const GameLogic = {
   },
 
   addJunkBubbles(target, junkCount) {
-    const validSlots = [];
-    for (let r = 0; r < Config.GRID_ROWS; r++)
-      for (let c = 0; c < Config.GRID_COLS; c++)
-        if (
-          !target.grid[r][c] &&
-          (r === 0 ||
-            this.getNeighborCoords(r, c).some((n) => target.grid[n.r]?.[n.c]))
-        )
-          validSlots.push({ r, c });
+    const grid = target.grid;
 
-    validSlots.sort(() => Math.random() - 0.5);
-    const toAdd = Math.min(validSlots.length, junkCount);
+    // Calculer combien de lignes à ajouter (environ 1 ligne pour 8 boules)
+    const linesToAdd = Math.max(1, Math.ceil(junkCount / Config.GRID_COLS));
 
-    for (let i = 0; i < toAdd; i++) {
-      const s = validSlots[i];
-      // Boule "Junk" (couleur aléatoire ou grise, ici aléatoire pour simplifier)
-      target.grid[s.r][s.c] = this.createBubble(s.r, s.c);
+    for (let i = 0; i < linesToAdd; i++) {
+      // Décaler toutes les lignes vers le BAS
+      for (let r = Config.GRID_ROWS - 1; r > 0; r--) {
+        for (let c = 0; c < Config.GRID_COLS; c++) {
+          grid[r][c] = grid[r - 1][c];
+          if (grid[r][c]) grid[r][c].r = r;
+        }
+      }
+
+      // Ajouter une nouvelle ligne EN HAUT (row 0) avec des boules partielles
+      const fillRate = Math.min(1, junkCount / Config.GRID_COLS);
+      for (let c = 0; c < Config.GRID_COLS; c++) {
+        if (Math.random() < fillRate) {
+          grid[0][c] = this.createBubble(0, c);
+        } else {
+          grid[0][c] = null;
+        }
+      }
     }
+
     FirebaseController.updatePlayerDoc(target.id, {
-      grid: JSON.stringify(target.grid),
+      grid: JSON.stringify(grid),
     });
   },
 

@@ -83,28 +83,25 @@ export const UI = {
     if (!slot || !Game.localPlayer) return;
 
     const currentTeam = Game.localPlayer.team || 0;
-    const teamNames = ['Jaune', 'Rouge', 'Vert', 'Bleu'];
+    const teamNames = ['Jaune', 'Rouge', 'Vert', 'Bleu', 'Rose'];
 
-    // Créer la grille 2x2 de couleurs
+    // Filtrer pour ne montrer que les 4 autres couleurs (pas la couleur actuelle)
+    const otherTeams = Config.TEAM_COLORS
+      .map((c, i) => ({ color: c, index: i, name: teamNames[i] }))
+      .filter(t => t.index !== currentTeam);
+
+    // Créer la grille 2x2 de couleurs (4 autres) - prend toute la place
     slot.innerHTML = `
-    <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; width:100%; height:100%; background:#FFB864; padding:4px;">
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:4px;">
-            ${Config.TEAM_COLORS.map((c, i) => `
-              <button 
-                style="width:28px; height:28px; border-radius:50%; background:${c}; 
-                       border:${currentTeam === i ? '3px solid white' : '2px solid rgba(0,0,0,0.3)'}; 
-                       cursor:pointer; box-shadow:${currentTeam === i ? '0 0 8px white' : 'inset 0 -2px 4px rgba(0,0,0,0.3)'};"
-                onclick="window.handleTeamChange(${i})"
-                title="Équipe ${teamNames[i]}"
-              ></button>
-            `).join("")}
-        </div>
-        <div style="font-size:8px; color:#333; font-weight:bold; text-align:center;">Choix de l'équipe</div>
-        <button 
-          style="margin-top:3px; background:rgba(0,0,0,0.5); color:white; font-size:10px; font-weight:bold; 
-                 padding:3px 12px; border-radius:4px; border:1px solid rgba(255,255,255,0.3); cursor:pointer;"
-          onclick="document.getElementById('gameCanvas').click()"
-        >PRÊT</button>
+    <div style="display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; width:100%; height:100%; background:#FFB864; padding:3px; gap:3px;">
+        ${otherTeams.map(t => `
+          <button 
+            style="width:100%; height:100%; border-radius:50%; background:${t.color}; 
+                   border:2px solid rgba(0,0,0,0.3); 
+                   cursor:pointer; box-shadow:inset 0 -3px 6px rgba(0,0,0,0.3);"
+            onclick="window.handleTeamChange(${t.index})"
+            title="Équipe ${t.name}"
+          ></button>
+        `).join("")}
     </div>`;
 
     window.handleTeamChange = (i) =>

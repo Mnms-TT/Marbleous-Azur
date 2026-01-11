@@ -229,27 +229,38 @@ export const GameLogic = {
   addJunkBubbles(target, junkCount) {
     const grid = target.grid;
 
-    // Calculer combien de lignes à ajouter (environ 1 ligne pour 8 boules)
-    const linesToAdd = Math.max(1, Math.ceil(junkCount / Config.GRID_COLS));
+    // Trouver les slots vides adjacents au bas des bulles existantes
+    // (slots qui ont un voisin au-dessus ou diagonal-haut)
+    const validSlots = [];
 
-    for (let i = 0; i < linesToAdd; i++) {
-      // Décaler toutes les lignes vers le BAS
-      for (let r = Config.GRID_ROWS - 1; r > 0; r--) {
-        for (let c = 0; c < Config.GRID_COLS; c++) {
-          grid[r][c] = grid[r - 1][c];
-          if (grid[r][c]) grid[r][c].r = r;
-        }
-      }
-
-      // Ajouter une nouvelle ligne EN HAUT (row 0) avec des boules partielles
-      const fillRate = Math.min(1, junkCount / Config.GRID_COLS);
+    for (let r = 1; r < Config.GRID_ROWS; r++) {
       for (let c = 0; c < Config.GRID_COLS; c++) {
-        if (Math.random() < fillRate) {
-          grid[0][c] = this.createBubble(0, c);
-        } else {
-          grid[0][c] = null;
+        if (!grid[r][c]) {
+          // Vérifier si une bulle existe au-dessus (directement ou en diagonal)
+          const isOdd = r % 2 === 1;
+          const neighbors = [
+            { r: r - 1, c: c },     // Directement au-dessus
+            { r: r - 1, c: isOdd ? c + 1 : c - 1 }  // Diagonal au-dessus
+          ];
+
+          const hasNeighborAbove = neighbors.some(n =>
+            n.r >= 0 && n.c >= 0 && n.c < Config.GRID_COLS && grid[n.r]?.[n.c]
+          );
+
+          if (hasNeighborAbove) {
+            validSlots.push({ r, c });
+          }
         }
       }
+    }
+
+    // Mélanger et prendre les premiers slots
+    validSlots.sort(() => Math.random() - 0.5);
+    const toAdd = Math.min(validSlots.length, junkCount);
+
+    for (let i = 0; i < toAdd; i++) {
+      const s = validSlots[i];
+      grid[s.r][s.c] = this.createBubble(s.r, s.c);
     }
 
     FirebaseController.updatePlayerDoc(target.id, {

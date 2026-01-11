@@ -135,8 +135,10 @@ export const FirebaseController = {
             // Démarrage du heartbeat si pas encore fait
             if (Game.localPlayer && !Game.heartbeatInterval) GameLogic.startHeartbeat();
 
-            const alivePlayers = Array.from(Game.players.values()).filter(p => p.isAlive);
-            if (Game.state === 'playing' && alivePlayers.length <= 1 && Game.players.size > 1) {
+            const alivePlayers = Array.from(Game.players.values()).filter(p => p.isAlive && !p.isSpectator);
+            if (Game.state === 'playing' && alivePlayers.length <= 1 && Game.players.size > 1 && !Game.gameEndAnnounced) {
+                Game.gameEndAnnounced = true; // Éviter multiples annonces
+
                 // Annoncer le gagnant
                 const winner = alivePlayers[0];
                 if (winner) {
@@ -147,10 +149,8 @@ export const FirebaseController = {
                     UI.addChatMessage('🏆 Système', 'Match nul ! Aucun survivant.');
                 }
 
-                // Délai avant reset pour que tout le monde voit le résultat
-                setTimeout(() => {
-                    this.updateSessionDoc({ gameState: 'waiting' });
-                }, 5000);
+                // Reset immédiat
+                this.updateSessionDoc({ gameState: 'waiting' });
             }
             UI.renderOpponents();
             UI.updatePlayerStats();

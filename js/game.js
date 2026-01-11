@@ -20,6 +20,7 @@ export const Game = {
   currentRotationSpeed: Config.LAUNCHER_ROTATION_SPEED,
   targetFPS: 60,
   lastFrameTime: 0,
+  gameEndAnnounced: false,
 
   init() {
     this.initLobbyAnimation();
@@ -50,6 +51,7 @@ export const Game = {
 
   start() {
     this.state = "playing";
+    this.gameEndAnnounced = false;
     this.gameIntervals.forEach(clearInterval);
     this.gameIntervals = [];
     this.localPlayer = this.players.get(
@@ -67,6 +69,7 @@ export const Game = {
 
   resetForNewRound() {
     this.state = "waiting";
+    this.gameEndAnnounced = false;
     this.gameIntervals.forEach(clearInterval);
     this.gameIntervals = [];
 

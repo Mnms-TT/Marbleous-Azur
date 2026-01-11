@@ -212,8 +212,6 @@ export const GameLogic = {
             (p) => p.id !== player.id && p.isAlive && p.team !== player.team
           );
 
-          console.log(`[ATTACK] ${player.name} envoie ${attackSize} boules à ${enemies.length} ennemis`);
-
           for (const enemy of enemies) {
             this.addJunkBubbles(enemy, attackSize);
           }

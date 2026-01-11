@@ -533,23 +533,23 @@ export const GameLogic = {
 
 
       case "boulesSupplementaires": {
-        // Ajoute 2 rangées de bulles PAR LE BAS (pousse le plateau vers le haut)
-        const numRows = 2;
+        // Ajoute 1-2 rangées de bulles EN HAUT (pousse le plateau vers le bas)
+        // C'est l'inverse du sort nuke
 
-        // Décaler toutes les lignes vers le HAUT
-        for (let i = 0; i < numRows; i++) {
-          // Déplacer les lignes vers le haut (ligne 0 devient ligne -1, supprimée)
-          for (let r = 0; r < Config.GRID_ROWS - 1; r++) {
-            for (let c = 0; c < Config.GRID_COLS; c++) {
-              grid[r][c] = grid[r + 1][c];
-              if (grid[r][c]) grid[r][c].r = r;
-            }
-          }
-
-          // Ajouter une nouvelle ligne complète EN BAS
-          const bottomRow = Config.GRID_ROWS - 1;
+        // D'abord décaler toutes les lignes vers le BAS
+        for (let r = Config.GRID_ROWS - 1; r > 0; r--) {
           for (let c = 0; c < Config.GRID_COLS; c++) {
-            grid[bottomRow][c] = this.createBubble(bottomRow, c);
+            grid[r][c] = grid[r - 1][c];
+            if (grid[r][c]) grid[r][c].r = r;
+          }
+        }
+
+        // Ajouter une nouvelle ligne EN HAUT (row 0) avec des bulles partielles (70%)
+        for (let c = 0; c < Config.GRID_COLS; c++) {
+          if (Math.random() < 0.7) {
+            grid[0][c] = this.createBubble(0, c);
+          } else {
+            grid[0][c] = null;
           }
         }
 

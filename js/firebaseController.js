@@ -136,8 +136,16 @@ export const FirebaseController = {
             if (Game.localPlayer && !Game.heartbeatInterval) GameLogic.startHeartbeat();
 
             const alivePlayers = Array.from(Game.players.values()).filter(p => p.isAlive && !p.isSpectator);
-            if (Game.state === 'playing' && alivePlayers.length <= 1 && Game.players.size > 1 && !Game.gameEndAnnounced) {
-                Game.gameEndAnnounced = true; // Éviter multiples annonces
+            const activePlayers = Array.from(Game.players.values()).filter(p => !p.isSpectator);
+
+            // Fin de partie: soit 1 seul joueur qui meurt, soit multi et reste 1 ou 0
+            const gameEnded = Game.state === 'playing' && !Game.gameEndAnnounced && (
+                (activePlayers.length === 1 && alivePlayers.length === 0) || // Solo: joueur mort
+                (activePlayers.length > 1 && alivePlayers.length <= 1) // Multi: 1 ou 0 survivants
+            );
+
+            if (gameEnded) {
+                Game.gameEndAnnounced = true;
 
                 // Annoncer le gagnant
                 const winner = alivePlayers[0];
@@ -146,7 +154,7 @@ export const FirebaseController = {
                     const teamName = teamColors[winner.team] || 'Inconnue';
                     UI.addChatMessage('🏆 Système', `L'équipe ${teamName} a gagné ! (${winner.name})`);
                 } else {
-                    UI.addChatMessage('🏆 Système', 'Match nul ! Aucun survivant.');
+                    UI.addChatMessage('🏆 Système', 'Partie terminée !');
                 }
 
                 // Reset immédiat

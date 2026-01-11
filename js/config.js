@@ -21,7 +21,8 @@ export const Config = {
     "#c2410c", // Rouille
   ],
 
-  TEAM_COLORS: ["#3B82F6", "#22C55E", "#F97316", "#EC4899", "#8B5CF6"],
+  // 4 équipes: Jaune, Rouge, Vert, Bleu
+  TEAM_COLORS: ["#FBBF24", "#EF4444", "#22C55E", "#3B82F6"],
 
   // Sorts offensifs (à lancer sur adversaires)
   // Sorts défensifs (à lancer sur soi/équipe) - symbole vert

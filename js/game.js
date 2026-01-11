@@ -101,22 +101,14 @@ export const Game = {
   },
 
   gameLoop(timestamp = 0) {
-    // Throttle based on target FPS
-    const frameInterval = 1000 / this.targetFPS;
-    const elapsed = timestamp - this.lastFrameTime;
-
-    if (elapsed >= frameInterval) {
-      this.lastFrameTime = timestamp - (elapsed % frameInterval);
-
-      if (this.state === "waiting" || this.state === "spectating") {
-        GameLogic.updateLobbyAnimation();
-      } else if (this.state === "playing") {
-        GameLogic.updateLocalAnimations();
-      }
-
-      Drawing.drawAll();
+    // Animation fluide - pas de throttle artificiel
+    if (this.state === "waiting" || this.state === "spectating") {
+      GameLogic.updateLobbyAnimation();
+    } else if (this.state === "playing") {
+      GameLogic.updateLocalAnimations();
     }
 
+    Drawing.drawAll();
     requestAnimationFrame((t) => this.gameLoop(t));
   },
 };

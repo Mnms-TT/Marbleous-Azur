@@ -82,16 +82,29 @@ export const UI = {
     const slot = document.getElementById("spell-announcement");
     if (!slot || !Game.localPlayer) return;
 
+    const currentTeam = Game.localPlayer.team || 0;
+    const teamNames = ['Jaune', 'Rouge', 'Vert', 'Bleu'];
+
+    // Créer la grille 2x2 de couleurs
     slot.innerHTML = `
-    <div class="flex flex-col items-center justify-center w-full h-full bg-orange-600 p-1">
-        <div class="flex flex-wrap justify-center gap-1 mb-1">
-            ${Config.TEAM_COLORS.map(
-      (c, i) =>
-        `<button style="background:${c}; width:12px; height:12px; border-radius:50%; border:${Game.localPlayer.team === i ? "2px solid white" : "none"
-        }" onclick="window.handleTeamChange(${i})"></button>`
-    ).join("")}
+    <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; width:100%; height:100%; background:#FFB864; padding:4px;">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:4px;">
+            ${Config.TEAM_COLORS.map((c, i) => `
+              <button 
+                style="width:28px; height:28px; border-radius:50%; background:${c}; 
+                       border:${currentTeam === i ? '3px solid white' : '2px solid rgba(0,0,0,0.3)'}; 
+                       cursor:pointer; box-shadow:${currentTeam === i ? '0 0 8px white' : 'inset 0 -2px 4px rgba(0,0,0,0.3)'};"
+                onclick="window.handleTeamChange(${i})"
+                title="Équipe ${teamNames[i]}"
+              ></button>
+            `).join("")}
         </div>
-        <button class="bg-black/40 hover:bg-black/60 text-white text-[9px] font-bold px-2 py-1 rounded border border-white/20" onclick="document.getElementById('gameCanvas').click()">GO</button>
+        <div style="font-size:8px; color:#333; font-weight:bold; text-align:center;">Choix de l'équipe</div>
+        <button 
+          style="margin-top:3px; background:rgba(0,0,0,0.5); color:white; font-size:10px; font-weight:bold; 
+                 padding:3px 12px; border-radius:4px; border:1px solid rgba(255,255,255,0.3); cursor:pointer;"
+          onclick="document.getElementById('gameCanvas').click()"
+        >PRÊT</button>
     </div>`;
 
     window.handleTeamChange = (i) =>

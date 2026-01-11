@@ -149,6 +149,41 @@ export const Drawing = {
         ctx.stroke();
       }
     }
+
+    // Indicateur d'équipe pour les miniatures d'adversaires
+    if (!isMain && player) {
+      const teamColor = Config.TEAM_COLORS[player.team || 0];
+
+      // Petit cercle coloré en bas à droite avec le nom
+      const dotX = canvas.width - 8;
+      const dotY = canvas.height - 8;
+
+      ctx.beginPath();
+      ctx.arc(dotX, dotY, 6, 0, Math.PI * 2);
+      ctx.fillStyle = teamColor;
+      ctx.fill();
+      ctx.strokeStyle = "white";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Nom du joueur en bas
+      ctx.fillStyle = "white";
+      ctx.font = "bold 9px Inter, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      ctx.shadowColor = "black";
+      ctx.shadowBlur = 2;
+      ctx.fillText(player.name || "Joueur", canvas.width / 2, canvas.height - 2);
+      ctx.shadowBlur = 0;
+
+      // Indicateur PRÊT si applicable
+      if (player.isReady) {
+        ctx.fillStyle = "#22c55e";
+        ctx.font = "bold 10px Inter, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("PRÊT", canvas.width / 2, 12);
+      }
+    }
   },
 
   drawGameState(ctx, canvas, player, rad, isMain) {

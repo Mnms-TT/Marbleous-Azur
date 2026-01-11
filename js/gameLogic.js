@@ -205,9 +205,17 @@ export const GameLogic = {
         const attackUnits = Math.floor(player.attackBubbleCounter / 10);
         const attackSize = attackUnits * Math.floor(player.level);
         if (attackSize > 0) {
-          const targets = Array.from(Game.players.values()).filter(
-            (p) => p.id !== player.id && p.isAlive && p.team !== player.team
+          // Trouver les cibles : tous les autres joueurs vivants
+          // Exclure les coéquipiers seulement s'il y en a d'autres dans l'équipe
+          const allOthers = Array.from(Game.players.values()).filter(
+            (p) => p.id !== player.id && p.isAlive
           );
+          const teammates = allOthers.filter(p => p.team === player.team);
+          const enemies = allOthers.filter(p => p.team !== player.team);
+
+          // Si pas d'ennemis (1v1 même équipe), attaquer tout le monde sauf soi
+          const targets = enemies.length > 0 ? enemies : allOthers;
+
           for (const target of targets) this.addJunkBubbles(target, attackSize);
         }
         await FirebaseController.updatePlayerDoc(player.id, {
@@ -242,10 +250,14 @@ export const GameLogic = {
   },
 
   levelUp: () => {
-    if (Game.state === "playing" && Game.localPlayer)
+    if (Game.state === "playing" && Game.localPlayer) {
+      const newLevel = Game.localPlayer.level + 1;
       FirebaseController.updatePlayerDoc(Game.localPlayer.id, {
-        level: Game.localPlayer.level + 1,
+        level: newLevel,
       });
+      // Annoncer le niveau
+      UI.showAnnouncement(`⬆️ NIVEAU ${newLevel}`);
+    }
   },
 
   // Animations locales (Mouvement de la boule tirée)

@@ -96,7 +96,7 @@ export const UI = {
         ${otherTeams.map(t => `
           <div style="display:flex; align-items:center; justify-content:center;">
             <button 
-              style="width:32px; height:32px; border-radius:50%; background:${t.color}; 
+              style="width:40px; height:40px; border-radius:50%; background:${t.color}; 
                      border:2px solid rgba(0,0,0,0.3); 
                      cursor:pointer; box-shadow:inset 0 -3px 5px rgba(0,0,0,0.3);"
               onclick="window.handleTeamChange(${t.index})"
@@ -141,6 +141,24 @@ export const UI = {
     if (slot)
       slot.innerHTML =
         "<span class='text-white font-bold text-xs'>Annonces</span>";
+  },
+
+  showAnnouncement(message, duration = 2000) {
+    const slot = document.getElementById("spell-announcement");
+    if (!slot) return;
+
+    slot.innerHTML = `<div style="display:flex; align-items:center; justify-content:center; width:100%; height:100%; background:rgba(0,0,0,0.8);">
+      <span style="color:#fbbf24; font-weight:bold; font-size:14px; text-shadow:0 0 10px #fbbf24;">${message}</span>
+    </div>`;
+
+    // Revenir à l'affichage normal après la durée
+    setTimeout(() => {
+      if (Game.state === "playing") {
+        slot.innerHTML = "<span class='text-white font-bold text-xs'>Annonces</span>";
+      } else {
+        this.checkVoteStatus();
+      }
+    }, duration);
   },
 
   updatePlayerStats() { },

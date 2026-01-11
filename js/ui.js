@@ -90,18 +90,21 @@ export const UI = {
       .map((c, i) => ({ color: c, index: i, name: teamNames[i] }))
       .filter(t => t.index !== currentTeam);
 
-    // Créer la grille 2x2 de couleurs (4 autres) - prend toute la place
+    // Créer la grille 2x2 de couleurs (4 autres) - cercles petits et ronds
     slot.innerHTML = `
-    <div style="display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; width:100%; height:100%; background:#FFB864; padding:3px; gap:3px;">
-        ${otherTeams.map(t => `
-          <button 
-            style="width:100%; height:100%; border-radius:50%; background:${t.color}; 
-                   border:2px solid rgba(0,0,0,0.3); 
-                   cursor:pointer; box-shadow:inset 0 -3px 6px rgba(0,0,0,0.3);"
-            onclick="window.handleTeamChange(${t.index})"
-            title="Équipe ${t.name}"
-          ></button>
-        `).join("")}
+    <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; width:100%; height:100%; background:#FFB864;">
+        <div style="display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; gap:4px;">
+            ${otherTeams.map(t => `
+              <button 
+                style="width:24px; height:24px; border-radius:50%; background:${t.color}; 
+                       border:2px solid rgba(0,0,0,0.3); 
+                       cursor:pointer; box-shadow:inset 0 -2px 4px rgba(0,0,0,0.3);"
+                onclick="window.handleTeamChange(${t.index})"
+                title="Équipe ${t.name}"
+              ></button>
+            `).join("")}
+        </div>
+        <div style="font-size:7px; color:#333; font-weight:bold; margin-top:2px;">Choix de l'équipe</div>
     </div>`;
 
     window.handleTeamChange = (i) =>

@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Marbleous - Accueil</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
     * {
@@ -398,14 +399,14 @@
       cursor: pointer;
     }
 
-    /* Pseudo Entry Overlay */
+    /* Pseudo Entry Overlay - Style Gamer Minimaliste */
     #pseudo-overlay {
       position: fixed;
       top: 0;
       left: 0;
       width: 100vw;
       height: 100vh;
-      background: linear-gradient(135deg, #0c1445 0%, #1e3a8a 50%, #312e81 100%);
+      background: #0a0a0a;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -417,36 +418,50 @@
     }
 
     #pseudo-form {
-      background: rgba(0, 0, 0, 0.6);
-      border: 2px solid #f97316;
-      border-radius: 16px;
-      padding: 40px 50px;
+      position: relative;
+      background: #111111;
+      border: 1px solid #222;
+      border-radius: 8px;
+      padding: 48px 56px;
       text-align: center;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
     }
 
     #pseudo-form h1 {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      font-size: 32px;
+      letter-spacing: 6px;
+      margin-bottom: 6px;
       color: #f97316;
-      font-size: 36px;
-      margin-bottom: 10px;
     }
 
-    #pseudo-form p {
-      color: #94a3b8;
-      font-size: 14px;
-      margin-bottom: 25px;
+    #pseudo-form .subtitle {
+      color: #666;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-bottom: 40px;
     }
 
     #pseudo-form input {
-      width: 250px;
-      padding: 14px 18px;
-      font-size: 18px;
-      border: 2px solid #3b82f6;
-      border-radius: 8px;
-      background: #1e293b;
+      width: 260px;
+      padding: 14px 20px;
+      font-size: 15px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 500;
+      border: 1px solid #333;
+      border-radius: 6px;
+      background: #0a0a0a;
       color: white;
       text-align: center;
-      margin-bottom: 20px;
+      margin-bottom: 24px;
+      transition: border-color 0.2s ease;
+    }
+
+    #pseudo-form input::placeholder {
+      color: #555;
+      font-weight: 400;
     }
 
     #pseudo-form input:focus {
@@ -455,19 +470,27 @@
     }
 
     #pseudo-form button {
-      background: linear-gradient(to bottom, #f97316, #ea580c);
-      border: 2px solid #fdba74;
-      color: white;
-      padding: 14px 40px;
-      font-size: 18px;
-      font-weight: bold;
-      border-radius: 8px;
+      background: #f97316;
+      border: none;
+      color: #000;
+      padding: 14px 48px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      border-radius: 6px;
       cursor: pointer;
-      transition: transform 0.1s;
+      transition: background 0.2s ease, transform 0.15s ease;
     }
 
     #pseudo-form button:hover {
-      transform: scale(1.05);
+      background: #fb923c;
+      transform: translateY(-1px);
+    }
+
+    #pseudo-form button:active {
+      transform: scale(0.98);
     }
   </style>
 </head>
@@ -476,11 +499,11 @@
   <!-- Écran de saisie du pseudo -->
   <div id="pseudo-overlay">
     <div id="pseudo-form">
-      <h1>🎮 MARBLEOUS</h1>
-      <p>Entrez votre pseudo pour rejoindre le lobby</p>
-      <input type="text" id="entry-pseudo" placeholder="Votre pseudo..." maxlength="15" autofocus>
+      <h1>MARBLEOUS</h1>
+      <p class="subtitle">Battle Royale Puzzle</p>
+      <input type="text" id="entry-pseudo" placeholder="Choisis ton pseudo" maxlength="15" autofocus>
       <br>
-      <button id="btn-enter">ENTRER</button>
+      <button id="btn-enter">JOUER</button>
     </div>
   </div>
 
@@ -491,8 +514,8 @@
         <div id="solo-area">
           <canvas id="practice-canvas"></canvas>
           <div id="practice-overlay">
-            <h2>🎯 Zone d'échauffement</h2>
-            <p>Cliquez pour vous entraîner</p>
+            <h2>🎯 Mode Entraînement</h2>
+            <p>Cliquez pour jouer en solo</p>
             <small id="welcome-pseudo"></small>
           </div>
         </div>
@@ -526,8 +549,8 @@
           <span>Chat global</span>
         </div>
         <div id="chat-messages">
-          <div class="chat-msg"><span class="author">Système:</span> <span class="text">Bienvenue ! Cliquez
-              sur une salle pour rejoindre.</span></div>
+          <!-- Messages chargés dynamiquement - pas d'historique pour les nouveaux joueurs -->
+
         </div>
         <div id="chat-input-area">
           <input type="text" id="chat-input" placeholder="Écrire un message...">
@@ -541,6 +564,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getFirestore, collection, onSnapshot, doc, writeBatch, addDoc, orderBy, query, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { LobbyGame } from "./js/lobbyGame.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCIMWeeRs9ZWh8izEtzV_P53ar95mNqZOw",
@@ -580,8 +604,24 @@
     // Stockage de tous les joueurs pour la liste
     const allOnlinePlayers = new Map();
 
+    // Temps de connexion pour filtrer le chat (ne pas afficher l'historique)
+    let connectionTime = Date.now();
+
     // Charger pseudo sauvegardé dans l'overlay
     entryPseudo.value = localStorage.getItem('marbleous_pseudo') || '';
+
+    // Session persistence: si on a déjà un pseudo en session, skip l'overlay
+    const savedPseudo = localStorage.getItem('marbleous_pseudo');
+    const hasSession = sessionStorage.getItem('marbleous_session');
+
+    if (savedPseudo && hasSession) {
+      // Entrée directe sans demander le pseudo
+      currentPseudo = savedPseudo;
+      pseudoOverlay.classList.add('hidden');
+      if (welcomePseudo) {
+        welcomePseudo.textContent = `Bienvenue, ${savedPseudo} !`;
+      }
+    }
 
     signInAnonymously(auth).catch(console.error);
 
@@ -599,6 +639,7 @@
 
       currentPseudo = pseudo;
       localStorage.setItem('marbleous_pseudo', pseudo);
+      sessionStorage.setItem('marbleous_session', 'active');
 
       // Afficher le welcome message
       if (welcomePseudo) {
@@ -607,6 +648,9 @@
 
       // Masquer l'overlay
       pseudoOverlay.classList.add('hidden');
+
+      // Mettre à jour le temps de connexion
+      connectionTime = Date.now();
 
       // S'inscrire dans le lobby
       registerInLobby();
@@ -680,6 +724,10 @@
 
     auth.onAuthStateChanged(user => {
       if (user) {
+        // Si on a déjà une session active, s'inscrire directement
+        if (currentPseudo) {
+          registerInLobby();
+        }
         initializeLobby();
         listenToChat();
       }
@@ -829,12 +877,14 @@
       window.location.href = `game.html?roomId=${roomId}&name=${encodeURIComponent(pseudo)}`;
     }
 
-    // Clic sur la zone d'échauffement pour jouer
-    if (practiceOverlay) {
+    // Clic sur la zone d'échauffement pour jouer en solo
+    if (practiceOverlay && practiceCanvas) {
+      // Initialiser le module de jeu solo
+      LobbyGame.init(practiceCanvas);
+
       practiceOverlay.onclick = () => {
         practiceOverlay.classList.add('hidden');
-        // TODO: Initialiser un mini-jeu d'entraînement sur le canvas
-        // Pour l'instant on affiche juste le message
+        LobbyGame.start();
       };
     }
 
@@ -846,24 +896,34 @@
       const chatRef = collection(db, "globalChat");
       const q = query(chatRef, orderBy("timestamp", "desc"), limit(50));
 
+      // Afficher message de bienvenue local
+      chatMessages.innerHTML = '<div class="chat-msg"><span class="author">Système:</span> <span class="text">Bienvenue ! Cliquez sur une salle pour rejoindre.</span></div>';
+
       onSnapshot(q, (snapshot) => {
         const msgs = [];
         const myUid = auth.currentUser?.uid;
 
         snapshot.docs.forEach(doc => {
           const m = doc.data();
+          // Filtrer: afficher seulement les messages reçus APRÈS notre connexion
+          if (m.timestamp && m.timestamp < connectionTime) return;
+
           // Afficher si: message public OU je suis l'expéditeur OU je suis le destinataire
           if (!m.toUid || m.uid === myUid || m.toUid === myUid) {
             msgs.unshift(m);
           }
         });
 
-        chatMessages.innerHTML = msgs.map(m => {
+        // Garder le message système de bienvenue + les nouveaux messages
+        const welcomeMsg = '<div class="chat-msg"><span class="author">Système:</span> <span class="text">Bienvenue ! Cliquez sur une salle pour rejoindre.</span></div>';
+        const newMsgs = msgs.map(m => {
           const isWhisper = m.toUid;
           const dmClass = isWhisper ? ' dm' : '';
           const prefix = isWhisper ? `[DM ${m.toName ? 'à ' + m.toName : ''}] ` : '';
           return `<div class="chat-msg${dmClass}"><span class="author">${m.author}:</span> <span class="text">${prefix}${m.text}</span></div>`;
         }).join('');
+
+        chatMessages.innerHTML = welcomeMsg + newMsgs;
         chatMessages.scrollTop = chatMessages.scrollHeight;
       });
     }

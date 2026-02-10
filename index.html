@@ -610,52 +610,65 @@
     let connectionTime = Date.now();
 
     // Charger pseudo sauvegardé dans l'overlay
-    entryPseudo.value = localStorage.getItem('marbleous_pseudo') || '';
+    try {
+      entryPseudo.value = localStorage.getItem('marbleous_pseudo') || '';
 
-    // Session persistence: si on a déjà un pseudo en session, skip l'overlay
-    const savedPseudo = localStorage.getItem('marbleous_pseudo');
-    const hasSession = sessionStorage.getItem('marbleous_session');
+      // Session persistence: si on a déjà un pseudo en session, skip l'overlay
+      const savedPseudo = localStorage.getItem('marbleous_pseudo');
+      const hasSession = sessionStorage.getItem('marbleous_session');
 
-    if (savedPseudo && hasSession) {
-      // Entrée directe sans demander le pseudo
-      currentPseudo = savedPseudo;
-      pseudoOverlay.classList.add('hidden');
-      if (welcomePseudo) {
-        welcomePseudo.textContent = `Bienvenue, ${savedPseudo} !`;
+      if (savedPseudo && hasSession) {
+        // Entrée directe sans demander le pseudo
+        currentPseudo = savedPseudo;
+        pseudoOverlay.classList.add('hidden');
+        if (welcomePseudo) {
+          welcomePseudo.textContent = `Bienvenue, ${savedPseudo} !`;
+        }
       }
+    } catch (e) {
+      console.warn("Storage access restricted:", e);
     }
 
     signInAnonymously(auth).catch(console.error);
 
     // Gestion de l'entrée avec le pseudo
     function enterLobby() {
-      const pseudo = entryPseudo.value.trim();
-      if (!pseudo) {
-        alert("Veuillez entrer un pseudo !");
-        return;
+      try {
+        const pseudo = entryPseudo.value.trim();
+        if (!pseudo) {
+          alert("Veuillez entrer un pseudo !");
+          return;
+        }
+        if (pseudo.length < 2) {
+          alert("Le pseudo doit avoir au moins 2 caractères.");
+          return;
+        }
+
+        currentPseudo = pseudo;
+        try {
+          localStorage.setItem('marbleous_pseudo', pseudo);
+          sessionStorage.setItem('marbleous_session', 'active');
+        } catch (storageErr) {
+          console.warn("Could not save to storage:", storageErr);
+        }
+
+        // Afficher le welcome message
+        if (welcomePseudo) {
+          welcomePseudo.textContent = `Bienvenue, ${pseudo} !`;
+        }
+
+        // Masquer l'overlay
+        pseudoOverlay.classList.add('hidden');
+
+        // Mettre à jour le temps de connexion
+        connectionTime = Date.now();
+
+        // S'inscrire dans le lobby
+        registerInLobby();
+      } catch (err) {
+        console.error("Critical error in enterLobby:", err);
+        alert("Erreur lors de l'entrée dans le lobby: " + err.message);
       }
-      if (pseudo.length < 2) {
-        alert("Le pseudo doit avoir au moins 2 caractères.");
-        return;
-      }
-
-      currentPseudo = pseudo;
-      localStorage.setItem('marbleous_pseudo', pseudo);
-      sessionStorage.setItem('marbleous_session', 'active');
-
-      // Afficher le welcome message
-      if (welcomePseudo) {
-        welcomePseudo.textContent = `Bienvenue, ${pseudo} !`;
-      }
-
-      // Masquer l'overlay
-      pseudoOverlay.classList.add('hidden');
-
-      // Mettre à jour le temps de connexion
-      connectionTime = Date.now();
-
-      // S'inscrire dans le lobby
-      registerInLobby();
     }
 
     btnEnter.onclick = enterLobby;
@@ -1004,6 +1017,28 @@
         dmTarget = null;
         updateDMIndicator();
       }
+    });
+    // Signal that script loaded correctly
+    window.lobbyScriptLoaded = true;
+    console.log("Lobby script initialized successfully.");
+  </script>
+
+  <script>
+    // Fallback detection for module load errors
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        if (!window.lobbyScriptLoaded) {
+          console.error("Critical: Lobby script failed to load. Check for 404s or script errors.");
+          const btn = document.getElementById('btn-enter');
+          if (btn) {
+            btn.addEventListener('click', () => {
+              if (!window.lobbyScriptLoaded) {
+                alert("Le script du jeu n'a pas pu se charger correctement. Essayez de vider le cache de votre navigateur (Ctrl+F5 ou Cmd+Shift+R).");
+              }
+            });
+          }
+        }
+      }, 1000);
     });
   </script>
 </body>

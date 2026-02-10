@@ -562,7 +562,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, onSnapshot, doc, writeBatch, addDoc, orderBy, query, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, onSnapshot, doc, writeBatch, addDoc, orderBy, query, limit, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { LobbyGame } from "./js/lobbyGame.js";
 
@@ -602,6 +602,8 @@
     let currentPseudo = '';
 
     // Stockage de tous les joueurs pour la liste
+    const lobbyPlayers = new Map();
+    const roomPlayers = new Map(); // roomId -> Map
     const allOnlinePlayers = new Map();
 
     // Temps de connexion pour filtrer le chat (ne pas afficher l'historique)
@@ -663,9 +665,11 @@
 
     // Inscription dans le lobby (collection lobbyPlayers)
     async function registerInLobby() {
-      if (!auth.currentUser) return;
-
-      const { setDoc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
+      if (!auth.currentUser) {
+        console.warn("Retrying registration: auth not ready");
+        setTimeout(registerInLobby, 500);
+        return;
+      }
 
       myLobbyDocRef = doc(db, "lobbyPlayers", auth.currentUser.uid);
 
@@ -696,21 +700,19 @@
 
       onSnapshot(lobbyRef, (snapshot) => {
         const now = Date.now();
-        allOnlinePlayers.clear();
+        lobbyPlayers.clear();
 
         snapshot.docs.forEach(playerDoc => {
           const data = playerDoc.data();
           if (now - (data.lastActive || 0) < INACTIVITY_THRESHOLD) {
-            allOnlinePlayers.set(playerDoc.id, {
+            lobbyPlayers.set(playerDoc.id, {
               name: data.name || 'Joueur',
               lastActive: data.lastActive
             });
           }
         });
 
-        totalOnline = allOnlinePlayers.size;
-        onlineCount.textContent = `${totalOnline} en ligne`;
-        updatePlayersList();
+        updateOnlineCount();
       });
     }
 
@@ -751,27 +753,24 @@
         let activeCount = 0;
         const ghostPlayers = [];
 
-        snapshot.docs.forEach(playerDoc => {
-          const data = playerDoc.data();
-          if (now - (data.lastActive || 0) < INACTIVITY_THRESHOLD) {
-            activeCount++;
-            // Ajouter à la liste des joueurs en ligne
-            allOnlinePlayers.set(playerDoc.id, {
-              name: data.name || 'Joueur',
-              roomId: roomId,
-              lastActive: data.lastActive
-            });
-          } else {
-            ghostPlayers.push(playerDoc.id);
-            // Retirer de la liste
-            allOnlinePlayers.delete(playerDoc.id);
-          }
-        });
-
         if (ghostPlayers.length > 0 && auth.currentUser) {
           cleanupGhostPlayers(roomId, ghostPlayers);
         }
 
+        const currentRoomPlayers = new Map();
+        snapshot.docs.forEach(playerDoc => {
+          const data = playerDoc.data();
+          if (now - (data.lastActive || 0) < INACTIVITY_THRESHOLD) {
+            activeCount++;
+            currentRoomPlayers.set(playerDoc.id, {
+              name: data.name || 'Joueur',
+              roomId: roomId,
+              lastActive: data.lastActive
+            });
+          }
+        });
+
+        roomPlayers.set(roomId, currentRoomPlayers);
         activePlayersCache.set(roomId, activeCount);
         updateRoomCard(roomId, activeCount);
         updateOnlineCount();
@@ -810,9 +809,17 @@
     }
 
     function updateOnlineCount() {
-      totalOnline = 0;
+      totalOnline = lobbyPlayers.size;
       activePlayersCache.forEach(count => totalOnline += count);
       onlineCount.textContent = `${totalOnline} en ligne`;
+
+      // Mettre à jour allOnlinePlayers
+      allOnlinePlayers.clear();
+      lobbyPlayers.forEach((p, id) => allOnlinePlayers.set(id, p));
+      roomPlayers.forEach(roomMap => {
+        roomMap.forEach((p, id) => allOnlinePlayers.set(id, p));
+      });
+
       updatePlayersList();
     }
 
@@ -823,9 +830,9 @@
       // Collecter tous les joueurs depuis le cache
       const players = [];
       allOnlinePlayers.forEach((player, id) => {
-        if (id !== auth.currentUser?.uid) { // Ne pas afficher soi-même
-          players.push({ id, ...player });
-        }
+        const myUid = auth.currentUser ? auth.currentUser.uid : null;
+        if (myUid && id === myUid) return; // Ne pas afficher soi-même
+        players.push({ id, ...player });
       });
 
       if (players.length === 0) {
@@ -844,29 +851,6 @@
       `).join('');
     }
 
-    // DM - Ouvrir une conversation privée
-    window.openDM = function (playerId, playerName) {
-      const message = prompt(`Message privé pour ${playerName}:`);
-      if (!message || !message.trim()) return;
-
-      const myName = pseudoInput.value.trim() || 'Joueur';
-
-      // Envoyer le DM via Firebase
-      addDoc(collection(db, "directMessages"), {
-        from: auth.currentUser.uid,
-        fromName: myName,
-        to: playerId,
-        toName: playerName,
-        text: message.trim(),
-        timestamp: Date.now(),
-        read: false
-      }).then(() => {
-        alert(`Message envoyé à ${playerName} !`);
-      }).catch(err => {
-        console.error("Erreur DM:", err);
-        alert("Erreur lors de l'envoi du message.");
-      });
-    };
 
     function joinRoom(roomId) {
       if (!auth.currentUser) {
@@ -989,6 +973,10 @@
 
     // Sélectionner un joueur pour DM
     window.openDM = function (playerId, playerName) {
+      if (!playerName) {
+        const p = allOnlinePlayers.get(playerId);
+        playerName = p ? p.name : 'Joueur';
+      }
       dmTarget = { id: playerId, name: playerName };
       chatInput.placeholder = `Message privé à ${playerName}... (Entrée pour envoyer)`;
       chatInput.focus();

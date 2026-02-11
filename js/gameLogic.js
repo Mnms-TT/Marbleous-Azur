@@ -14,17 +14,25 @@ export const GameLogic = {
   createInitialGrid: () => {
     const grid = GameLogic.createEmptyGrid();
 
-    // 1. Remplissage initial :
+    // 1. Remplissage initial (5 rangées pour densité comme référence) :
     // La ligne 0 (Plafond) est remplie à 100% pour servir d'ancrage
     for (let c = 0; c < Config.GRID_COLS; c++) {
       grid[0][c] = GameLogic.createBubble(0, c);
     }
 
-    // Les lignes 1 et 2 sont remplies aléatoirement
+    // Lignes 1-2 : denses
     for (let r = 1; r < 3; r++) {
       for (let c = 0; c < Config.GRID_COLS; c++) {
-        if (Math.random() > 0.4) {
-          // Densité aléatoire
+        if (Math.random() > 0.3) {
+          grid[r][c] = GameLogic.createBubble(r, c);
+        }
+      }
+    }
+
+    // Lignes 3-4 : plus clairsemées
+    for (let r = 3; r < 5; r++) {
+      for (let c = 0; c < Config.GRID_COLS; c++) {
+        if (Math.random() > 0.55) {
           grid[r][c] = GameLogic.createBubble(r, c);
         }
       }

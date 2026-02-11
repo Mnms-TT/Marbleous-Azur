@@ -283,6 +283,11 @@ export const Drawing = {
         );
     }
 
+    // --- TRAJECTOIRE DE VISÉE ---
+    if (isMain && player.isAlive && player.launcherBubble) {
+      this.drawAimTrajectory(ctx, canvas, player, Game.cannonPosition, rad);
+    }
+
     // --- Effet de rotation du plateau (plateauRenverse) ---
     // Appliqué UNIQUEMENT à la grille et aux éléments du plateau, pas au canon
     let rotationApplied = false;
@@ -303,6 +308,9 @@ export const Drawing = {
     ctx.strokeStyle = "white";
     ctx.lineWidth = 1; // Ligne très fine
     ctx.stroke();
+
+    // --- LIGNES VERTICALES DE GRILLE ---
+    this.drawGridLines(ctx, canvas, rad);
 
     // Grille
     if (player.grid) {
@@ -328,6 +336,16 @@ export const Drawing = {
     (player.effects || []).forEach((e) => this.drawEffect(ctx, e));
 
     if (!player.isAlive) this.drawOverlayText(ctx, canvas, "PERDU", "red");
+    if (player.hasWon) this.drawOverlayText(ctx, canvas, "GAGNÉ", "#22c55e");
+
+    // Overlays for opponent mini-boards
+    if (!isMain) {
+      if (!player.isAlive) {
+        this.drawOverlayText(ctx, canvas, "GAME OVER", "#ef4444");
+      } else if (Game.state === "waiting" && player.isReady) {
+        this.drawOverlayText(ctx, canvas, "Prêt", "#22c55e");
+      }
+    }
 
     if (rotationApplied) ctx.restore();
   },
@@ -518,7 +536,74 @@ export const Drawing = {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = color;
     ctx.textAlign = "center";
-    ctx.font = "bold 30px Arial";
+    ctx.textBaseline = "middle";
+    // Scale font based on canvas size
+    const fontSize = Math.max(12, Math.min(30, canvas.width * 0.12));
+    ctx.font = `bold ${fontSize}px Arial`;
+    ctx.shadowColor = "rgba(0,0,0,0.8)";
+    ctx.shadowBlur = 4;
     ctx.fillText(mainText, canvas.width / 2, canvas.height / 2);
+    ctx.shadowBlur = 0;
+  },
+
+  // Vertical grid lines for visual reference
+  drawGridLines(ctx, canvas, rad) {
+    const cols = Config.GRID_COLS;
+    const diameter = rad * 2;
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+    ctx.lineWidth = 1;
+    for (let c = 0; c <= cols; c++) {
+      const x = c * diameter;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, canvas.height);
+      ctx.stroke();
+    }
+  },
+
+  // Dotted aiming trajectory with wall bounce
+  drawAimTrajectory(ctx, canvas, player, cannonPos, rad) {
+    const angle = player.launcher.angle;
+    const dx = Math.cos(angle);
+    const dy = Math.sin(angle);
+    const speed = 12;
+    let x = cannonPos.x;
+    let y = cannonPos.y;
+    let vx = dx * speed;
+    let vy = dy * speed;
+
+    ctx.save();
+    ctx.setLineDash([4, 6]);
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+
+    // Trace up to 200 steps or until reaching top/leaving canvas
+    for (let i = 0; i < 200; i++) {
+      x += vx;
+      y += vy;
+
+      // Wall bounce (left/right)
+      if (x - rad < 0) {
+        x = rad;
+        vx = -vx;
+      } else if (x + rad > canvas.width) {
+        x = canvas.width - rad;
+        vx = -vx;
+      }
+
+      // Stop at top
+      if (y - rad <= 0) {
+        ctx.lineTo(x, Math.max(0, y));
+        break;
+      }
+
+      ctx.lineTo(x, y);
+    }
+
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
   },
 };

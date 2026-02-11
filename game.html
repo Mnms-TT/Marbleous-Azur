@@ -192,18 +192,37 @@
       background: #0c1445;
       display: flex;
       flex-direction: column;
-      padding: 8px;
+      padding: 6px 8px;
       border-left: 3px solid #000;
     }
 
     #opponents-header {
       display: flex;
-      justify-content: flex-end;
-      padding: 2px 8px 6px;
+      justify-content: space-between;
+      align-items: center;
+      padding: 2px 4px 4px;
+      flex-shrink: 0;
     }
 
     #opponents-header span {
       color: #94a3b8;
+      font-size: 11px;
+    }
+
+    /* Spell announcement — lives INSIDE the 5×2 grid as one slot */
+    #spell-announcement {
+      background: #c2410c;
+      border: 2px solid #fff;
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    #spell-announcement span {
+      color: white;
+      font-weight: bold;
       font-size: 11px;
     }
 
@@ -212,34 +231,34 @@
       display: grid;
       grid-template-columns: repeat(5, 1fr);
       grid-template-rows: repeat(2, 1fr);
-      gap: 5px;
+      gap: 4px;
       min-height: 0;
     }
 
     .opponent-view {
       background: #1e293b;
-      border: 2px solid #334155;
+      border: 2px solid rgba(255, 255, 255, 0.6);
       border-radius: 3px;
       position: relative;
       overflow: hidden;
     }
 
     .opponent-view.empty {
-      background: #0f172a;
+      background: #1a1a2e;
+      border-color: rgba(255, 255, 255, 0.25);
       display: flex;
       align-items: center;
       justify-content: center;
     }
 
     .opponent-view.empty span {
-      color: #475569;
+      color: #555;
       font-size: 9px;
     }
 
     /* ========== ZONE CHAT (bas, pleine largeur) ========== */
     #chat-zone {
       grid-column: 1 / 3;
-      /* Occupe les 2 colonnes */
       grid-row: 2;
       background: #0c1445;
       display: flex;
@@ -253,7 +272,8 @@
       border-bottom: 1px solid #334155;
       flex-shrink: 0;
       display: flex;
-      justify-content: flex-end;
+      justify-content: space-between;
+      align-items: center;
     }
 
     #chat-header span {
@@ -299,6 +319,24 @@
       border-color: #60a5fa;
     }
 
+    .btn-accueil {
+      background: #1e3a5f;
+      color: #94a3b8;
+      font-size: 11px;
+      font-weight: bold;
+      padding: 6px 14px;
+      border: 1px solid #334155;
+      border-radius: 3px;
+      cursor: pointer;
+      text-decoration: none;
+      text-transform: uppercase;
+    }
+
+    .btn-accueil:hover {
+      background: #2d4a6f;
+      color: #fff;
+    }
+
     .btn-quit {
       background: #dc2626;
       color: #fff;
@@ -340,7 +378,8 @@
       <!-- ZONE ADVERSAIRES (haut droite, bleu) -->
       <div id="opponents-zone">
         <div id="opponents-header">
-          <span>accueil : [a]Player</span>
+          <span>accueil</span>
+          <span id="player-count-display">0 joueurs</span>
         </div>
         <div id="opponents-grid"></div>
       </div>
@@ -349,6 +388,7 @@
       <div id="chat-zone">
         <div id="chat-header">
           <span>accueil</span>
+          <a href="index.html" class="btn-accueil">ACCUEIL</a>
         </div>
         <div id="chat-messages"></div>
         <div id="chat-input-area">
@@ -359,7 +399,7 @@
     </div>
   </div>
 
-  <script type="module" src="js/main.js"></script>
+  <script type="module" src="js/main.js?v=3"></script>
 </body>
 
 </html>

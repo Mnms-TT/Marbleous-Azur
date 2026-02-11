@@ -16,29 +16,28 @@ export const UI = {
       (p) => p.id !== FirebaseController.auth?.currentUser?.uid
     );
 
-    // Ligne 1
-    for (let i = 0; i < 5; i++) {
-      const p = opponents[i];
-      const slot = p ? p.container : this.createEmptySlot();
-      if (p) p.canvas.dataset.playerId = p.id;
-      grid.appendChild(slot);
+    // 5×2 grid = 10 slots: 9 opponent + 1 announcement (at position 6)
+    let oppIndex = 0;
+    for (let i = 0; i < 10; i++) {
+      if (i === 5) {
+        // Position 6 (2nd row, 1st col == index 5) = announcement slot
+        const ann = document.createElement("div");
+        ann.id = "spell-announcement";
+        ann.innerHTML = `<span>Annonces</span>`;
+        grid.appendChild(ann);
+      } else {
+        const p = opponents[oppIndex];
+        const slot = p ? p.container : this.createEmptySlot();
+        if (p) p.canvas.dataset.playerId = p.id;
+        grid.appendChild(slot);
+        oppIndex++;
+      }
     }
 
-    // Ligne 2 : Annonces
-    const announcement = document.createElement("div");
-    announcement.id = "spell-announcement";
-    announcement.className =
-      "opponent-view flex flex-col items-center justify-center text-center p-1 overflow-hidden relative";
-    announcement.style.backgroundColor = "#c2410c";
-    announcement.style.border = "2px solid white";
-    announcement.innerHTML = `<span class="text-white font-bold text-xs">Annonces</span>`;
-    grid.appendChild(announcement);
-
-    for (let i = 5; i < 9; i++) {
-      const p = opponents[i];
-      const slot = p ? p.container : this.createEmptySlot();
-      if (p) p.canvas.dataset.playerId = p.id;
-      grid.appendChild(slot);
+    // Update player count display
+    const countDisplay = document.getElementById("player-count-display");
+    if (countDisplay) {
+      countDisplay.textContent = `${Game.players.size} joueur${Game.players.size > 1 ? 's' : ''}`;
     }
 
     requestAnimationFrame(() => this.resizeAllCanvases());
@@ -46,9 +45,8 @@ export const UI = {
 
   createEmptySlot: () => {
     const s = document.createElement("div");
-    s.className =
-      "opponent-view flex items-center justify-center bg-slate-900 opacity-50";
-    s.innerHTML = `<span class="text-slate-600 text-[10px]">Libre</span>`;
+    s.className = "opponent-view empty";
+    s.innerHTML = `<span>Libre</span>`;
     return s;
   },
 
@@ -66,7 +64,7 @@ export const UI = {
       this.renderTeamSelectionInAnnouncementBox();
     } else {
       if (slot)
-        slot.innerHTML = `<div class="flex flex-col items-center justify-center h-full bg-green-700 animate-pulse text-white"><span class="font-bold text-sm">PRÊT</span><span class="text-[10px]">${ready}/${total}</span></div>`;
+        slot.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;width:100%;background:#15803d;"><span style="color:white;font-weight:bold;font-size:12px;">PRÊT ${ready}/${total}</span></div>`;
     }
 
     if (
@@ -85,25 +83,25 @@ export const UI = {
     const currentTeam = Game.localPlayer.team || 0;
     const teamNames = ['Jaune', 'Rouge', 'Vert', 'Bleu', 'Rose'];
 
-    // Filtrer pour ne montrer que les 4 autres couleurs (pas la couleur actuelle)
     const otherTeams = Config.TEAM_COLORS
       .map((c, i) => ({ color: c, index: i, name: teamNames[i] }))
       .filter(t => t.index !== currentTeam);
 
-    // Créer la grille 2x2 de couleurs (4 autres) - cercles centrés dans chaque quart
+    // "Choix de l'équipe" label + team color buttons (like reference)
     slot.innerHTML = `
-    <div style="display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; width:100%; height:100%; background:#FFB864;">
-        ${otherTeams.map(t => `
-          <div style="display:flex; align-items:center; justify-content:center;">
+    <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; height:100%; background:#FFB864; width:100%; padding:4px;">
+        <span style="font-size:9px; color:#333; font-weight:bold;">Choix de<br>l'équipe</span>
+        <div style="display:flex; gap:4px; flex-wrap:wrap; justify-content:center;">
+          ${otherTeams.map(t => `
             <button 
-              style="width:40px; height:40px; border-radius:50%; background:${t.color}; 
+              style="width:18px; height:18px; border-radius:50%; background:${t.color}; 
                      border:2px solid rgba(0,0,0,0.3); 
-                     cursor:pointer; box-shadow:inset 0 -3px 5px rgba(0,0,0,0.3);"
+                     cursor:pointer; box-shadow:inset 0 -2px 3px rgba(0,0,0,0.3);"
               onclick="window.handleTeamChange(${t.index})"
               title="Équipe ${t.name}"
             ></button>
-          </div>
-        `).join("")}
+          `).join("")}
+        </div>
     </div>`;
 
     window.handleTeamChange = (i) =>
@@ -119,9 +117,9 @@ export const UI = {
     if (!slot) return;
     let count = 3;
     const update = () => {
-      slot.innerHTML = `<div class="w-full h-full flex items-center justify-center bg-purple-800 text-white font-black text-4xl">${count}</div>`;
+      slot.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;background:#581c87;"><span style="color:white;font-weight:900;font-size:18px;">${count}</span></div>`;
       if (count <= 0) {
-        slot.innerHTML = `<div class="w-full h-full flex items-center justify-center bg-green-600 text-white font-black text-2xl">GO!</div>`;
+        slot.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;background:#16a34a;"><span style="color:white;font-weight:900;font-size:16px;">GO!</span></div>`;
         clearInterval(Game.countdownInterval);
 
         const hostId = Array.from(Game.players.keys()).sort()[0];
@@ -285,10 +283,15 @@ export const UI = {
   addChatMessage(name, msg) {
     const chat = document.getElementById("chat-messages");
     if (chat) {
-      const color =
-        Game.localPlayer?.team !== undefined
+      let color;
+      // System messages in gold
+      if (name === 'Système' || name === '🏆 Système' || name === '⚔️ Sort') {
+        color = '#fbbf24';
+      } else {
+        color = Game.localPlayer?.team !== undefined
           ? Config.TEAM_COLORS[Game.localPlayer.team]
           : "#93c5fd";
+      }
       chat.innerHTML += `<div class="mb-1"><span class="font-bold" style="color:${color}">${name}:</span> ${msg}</div>`;
       chat.scrollTop = chat.scrollHeight;
     }

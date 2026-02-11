@@ -2,6 +2,10 @@ import { Game } from "./game.js";
 import { GameLogic } from "./gameLogic.js";
 import { Config } from "./config.js";
 
+let fpsFrames = 0;
+let fpsLast = performance.now();
+let fpsDisplay = 0;
+
 export const Drawing = {
   drawAll() {
     if (!Game.localPlayer) return;
@@ -284,8 +288,26 @@ export const Drawing = {
     }
 
     // --- TRAJECTOIRE DE VISÉE ---
-    if (isMain && player.isAlive && player.launcherBubble) {
+    if (isMain && player.isAlive) {
       this.drawAimTrajectory(ctx, canvas, player, Game.cannonPosition, rad);
+    }
+
+    // --- FPS COUNTER ---
+    if (isMain) {
+      fpsFrames++;
+      const now = performance.now();
+      if (now - fpsLast >= 1000) {
+        fpsDisplay = fpsFrames;
+        fpsFrames = 0;
+        fpsLast = now;
+      }
+      ctx.save();
+      ctx.font = 'bold 11px monospace';
+      ctx.fillStyle = '#0f0';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(`${fpsDisplay} fps`, 8, canvas.height - 4);
+      ctx.restore();
     }
 
     // --- Effet de rotation du plateau (plateauRenverse) ---
@@ -566,21 +588,21 @@ export const Drawing = {
     const angle = player.launcher.angle;
     const dx = Math.cos(angle);
     const dy = Math.sin(angle);
-    const speed = 12;
+    const step = 6;
     let x = cannonPos.x;
     let y = cannonPos.y;
-    let vx = dx * speed;
-    let vy = dy * speed;
+    let vx = dx * step;
+    let vy = dy * step;
 
     ctx.save();
-    ctx.setLineDash([4, 6]);
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
-    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 8]);
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(x, y);
 
-    // Trace up to 200 steps or until reaching top/leaving canvas
-    for (let i = 0; i < 200; i++) {
+    // Trace up to 300 steps or until reaching top
+    for (let i = 0; i < 300; i++) {
       x += vx;
       y += vy;
 

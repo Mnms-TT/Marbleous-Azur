@@ -87,21 +87,24 @@ export const UI = {
       .map((c, i) => ({ color: c, index: i, name: teamNames[i] }))
       .filter(t => t.index !== currentTeam);
 
-    // "Choix de l'équipe" label + team color buttons (like reference)
+    // 2×2 grid layout — one ball per quadrant (like reference)
     slot.innerHTML = `
-    <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; height:100%; background:#FFB864; width:100%; padding:4px;">
-        <span style="font-size:9px; color:#333; font-weight:bold;">Choix de<br>l'équipe</span>
-        <div style="display:flex; gap:4px; flex-wrap:wrap; justify-content:center;">
-          ${otherTeams.map(t => `
+    <div style="display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr;
+                width:100%; height:100%; background:#FFB864; position:relative;">
+        ${otherTeams.slice(0, 4).map(t => `
+          <div style="display:flex; align-items:center; justify-content:center;">
             <button 
-              style="width:18px; height:18px; border-radius:50%; background:${t.color}; 
+              style="width:22px; height:22px; border-radius:50%; background:${t.color}; 
                      border:2px solid rgba(0,0,0,0.3); 
                      cursor:pointer; box-shadow:inset 0 -2px 3px rgba(0,0,0,0.3);"
               onclick="window.handleTeamChange(${t.index})"
               title="Équipe ${t.name}"
             ></button>
-          `).join("")}
-        </div>
+          </div>
+        `).join("")}
+        <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+                    font-size:8px; color:#333; font-weight:bold; text-align:center;
+                    pointer-events:none; line-height:1.2;">Choix de<br>l'équipe</div>
     </div>`;
 
     window.handleTeamChange = (i) =>

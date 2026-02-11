@@ -94,17 +94,17 @@ export const UI = {
         ${otherTeams.slice(0, 4).map(t => `
           <div style="display:flex; align-items:center; justify-content:center;">
             <button 
-              style="width:22px; height:22px; border-radius:50%; background:${t.color}; 
+              style="width:40px; height:40px; border-radius:50%; background:${t.color}; 
                      border:2px solid rgba(0,0,0,0.3); 
-                     cursor:pointer; box-shadow:inset 0 -2px 3px rgba(0,0,0,0.3);"
+                     cursor:pointer; box-shadow:inset 0 -3px 5px rgba(0,0,0,0.3);"
               onclick="window.handleTeamChange(${t.index})"
               title="Équipe ${t.name}"
             ></button>
           </div>
         `).join("")}
         <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-                    font-size:8px; color:#333; font-weight:bold; text-align:center;
-                    pointer-events:none; line-height:1.2;">Choix de<br>l'équipe</div>
+                    font-size:9px; color:#333; font-weight:bold; text-align:center;
+                    pointer-events:none; line-height:1.2; text-shadow:0 0 3px #FFB864, 0 0 6px #FFB864;">Choix de<br>l'équipe</div>
     </div>`;
 
     window.handleTeamChange = (i) =>

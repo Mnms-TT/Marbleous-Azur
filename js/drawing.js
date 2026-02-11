@@ -2,10 +2,6 @@ import { Game } from "./game.js";
 import { GameLogic } from "./gameLogic.js";
 import { Config } from "./config.js";
 
-let fpsFrames = 0;
-let fpsLast = performance.now();
-let fpsDisplay = 0;
-
 export const Drawing = {
   drawAll() {
     if (!Game.localPlayer) return;
@@ -287,26 +283,15 @@ export const Drawing = {
         );
     }
 
-    // --- TRAJECTOIRE DE VISÉE ---
-    if (isMain && player.isAlive) {
-      this.drawAimTrajectory(ctx, canvas, player, Game.cannonPosition, rad);
-    }
 
-    // --- FPS COUNTER ---
+    // --- FPS COUNTER (fixed display) ---
     if (isMain) {
-      fpsFrames++;
-      const now = performance.now();
-      if (now - fpsLast >= 1000) {
-        fpsDisplay = fpsFrames;
-        fpsFrames = 0;
-        fpsLast = now;
-      }
       ctx.save();
       ctx.font = 'bold 11px monospace';
       ctx.fillStyle = '#0f0';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'bottom';
-      ctx.fillText(`${fpsDisplay} fps`, 8, canvas.height - 4);
+      ctx.fillText(`${Game.targetFPS} fps`, 8, canvas.height - 4);
       ctx.restore();
     }
 
@@ -583,49 +568,4 @@ export const Drawing = {
     }
   },
 
-  // Dotted aiming trajectory with wall bounce
-  drawAimTrajectory(ctx, canvas, player, cannonPos, rad) {
-    const angle = player.launcher.angle;
-    const dx = Math.cos(angle);
-    const dy = Math.sin(angle);
-    const step = 6;
-    let x = cannonPos.x;
-    let y = cannonPos.y;
-    let vx = dx * step;
-    let vy = dy * step;
-
-    ctx.save();
-    ctx.setLineDash([6, 8]);
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-
-    // Trace up to 300 steps or until reaching top
-    for (let i = 0; i < 300; i++) {
-      x += vx;
-      y += vy;
-
-      // Wall bounce (left/right)
-      if (x - rad < 0) {
-        x = rad;
-        vx = -vx;
-      } else if (x + rad > canvas.width) {
-        x = canvas.width - rad;
-        vx = -vx;
-      }
-
-      // Stop at top
-      if (y - rad <= 0) {
-        ctx.lineTo(x, Math.max(0, y));
-        break;
-      }
-
-      ctx.lineTo(x, y);
-    }
-
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.restore();
-  },
 };

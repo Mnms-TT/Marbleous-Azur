@@ -30,35 +30,35 @@ export const Config = {
     // OFFENSIFS
     plateauRenverse: {
       name: "Plateau renversé",
-      icon: "icons/sort_tilt.png",
+      icon: "icons/sort_tilt.svg",
       color: "#ff3388",
       type: "offensive",
       description: "Tir imprévisible - angle modifié aléatoirement"
     },
     canonCasse: {
       name: "Canon cassé",
-      icon: "icons/sort_canon.png",
+      icon: "icons/sort_canon.svg",
       color: "#ffee00",
       type: "offensive",
       description: "Comportement aléatoire du canon"
     },
     disparitionSorts: {
       name: "Disparition de sorts",
-      icon: "icons/sort_cancel.png",
+      icon: "icons/sort_cancel.svg",
       color: "#33dd33",
       type: "offensive",
       description: "Supprime 1 sort + bulles sorts à l'écran"
     },
     variationCouleur: {
       name: "Variation de couleur",
-      icon: "icons/sort_rainbow.png",
+      icon: "icons/sort_rainbow.svg",
       color: "#33dddd",
       type: "offensive",
       description: "Couleurs changent constamment"
     },
     boulesSupplementaires: {
       name: "Boules supplémentaires",
-      icon: "icons/sort_addline.png",
+      icon: "icons/sort_addline.svg",
       color: "#3366ff",
       type: "offensive",
       description: "Ajoute ~10 bulles à l'adversaire"
@@ -66,21 +66,21 @@ export const Config = {
     // DÉFENSIFS
     nukeBomb: {
       name: "Nuke Bomb",
-      icon: "icons/sort_nuke.png",
+      icon: "icons/sort_nuke.svg",
       color: "#aa44dd",
       type: "defensive",
       description: "Élimine beaucoup de bulles"
     },
     toutesMemeCouleur: {
       name: "Toutes même couleur",
-      icon: "icons/sort_monocolor.png",
+      icon: "icons/sort_monocolor.svg",
       color: "#ff6633",
       type: "defensive",
       description: "Certaines bulles deviennent même couleur"
     },
     nettoyage: {
       name: "Nettoyage",
-      icon: "icons/sort_removeline.png",
+      icon: "icons/sort_removeline.svg",
       color: "#333333",
       type: "defensive",
       description: "Supprime 2-3 rangées de bulles"
@@ -105,7 +105,7 @@ export const Config = {
 
   SPELL_SPAWN_CHANCE: 0.33, // 1/3 de chance
   FPS: 60,
-  LAUNCHER_ROTATION_SPEED: 0.014,
+  LAUNCHER_ROTATION_SPEED: 0.0056,
 
   // Coefficient de redistribution des bulles - augmente avec le niveau
   BASE_REDISTRIBUTION_COEF: 0.1, // Coefficient initial

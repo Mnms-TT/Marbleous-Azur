@@ -396,59 +396,46 @@ export const Drawing = {
   drawBubble(ctx, b, rad, x, y) {
     if (!b || !b.color) return;
 
-    // === 1. Dark thick border ring ===
-    ctx.beginPath();
-    ctx.arc(x, y, rad, 0, Math.PI * 2);
-    ctx.fillStyle = "#111";
-    ctx.fill();
-
-    // === 2. Main sphere with strong 3D metallic gradient ===
+    // === Main sphere with 3D metallic gradient (NO black border) ===
     const grad = ctx.createRadialGradient(
       x - rad * 0.35, y - rad * 0.35, rad * 0.05,
-      x + rad * 0.1, y + rad * 0.1, rad * 0.88
+      x + rad * 0.1, y + rad * 0.1, rad
     );
-    // Bright highlight → main color → dark shadow
-    grad.addColorStop(0, this.lightenColor(b.color.main, 80));
-    grad.addColorStop(0.3, b.color.main);
-    grad.addColorStop(0.75, b.color.main);
+    // Bright highlight → main color → dark shadow at edge
+    grad.addColorStop(0, this.lightenColor(b.color.main, 90));
+    grad.addColorStop(0.25, this.lightenColor(b.color.main, 40));
+    grad.addColorStop(0.6, b.color.main);
     grad.addColorStop(1, b.color.shadow);
 
     ctx.beginPath();
-    ctx.arc(x, y, rad * 0.88, 0, Math.PI * 2);
+    ctx.arc(x, y, rad, 0, Math.PI * 2);
     ctx.fillStyle = grad;
     ctx.fill();
 
-    // === 3. Inner ring / edge highlight ===
-    ctx.beginPath();
-    ctx.arc(x, y, rad * 0.88, 0, Math.PI * 2);
-    ctx.strokeStyle = "rgba(255,255,255,0.15)";
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-
-    // === 4. Specular highlight (bright white dot upper-left) ===
+    // === Specular highlight (bright area upper-left) ===
     const specGrad = ctx.createRadialGradient(
       x - rad * 0.3, y - rad * 0.35, 0,
-      x - rad * 0.3, y - rad * 0.35, rad * 0.35
+      x - rad * 0.3, y - rad * 0.35, rad * 0.4
     );
-    specGrad.addColorStop(0, "rgba(255,255,255,0.8)");
-    specGrad.addColorStop(0.5, "rgba(255,255,255,0.2)");
+    specGrad.addColorStop(0, "rgba(255,255,255,0.7)");
+    specGrad.addColorStop(0.4, "rgba(255,255,255,0.15)");
     specGrad.addColorStop(1, "rgba(255,255,255,0)");
     ctx.beginPath();
-    ctx.arc(x - rad * 0.3, y - rad * 0.35, rad * 0.35, 0, Math.PI * 2);
+    ctx.arc(x - rad * 0.3, y - rad * 0.35, rad * 0.4, 0, Math.PI * 2);
     ctx.fillStyle = specGrad;
     ctx.fill();
 
-    // === 5. Small bright specular dot ===
-    ctx.fillStyle = "rgba(255,255,255,0.7)";
+    // === Small bright specular dot ===
+    ctx.fillStyle = "rgba(255,255,255,0.6)";
     ctx.beginPath();
     ctx.ellipse(
       x - rad * 0.28, y - rad * 0.32,
-      rad * 0.12, rad * 0.08,
+      rad * 0.1, rad * 0.06,
       Math.PI / 4, 0, Math.PI * 2
     );
     ctx.fill();
 
-    // === 6. Spell symbol (drawn on canvas, matching reference exactly) ===
+    // === Spell symbol ===
     if (b.isSpellBubble && b.spell) {
       this.drawSpellSymbol(ctx, x, y, rad, b.spell);
     }
@@ -462,123 +449,111 @@ export const Drawing = {
     return `rgb(${r},${g},${b})`;
   },
 
-  // Draw spell symbol on bubble matching reference images
+  // Draw spell symbol on bubble matching reference images EXACTLY
   drawSpellSymbol(ctx, x, y, rad, spellKey) {
-    const s = rad * 0.5; // symbol size relative to bubble
+    const s = rad * 0.55;
     ctx.save();
     ctx.translate(x, y);
 
     switch (spellKey) {
       case "plateauRenverse": {
-        // Gold/orange tilted cross (like reference)
-        ctx.strokeStyle = "#8B4513";
-        ctx.fillStyle = "#DAA520";
-        ctx.lineWidth = 2;
+        // Orange/gold TILTED cross (+ rotated 45°)
+        ctx.fillStyle = "#CC6600";
+        ctx.strokeStyle = "#663300";
+        ctx.lineWidth = 1;
         ctx.save();
         ctx.rotate(Math.PI / 4);
-        ctx.fillRect(-s * 0.15, -s * 0.7, s * 0.3, s * 1.4);
-        ctx.fillRect(-s * 0.7, -s * 0.15, s * 1.4, s * 0.3);
-        ctx.strokeRect(-s * 0.15, -s * 0.7, s * 0.3, s * 1.4);
-        ctx.strokeRect(-s * 0.7, -s * 0.15, s * 1.4, s * 0.3);
+        ctx.fillRect(-s * 0.18, -s * 0.65, s * 0.36, s * 1.3);
+        ctx.fillRect(-s * 0.65, -s * 0.18, s * 1.3, s * 0.36);
         ctx.restore();
         break;
       }
       case "canonCasse": {
-        // Orange arrows pointing outward (like reference)
-        ctx.fillStyle = "#FF8C00";
-        ctx.strokeStyle = "#8B4513";
-        ctx.lineWidth = 1.5;
-        const as = s * 0.5;
-        // 4 arrow triangles pointing outward
-        for (let i = 0; i < 4; i++) {
-          ctx.save();
-          ctx.rotate((i * Math.PI) / 2);
-          ctx.beginPath();
-          ctx.moveTo(0, -as * 1.2);
-          ctx.lineTo(-as * 0.4, -as * 0.5);
-          ctx.lineTo(as * 0.4, -as * 0.5);
-          ctx.closePath();
-          ctx.fill();
-          ctx.stroke();
-          ctx.restore();
-        }
+        // TWO SUPERIMPOSED CROSSES: a + AND an X overlaid (8-point star shape)
+        ctx.fillStyle = "#CC6600";
+        ctx.strokeStyle = "#664400";
+        ctx.lineWidth = 1;
+        // Cross 1: straight +
+        ctx.fillRect(-s * 0.16, -s * 0.6, s * 0.32, s * 1.2);
+        ctx.fillRect(-s * 0.6, -s * 0.16, s * 1.2, s * 0.32);
+        // Cross 2: diagonal X
+        ctx.save();
+        ctx.rotate(Math.PI / 4);
+        ctx.fillRect(-s * 0.16, -s * 0.6, s * 0.32, s * 1.2);
+        ctx.fillRect(-s * 0.6, -s * 0.16, s * 1.2, s * 0.32);
+        ctx.restore();
         break;
       }
       case "disparitionSorts": {
-        // Dark red X (like reference)
-        ctx.strokeStyle = "#8B0000";
+        // Red X cross
         ctx.fillStyle = "#CC0000";
-        ctx.lineWidth = 2;
-        const w = s * 0.22;
+        ctx.strokeStyle = "#660000";
+        ctx.lineWidth = 1;
         ctx.save();
         ctx.rotate(Math.PI / 4);
-        ctx.fillRect(-w, -s * 0.7, w * 2, s * 1.4);
-        ctx.fillRect(-s * 0.7, -w, s * 1.4, w * 2);
-        ctx.strokeRect(-w, -s * 0.7, w * 2, s * 1.4);
-        ctx.strokeRect(-s * 0.7, -w, s * 1.4, w * 2);
+        ctx.fillRect(-s * 0.18, -s * 0.65, s * 0.36, s * 1.3);
+        ctx.fillRect(-s * 0.65, -s * 0.18, s * 1.3, s * 0.36);
         ctx.restore();
         break;
       }
       case "variationCouleur": {
-        // Small teal/dark ring (like reference)
-        ctx.strokeStyle = "#004040";
-        ctx.lineWidth = s * 0.25;
+        // Small dark circle/dot in center
+        ctx.fillStyle = "#003333";
         ctx.beginPath();
-        ctx.arc(0, 0, s * 0.4, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.fillStyle = "#008080";
+        ctx.arc(0, 0, s * 0.35, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#006666";
         ctx.beginPath();
         ctx.arc(0, 0, s * 0.2, 0, Math.PI * 2);
         ctx.fill();
         break;
       }
       case "boulesSupplementaires": {
-        // Green plus/cross (like reference)
-        ctx.fillStyle = "#00AA00";
-        ctx.strokeStyle = "#005500";
-        ctx.lineWidth = 1.5;
-        ctx.fillRect(-s * 0.15, -s * 0.6, s * 0.3, s * 1.2);
-        ctx.fillRect(-s * 0.6, -s * 0.15, s * 1.2, s * 0.3);
-        ctx.strokeRect(-s * 0.15, -s * 0.6, s * 0.3, s * 1.2);
-        ctx.strokeRect(-s * 0.6, -s * 0.15, s * 1.2, s * 0.3);
+        // Bright green + cross
+        ctx.fillStyle = "#00CC00";
+        ctx.strokeStyle = "#006600";
+        ctx.lineWidth = 1;
+        ctx.fillRect(-s * 0.18, -s * 0.6, s * 0.36, s * 1.2);
+        ctx.fillRect(-s * 0.6, -s * 0.18, s * 1.2, s * 0.36);
         break;
       }
       case "nukeBomb": {
-        // White/pink figure/star (like reference - person-like shape)
+        // Pink upward arrow/figure (person-like shape from reference)
         ctx.fillStyle = "#FF69B4";
-        ctx.strokeStyle = "#8B008B";
-        ctx.lineWidth = 1.5;
-        // Simple person/exclamation figure
+        ctx.strokeStyle = "#990066";
+        ctx.lineWidth = 1;
+        // Upward arrow
         ctx.beginPath();
-        ctx.arc(0, -s * 0.35, s * 0.2, 0, Math.PI * 2);
+        ctx.moveTo(0, -s * 0.6);
+        ctx.lineTo(-s * 0.4, -s * 0.1);
+        ctx.lineTo(-s * 0.15, -s * 0.1);
+        ctx.lineTo(-s * 0.15, s * 0.5);
+        ctx.lineTo(s * 0.15, s * 0.5);
+        ctx.lineTo(s * 0.15, -s * 0.1);
+        ctx.lineTo(s * 0.4, -s * 0.1);
+        ctx.closePath();
         ctx.fill();
         ctx.stroke();
-        ctx.fillRect(-s * 0.12, -s * 0.15, s * 0.24, s * 0.55);
-        ctx.strokeRect(-s * 0.12, -s * 0.15, s * 0.24, s * 0.55);
-        ctx.beginPath();
-        ctx.arc(0, s * 0.5, s * 0.08, 0, Math.PI * 2);
-        ctx.fill();
         break;
       }
       case "toutesMemeCouleur": {
-        // White/green filled circle dot (like reference - green center indicator)
-        ctx.fillStyle = "rgba(255,255,255,0.9)";
-        ctx.beginPath();
-        ctx.arc(0, 0, s * 0.35, 0, Math.PI * 2);
-        ctx.fill();
+        // Green circle dot (defensive = green center)
         ctx.fillStyle = "#00CC00";
+        ctx.beginPath();
+        ctx.arc(0, 0, s * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#00FF00";
         ctx.beginPath();
         ctx.arc(0, 0, s * 0.2, 0, Math.PI * 2);
         ctx.fill();
         break;
       }
       case "nettoyage": {
-        // Green horizontal bar/minus (like reference)
+        // Green horizontal bar (minus sign)
         ctx.fillStyle = "#00AA00";
         ctx.strokeStyle = "#005500";
-        ctx.lineWidth = 1.5;
-        ctx.fillRect(-s * 0.6, -s * 0.15, s * 1.2, s * 0.3);
-        ctx.strokeRect(-s * 0.6, -s * 0.15, s * 1.2, s * 0.3);
+        ctx.lineWidth = 1;
+        ctx.fillRect(-s * 0.55, -s * 0.18, s * 1.1, s * 0.36);
         break;
       }
     }

@@ -383,11 +383,13 @@ export const Drawing = {
       if (player.spells && player.spells[i]) {
         const s = Config.SPELLS[player.spells[i]];
         if (s) {
-          // Draw colored background
-          ctx.fillStyle = s.color;
-          ctx.fillRect(sx + 1, sy + 1, size - 2, size - 2);
-          // Draw spell symbol procedurally
-          this.drawSpellSymbol(ctx, sx + size / 2, sy + size / 2, size / 2.5, player.spells[i]);
+          const icon = Game.spellIcons[player.spells[i]];
+          if (icon && icon.complete) {
+            ctx.drawImage(icon, sx, sy, size, size);
+          } else {
+            ctx.fillStyle = s.color;
+            ctx.fillRect(sx + 1, sy + 1, size - 2, size - 2);
+          }
         }
       }
     }
@@ -435,9 +437,13 @@ export const Drawing = {
     );
     ctx.fill();
 
-    // === Spell symbol ===
+    // === Spell icon (from extracted reference images) ===
     if (b.isSpellBubble && b.spell) {
-      this.drawSpellSymbol(ctx, x, y, rad, b.spell);
+      const icon = Game.spellIcons[b.spell];
+      if (icon && icon.complete) {
+        const iconSize = rad * 1.6; // 80% of diameter
+        ctx.drawImage(icon, x - iconSize / 2, y - iconSize / 2, iconSize, iconSize);
+      }
     }
   },
 

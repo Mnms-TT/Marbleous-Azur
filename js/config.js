@@ -30,35 +30,35 @@ export const Config = {
     // OFFENSIFS
     plateauRenverse: {
       name: "Plateau renversé",
-      icon: "icons/sort_tilt.svg",
+      icon: "icons/sort_tilt.png",
       color: "#ff3388",
       type: "offensive",
       description: "Tir imprévisible - angle modifié aléatoirement"
     },
     canonCasse: {
       name: "Canon cassé",
-      icon: "icons/sort_canon.svg",
+      icon: "icons/sort_canon.png",
       color: "#ffee00",
       type: "offensive",
       description: "Comportement aléatoire du canon"
     },
     disparitionSorts: {
       name: "Disparition de sorts",
-      icon: "icons/sort_cancel.svg",
+      icon: "icons/sort_cancel.png",
       color: "#33dd33",
       type: "offensive",
       description: "Supprime 1 sort + bulles sorts à l'écran"
     },
     variationCouleur: {
       name: "Variation de couleur",
-      icon: "icons/sort_rainbow.svg",
+      icon: "icons/sort_rainbow.png",
       color: "#33dddd",
       type: "offensive",
       description: "Couleurs changent constamment"
     },
     boulesSupplementaires: {
       name: "Boules supplémentaires",
-      icon: "icons/sort_addline.svg",
+      icon: "icons/sort_addline.png",
       color: "#3366ff",
       type: "offensive",
       description: "Ajoute ~10 bulles à l'adversaire"
@@ -66,21 +66,21 @@ export const Config = {
     // DÉFENSIFS
     nukeBomb: {
       name: "Nuke Bomb",
-      icon: "icons/sort_nuke.svg",
+      icon: "icons/sort_nuke.png",
       color: "#aa44dd",
       type: "defensive",
       description: "Élimine beaucoup de bulles"
     },
     toutesMemeCouleur: {
       name: "Toutes même couleur",
-      icon: "icons/sort_monocolor.svg",
+      icon: "icons/sort_monocolor.png",
       color: "#ff6633",
       type: "defensive",
       description: "Certaines bulles deviennent même couleur"
     },
     nettoyage: {
       name: "Nettoyage",
-      icon: "icons/sort_removeline.svg",
+      icon: "icons/sort_removeline.png",
       color: "#333333",
       type: "defensive",
       description: "Supprime 2-3 rangées de bulles"

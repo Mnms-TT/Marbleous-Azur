@@ -166,7 +166,7 @@ export const GameLogic = {
             y,
             type: "pop",
             radius: Game.bubbleRadius,
-            life: 10,
+            life: 25, // Increased from 10
           });
           player.grid[b.r][b.c] = null;
         });
@@ -288,7 +288,7 @@ export const GameLogic = {
     Game.players.forEach((p) =>
       p.effects.forEach((e, i) => {
         e.life--;
-        if (e.type === "pop") e.radius += 0.5;
+        if (e.type === "pop") e.radius += 0.25; // Slower expansion
         if (e.life <= 0) p.effects.splice(i, 1);
       })
     );
@@ -602,7 +602,7 @@ export const GameLogic = {
             x, y,
             type: "pop",
             radius: Game.bubbleRadius,
-            life: 15,
+            life: 30, // Increased for nuke
             color: "#af00c1",
           });
           grid[b.r][b.c] = null;

@@ -132,7 +132,7 @@ export const InputHandler = {
     p.shotBubble = p.launcherBubble;
     p.launcherBubble = null;
 
-    const speed = Game.bubbleRadius * 0.8;
+    const speed = Game.bubbleRadius * 0.6;
     p.shotBubble.isStatic = false;
     p.shotBubble.vx = Math.cos(p.launcher.angle) * speed;
     p.shotBubble.vy = Math.sin(p.launcher.angle) * speed;

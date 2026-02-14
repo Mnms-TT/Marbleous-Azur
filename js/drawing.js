@@ -415,17 +415,17 @@ export const Drawing = {
     ctx.fill();
 
     // === Dark irregular outline (individual pixels at the edge) ===
-    ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-    const dotCount = 12; // Number of "pixels" around the edge
+    const edgeColor = this.darkenColor(b.color.main, 40);
+    ctx.fillStyle = `rgba(${this.hexToRgb(edgeColor)}, 0.6)`;
+    const dotCount = 24; // Increased from 12 to 24
     for (let i = 0; i < dotCount; i++) {
-      // Skip some dots to make it irregular
-      if (i % 3 === 0) continue;
+      // More random skip to make it irregular but present
+      if (Math.sin(i * 1.5) > 0.8) continue;
 
-      const angle = (i / dotCount) * Math.PI * 2 + 0.5;
+      const angle = (i / dotCount) * Math.PI * 2 + (b.color.main.charCodeAt(1) % 10) / 10;
       const dx = x + Math.cos(angle) * (rad - 0.5);
       const dy = y + Math.sin(angle) * (rad - 0.5);
 
-      // Draw a tiny 1x1 or 1.5x1.5 pixel square
       ctx.fillRect(dx - 0.6, dy - 0.6, 1.2, 1.2);
     }
 
@@ -468,6 +468,15 @@ export const Drawing = {
     const g = Math.min(255, parseInt(hex.slice(3, 5), 16) + amount);
     const b = Math.min(255, parseInt(hex.slice(5, 7), 16) + amount);
     return `rgb(${r},${g},${b})`;
+  },
+
+  // Darken a hex color by an amount
+  darkenColor(hex, amount) {
+    const r = Math.max(0, parseInt(hex.slice(1, 3), 16) - amount);
+    const g = Math.max(0, parseInt(hex.slice(3, 5), 16) - amount);
+    const b = Math.max(0, parseInt(hex.slice(5, 7), 16) - amount);
+    const toHex = (num) => num.toString(16).padStart(2, '0');
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
   },
 
   // Draw spell symbol on bubble matching reference images EXACTLY

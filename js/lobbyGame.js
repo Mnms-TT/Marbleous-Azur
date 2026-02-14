@@ -4,6 +4,7 @@
  */
 
 import { Config } from "./config.js";
+import { Drawing } from "./drawing.js";
 
 export const LobbyGame = {
     canvas: null,
@@ -135,7 +136,7 @@ export const LobbyGame = {
         p.shotBubble = p.launcherBubble;
         p.launcherBubble = null;
 
-        const speed = this.bubbleRadius * 1.5;
+        const speed = this.bubbleRadius * 0.6;
         p.shotBubble.isStatic = false;
         p.shotBubble.vx = Math.cos(p.launcher.angle) * speed;
         p.shotBubble.vy = Math.sin(p.launcher.angle) * speed;
@@ -173,7 +174,7 @@ export const LobbyGame = {
         // Mise à jour des effets
         this.player.effects.forEach((e, i) => {
             e.life--;
-            if (e.type === "pop") e.radius += 0.5;
+            if (e.type === "pop") e.radius += 0.25;
             if (e.life <= 0) this.player.effects.splice(i, 1);
         });
 
@@ -215,7 +216,7 @@ export const LobbyGame = {
 
         // Boules qui tombent
         this.player.fallingBubbles.forEach((b, i) => {
-            b.vy += 0.5;
+            b.vy += 0.15;
             b.y += b.vy;
             b.x += b.vx;
             if (b.y > this.canvas.height + 100) {
@@ -241,7 +242,7 @@ export const LobbyGame = {
                 matches.forEach((b) => {
                     const { x, y } = this.getBubbleCoords(b.r, b.c);
                     this.player.effects.push({
-                        x, y, type: "pop", radius: this.bubbleRadius, life: 10
+                        x, y, type: "pop", radius: this.bubbleRadius, life: 25
                     });
                     this.player.grid[b.r][b.c] = null;
                 });
@@ -396,32 +397,10 @@ export const LobbyGame = {
         ctx.restore();
     },
 
-    // Dessiner une bulle
+    // Dessiner une bulle - délègue au module Drawing pour le même rendu 3D que les salles
     drawBubble(ctx, b, rad, x, y) {
         if (!b || !b.color) return;
-
-        ctx.beginPath();
-        ctx.arc(x, y, rad, 0, Math.PI * 2);
-        ctx.fillStyle = "#222";
-        ctx.fill();
-
-        const grad = ctx.createRadialGradient(
-            x - rad * 0.3, y - rad * 0.3, rad * 0.1,
-            x, y, rad * 0.95
-        );
-        grad.addColorStop(0, b.color.main);
-        grad.addColorStop(0.85, b.color.main);
-        grad.addColorStop(1, b.color.shadow);
-
-        ctx.beginPath();
-        ctx.arc(x, y, rad * 0.96, 0, Math.PI * 2);
-        ctx.fillStyle = grad;
-        ctx.fill();
-
-        ctx.fillStyle = "rgba(255,255,255,0.5)";
-        ctx.beginPath();
-        ctx.ellipse(x - rad * 0.25, y - rad * 0.3, rad * 0.22, rad * 0.12, Math.PI / 4, 0, Math.PI * 2);
-        ctx.fill();
+        Drawing.drawBubble(ctx, b, rad, x, y);
     },
 
     // Dessiner un effet
@@ -628,8 +607,8 @@ export const LobbyGame = {
                     this.player.fallingBubbles.push({
                         ...this.player.grid[r][c],
                         x, y,
-                        vx: (Math.random() - 0.5) * 4,
-                        vy: 0
+                        vx: 0,
+                        vy: 0.5
                     });
                     this.player.grid[r][c] = null;
                     fallen++;

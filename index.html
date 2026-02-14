@@ -250,74 +250,99 @@
     #players-zone {
       grid-column: 3;
       grid-row: 1;
-      background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+      background: linear-gradient(180deg, #1a1035 0%, #0d0a1a 100%);
       display: flex;
       flex-direction: column;
-      border-left: 2px solid #334155;
+      border-left: 2px solid #7c3aed;
       overflow: hidden;
     }
 
     #players-header {
       padding: 8px 12px;
-      background: #334155;
-      border-bottom: 1px solid #475569;
+      background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+      border-bottom: 1px solid #a78bfa;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
     #players-header h3 {
-      color: #fbbf24;
-      font-size: 13px;
+      color: #fff;
+      font-size: 12px;
       font-weight: bold;
       margin: 0;
+    }
+
+    #players-header .count-badge {
+      background: rgba(255, 255, 255, 0.2);
+      color: #e9d5ff;
+      font-size: 10px;
+      font-weight: bold;
+      padding: 2px 8px;
+      border-radius: 10px;
     }
 
     #players-list {
       flex: 1;
       overflow-y: auto;
-      padding: 8px;
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
     }
 
     .player-item {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      padding: 8px 10px;
-      margin-bottom: 6px;
-      background: #1e293b;
-      border: 1px solid #334155;
+      gap: 8px;
+      padding: 6px 8px;
+      background: rgba(124, 58, 237, 0.1);
+      border: 1px solid rgba(124, 58, 237, 0.3);
       border-radius: 6px;
       cursor: pointer;
-      transition: background 0.15s;
+      transition: all 0.15s;
     }
 
     .player-item:hover {
-      background: #334155;
+      background: rgba(124, 58, 237, 0.25);
+      border-color: #a78bfa;
+    }
+
+    .player-avatar {
+      font-size: 16px;
+      width: 24px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .player-info {
+      flex: 1;
+      min-width: 0;
     }
 
     .player-item .player-name {
       color: #e2e8f0;
-      font-size: 12px;
-      font-weight: 500;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: block;
     }
 
-    .player-item .player-status {
-      width: 8px;
-      height: 8px;
+    .player-item .player-location {
+      font-size: 9px;
+      color: #a78bfa;
+      white-space: nowrap;
+    }
+
+    .player-item .player-dot {
+      width: 6px;
+      height: 6px;
       border-radius: 50%;
       background: #22c55e;
-    }
-
-    .player-item .btn-dm {
-      background: #3b82f6;
-      border: none;
-      color: white;
-      font-size: 10px;
-      padding: 4px 8px;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-
-    .player-item .btn-dm:hover {
-      background: #2563eb;
+      box-shadow: 0 0 4px #22c55e;
+      flex-shrink: 0;
     }
 
     /* Zone chat (bas, pleine largeur - 3 colonnes) */
@@ -536,7 +561,8 @@
       <!-- Zone joueurs connectés -->
       <div id="players-zone">
         <div id="players-header">
-          <h3>👥 Joueurs en ligne</h3>
+          <h3>🎮 En ligne</h3>
+          <span class="count-badge" id="player-count-badge">0</span>
         </div>
         <div id="players-list">
           <!-- Rempli dynamiquement -->
@@ -609,22 +635,9 @@
     // Temps de connexion pour filtrer le chat (ne pas afficher l'historique)
     let connectionTime = Date.now();
 
-    // Charger pseudo sauvegardé dans l'overlay
+    // Charger pseudo sauvegardé dans l'overlay (pré-rempli mais toujours affiché)
     try {
       entryPseudo.value = localStorage.getItem('marbleous_pseudo') || '';
-
-      // Session persistence: si on a déjà un pseudo en session, skip l'overlay
-      const savedPseudo = localStorage.getItem('marbleous_pseudo');
-      const hasSession = sessionStorage.getItem('marbleous_session');
-
-      if (savedPseudo && hasSession) {
-        // Entrée directe sans demander le pseudo
-        currentPseudo = savedPseudo;
-        pseudoOverlay.classList.add('hidden');
-        if (welcomePseudo) {
-          welcomePseudo.textContent = `Bienvenue, ${savedPseudo} !`;
-        }
-      }
     } catch (e) {
       console.warn("Storage access restricted:", e);
     }
@@ -836,32 +849,57 @@
       updatePlayersList();
     }
 
+    const PLAYER_EMOJIS = ['🐉', '🦉', '🦊', '🐻', '🐼', '🦁', '🐯', '🐵', '🦋', '🐺', '🦎', '🦅', '💥', '🔥', '⚡', '🌟'];
+
+    function getPlayerEmoji(uid) {
+      let hash = 0;
+      for (let i = 0; i < uid.length; i++) hash = ((hash << 5) - hash) + uid.charCodeAt(i);
+      return PLAYER_EMOJIS[Math.abs(hash) % PLAYER_EMOJIS.length];
+    }
+
+    function getPlayerLocation(playerId) {
+      for (const [roomId, roomMap] of roomPlayers.entries()) {
+        if (roomMap.has(playerId)) {
+          return `Salle ${roomId.split('_')[1]}`;
+        }
+      }
+      return 'Lobby';
+    }
+
     function updatePlayersList() {
       const playersList = document.getElementById('players-list');
+      const countBadge = document.getElementById('player-count-badge');
       if (!playersList) return;
 
-      // Collecter tous les joueurs depuis le cache
       const players = [];
       allOnlinePlayers.forEach((player, id) => {
         const myUid = auth.currentUser ? auth.currentUser.uid : null;
-        if (myUid && id === myUid) return; // Ne pas afficher soi-même
+        if (myUid && id === myUid) return;
         players.push({ id, ...player });
       });
 
+      if (countBadge) countBadge.textContent = players.length;
+
       if (players.length === 0) {
-        playersList.innerHTML = '<div style="color:#64748b;font-size:11px;text-align:center;padding:20px;">Aucun joueur en ligne</div>';
+        playersList.innerHTML = '<div style="color:#a78bfa;font-size:11px;text-align:center;padding:20px;">Personne d\'autre en ligne 😴</div>';
         return;
       }
 
-      playersList.innerHTML = players.map(p => `
-        <div class="player-item" data-id="${p.id}">
-          <div style="display:flex;align-items:center;gap:8px;">
-            <div class="player-status"></div>
-            <span class="player-name">${p.name || 'Joueur'}</span>
+      playersList.innerHTML = players.map(p => {
+        const emoji = getPlayerEmoji(p.id);
+        const location = getPlayerLocation(p.id);
+        const locationColor = location === 'Lobby' ? '#a78bfa' : '#fbbf24';
+        return `
+          <div class="player-item" onclick="openDM('${p.id}', '${(p.name || 'Joueur').replace(/'/g, "\\'")}')">
+            <span class="player-avatar">${emoji}</span>
+            <div class="player-info">
+              <span class="player-name">${p.name || 'Joueur'}</span>
+              <span class="player-location" style="color:${locationColor}">${location}</span>
+            </div>
+            <div class="player-dot"></div>
           </div>
-          <button class="btn-dm" onclick="openDM('${p.id}', '${p.name || 'Joueur'}')">DM</button>
-        </div>
-      `).join('');
+        `;
+      }).join('');
     }
 
 

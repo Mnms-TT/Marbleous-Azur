@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, doc, setDoc, onSnapshot, collection, runTransaction, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, onSnapshot, collection, runTransaction, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { Game } from './game.js';
 import { Player } from './player.js';
@@ -53,53 +53,84 @@ export const FirebaseController = {
             grid: JSON.stringify(initialGrid), score: 0, level: 1, spells: [], statusEffects: {},
             lastActive: Date.now()
         };
+
         const roomRef = doc(this.db, "rooms", roomId);
+
         try {
             let isSpectator = false;
+
+            // Étape 1 : Compter les vrais joueurs actifs (pas le compteur stale)
+            const playersSnap = await getDocs(collection(this.db, "rooms", roomId, "players"));
+            const now = Date.now();
+            let activeCount = 0;
+            const ghostIds = [];
+
+            playersSnap.docs.forEach(d => {
+                const data = d.data();
+                if (d.id === localPlayerId) return; // Ignorer soi-même (re-join)
+                if (now - (data.lastActive || 0) < 30000) {
+                    activeCount++;
+                } else {
+                    ghostIds.push(d.id); // Fantôme à nettoyer
+                }
+            });
+
+            // Nettoyer les fantômes
+            for (const gid of ghostIds) {
+                try { await deleteDoc(doc(this.db, "rooms", roomId, "players", gid)); } catch (e) { /* ignore */ }
+            }
+
+            if (activeCount >= 10) {
+                alert("La salle est pleine !");
+                window.location.href = 'index.html';
+                return;
+            }
+
+            // Étape 2 : Rejoindre via transaction
             await runTransaction(this.db, async (transaction) => {
                 const roomDoc = await transaction.get(roomRef);
-                let currentCount = 0;
+                let gameState = 'waiting';
+
                 if (roomDoc.exists()) {
                     const roomData = roomDoc.data();
-                    currentCount = roomData.playerCount || 0;
-                    if (currentCount >= 10) { throw "La salle est pleine !"; }
-                    // Si partie en cours, rejoindre en tant que spectateur
-                    if (roomData.gameState === 'playing' || roomData.gameState === 'countdown') {
+                    gameState = roomData.gameState || 'waiting';
+
+                    // Si aucun joueur actif, forcer l'état à 'waiting'
+                    if (activeCount === 0) {
+                        gameState = 'waiting';
+                    }
+
+                    // Si partie en cours et joueurs actifs, rejoindre en tant que spectateur
+                    if (activeCount > 0 && (gameState === 'playing' || gameState === 'countdown')) {
                         isSpectator = true;
                         initialPlayerData.isAlive = false;
                         initialPlayerData.isSpectator = true;
                     }
                 }
+
                 const playerRef = doc(this.db, "rooms", roomId, "players", localPlayerId);
                 transaction.set(playerRef, initialPlayerData);
-                const roomDataUpdate = { name: `Salle ${roomId.split('_')[1]}`, playerCount: currentCount + 1 };
-                if (currentCount === 0) { roomDataUpdate.gameState = 'waiting'; }
+
+                // Mettre à jour le document de la salle avec le vrai compte
+                const realCount = activeCount + 1; // +1 pour soi-même
+                const roomDataUpdate = {
+                    name: `Salle ${roomId.split('_')[1]}`,
+                    playerCount: realCount,
+                    gameState: gameState
+                };
                 transaction.set(roomRef, roomDataUpdate, { merge: true });
             });
 
-            // Si spectateur, mettre le jeu en mode spectateur (waiting avec animation)
+            // Si spectateur, mettre le jeu en mode spectateur
             if (isSpectator) {
                 Game.state = 'spectating';
             }
-
-            // GESTION DECONNEXION (Ghost Players)
-            const { onDisconnect } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js");
-            // Note: onDisconnect fonctionne avec Realtime Database, pas Firestore directement pour la présence.
-            // Firestore n'a pas de "onDisconnect" natif simple comme RTDB.
-            // Cependant, on peut utiliser une astuce ou simplement s'assurer que le nettoyage est fait.
-            // Pour ce projet, si on n'a pas RTDB configuré, on doit renforcer le beforeunload.
-            // MAIS, le user dit "c'est une catastrophe", donc on va essayer de faire mieux.
-            // Si on ne peut pas utiliser RTDB, on va améliorer le nettoyage manuel.
-
-            // Correction: Firestore n'a PAS de onDisconnect. Il faut utiliser Realtime Database pour la présence fiable.
-            // Si le projet n'a pas RTDB activé, on est coincé avec beforeunload.
-            // On va supposer qu'on peut améliorer le beforeunload avec sendBeacon.
 
             this.listenForGameChanges();
             Game.gameLoop();
         } catch (e) {
             console.error("Erreur pour rejoindre la salle: ", e);
-            alert(e);
+            alert("Erreur : " + (typeof e === 'string' ? e : e.message));
             window.location.href = 'index.html';
         }
     },
@@ -113,7 +144,7 @@ export const FirebaseController = {
             snapshot.docs.forEach(doc => {
                 const data = doc.data();
                 // Filtre anti-fantôme : Si inactif depuis > 60 secondes, on l'ignore et on le supprime
-                if (now - (data.lastActive || 0) > 60000) {
+                if (now - (data.lastActive || 0) > 30000) {
                     // Nettoyage actif des fantômes (sauf soi-même)
                     if (doc.id !== this.auth.currentUser.uid) {
                         this.deletePlayerDoc(doc.id);

@@ -4,7 +4,6 @@
  */
 
 import { Config } from "./config.js";
-import { Drawing } from "./drawing.js";
 
 export const LobbyGame = {
     canvas: null,
@@ -397,10 +396,78 @@ export const LobbyGame = {
         ctx.restore();
     },
 
-    // Dessiner une bulle - délègue au module Drawing pour le même rendu 3D que les salles
+    // === Helpers couleur (copiés de Drawing pour éviter l'import) ===
+    lightenColor(hex, amount) {
+        const r = Math.min(255, parseInt(hex.slice(1, 3), 16) + amount);
+        const g = Math.min(255, parseInt(hex.slice(3, 5), 16) + amount);
+        const bv = Math.min(255, parseInt(hex.slice(5, 7), 16) + amount);
+        return `rgb(${r},${g},${bv})`;
+    },
+
+    darkenColor(hex, amount) {
+        const r = Math.max(0, parseInt(hex.slice(1, 3), 16) - amount);
+        const g = Math.max(0, parseInt(hex.slice(3, 5), 16) - amount);
+        const bv = Math.max(0, parseInt(hex.slice(5, 7), 16) - amount);
+        const toHex = (n) => n.toString(16).padStart(2, '0');
+        return `#${toHex(r)}${toHex(g)}${toHex(bv)}`;
+    },
+
+    hexToRgb(hex) {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const bv = parseInt(hex.slice(5, 7), 16);
+        return `${r},${g},${bv}`;
+    },
+
+    // Dessiner une bulle — rendu 3D identique aux salles (inlined)
     drawBubble(ctx, b, rad, x, y) {
         if (!b || !b.color) return;
-        Drawing.drawBubble(ctx, b, rad, x, y);
+
+        // Sphère 3D avec gradient métallique
+        const grad = ctx.createRadialGradient(
+            x - rad * 0.35, y - rad * 0.35, rad * 0.05,
+            x + rad * 0.1, y + rad * 0.1, rad
+        );
+        grad.addColorStop(0, this.lightenColor(b.color.main, 90));
+        grad.addColorStop(0.25, this.lightenColor(b.color.main, 40));
+        grad.addColorStop(0.6, b.color.main);
+        grad.addColorStop(1, b.color.shadow);
+
+        ctx.beginPath();
+        ctx.arc(x, y, rad, 0, Math.PI * 2);
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        // Contour irrégulier (pixels sombres)
+        const edgeColor = this.darkenColor(b.color.main, 40);
+        ctx.fillStyle = `rgba(${this.hexToRgb(edgeColor)}, 0.6)`;
+        const dotCount = 24;
+        for (let i = 0; i < dotCount; i++) {
+            if (Math.sin(i * 1.5) > 0.8) continue;
+            const angle = (i / dotCount) * Math.PI * 2 + (b.color.main.charCodeAt(1) % 10) / 10;
+            const dx = x + Math.cos(angle) * (rad - 0.5);
+            const dy = y + Math.sin(angle) * (rad - 0.5);
+            ctx.fillRect(dx - 0.6, dy - 0.6, 1.2, 1.2);
+        }
+
+        // Reflet spéculaire
+        const specGrad = ctx.createRadialGradient(
+            x - rad * 0.3, y - rad * 0.35, 0,
+            x - rad * 0.3, y - rad * 0.35, rad * 0.4
+        );
+        specGrad.addColorStop(0, "rgba(255,255,255,0.7)");
+        specGrad.addColorStop(0.4, "rgba(255,255,255,0.15)");
+        specGrad.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.beginPath();
+        ctx.arc(x - rad * 0.3, y - rad * 0.35, rad * 0.4, 0, Math.PI * 2);
+        ctx.fillStyle = specGrad;
+        ctx.fill();
+
+        // Petit point brillant
+        ctx.fillStyle = "rgba(255,255,255,0.6)";
+        ctx.beginPath();
+        ctx.ellipse(x - rad * 0.28, y - rad * 0.32, rad * 0.1, rad * 0.06, Math.PI / 4, 0, Math.PI * 2);
+        ctx.fill();
     },
 
     // Dessiner un effet

@@ -206,43 +206,32 @@ export const UI = {
   },
 
   updateSpellsBar() {
-    const spellSlots = document.querySelectorAll("#spells-bar .spell-slot");
-    if (!spellSlots.length || !Game.localPlayer) return;
+    const slot = document.getElementById("active-spell-slot");
+    if (!slot || !Game.localPlayer) return;
 
     const spells = Game.localPlayer.spells || [];
-    const numSlots = spellSlots.length;
+    slot.innerHTML = "";
+    slot.style.backgroundColor = "#1e3a5f";
 
-    spellSlots.forEach((slot, i) => {
-      slot.innerHTML = "";
-      slot.className = "spell-slot"; // Reset classes
-      slot.style.backgroundColor = "#4a7ab5";
-
-      // Slot 0 = sort le plus ancien (FIFO = premier à être lancé), Slot 6 = plus récent
-      const spellIndex = spells.length - numSlots + i;
-
-      if (spellIndex >= 0 && spellIndex < spells.length) {
-        const spellName = spells[spellIndex];
-        const spellInfo = Config.SPELLS[spellName];
-        if (spellInfo) {
-          // Le premier sort (index 0 dans le tableau = le prochain à lancer) est encadré
-          if (spellIndex === 0) {
-            slot.classList.add("active-spell");
-          }
-
-          const icon = Game.spellIcons[spellName];
-          if (icon && icon.complete) {
-            const img = document.createElement("img");
-            img.src = icon.src;
-            img.style.width = "100%";
-            img.style.height = "100%";
-            img.style.objectFit = "contain";
-            slot.appendChild(img);
-          } else {
-            slot.style.backgroundColor = spellInfo.color;
-          }
+    // Afficher le premier sort FIFO (le prochain à lancer)
+    if (spells.length > 0) {
+      const spellName = spells[0];
+      const spellInfo = Config.SPELLS[spellName];
+      if (spellInfo) {
+        const icon = Game.spellIcons[spellName];
+        if (icon && icon.complete) {
+          const img = document.createElement("img");
+          img.src = icon.src;
+          img.style.width = "100%";
+          img.style.height = "100%";
+          img.style.objectFit = "contain";
+          img.style.display = "block";
+          slot.appendChild(img);
+        } else {
+          slot.style.backgroundColor = spellInfo.color;
         }
       }
-    });
+    }
   },
 
   updateSpellAnnouncement(caster, spellInfo, target) {

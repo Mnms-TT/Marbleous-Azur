@@ -161,38 +161,30 @@
 
     /* Barre de sorts en bas du joueur */
     #spells-bar {
-      height: 38px;
-      background: #6b9bd2;
+      height: 40px;
+      background: #0c1445;
       display: flex;
       align-items: center;
-      padding: 2px 6px;
-      gap: 3px;
-      border-top: 2px solid #4a7ab5;
+      justify-content: space-between;
+      padding: 2px 8px;
+      border-top: 2px solid #1e3a5f;
     }
 
     .spell-label {
-      color: #1a1a2e;
+      color: #94a3b8;
       font-size: 9px;
       font-weight: bold;
-      margin-right: 4px;
-      text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
     }
 
     .spell-slot {
-      width: 30px;
-      height: 30px;
-      background: #4a7ab5;
-      border: 1px solid #3a6a9e;
-      border-radius: 3px;
-      flex-shrink: 0;
-    }
-
-    .spell-slot.active-spell {
       width: 34px;
       height: 34px;
+      background: #1e3a5f;
       border: 2px solid #fff;
-      box-shadow: 0 0 6px rgba(255, 255, 255, 0.5);
       border-radius: 4px;
+      flex-shrink: 0;
+      box-shadow: 0 0 6px rgba(255, 255, 255, 0.4);
+      overflow: hidden;
     }
 
     /* ========== ZONE ADVERSAIRES (haut droite, bleu) ========== */
@@ -359,13 +351,7 @@
         </div>
         <div id="spells-bar">
           <span class="spell-label">SORTILEGES</span>
-          <div class="spell-slot"></div>
-          <div class="spell-slot"></div>
-          <div class="spell-slot"></div>
-          <div class="spell-slot"></div>
-          <div class="spell-slot"></div>
-          <div class="spell-slot"></div>
-          <div class="spell-slot"></div>
+          <div class="spell-slot" id="active-spell-slot"></div>
         </div>
       </div>
 
@@ -392,7 +378,7 @@
     </div>
   </div>
 
-  <script type="module" src="js/main.js?v=17"></script>
+  <script type="module" src="js/main.js?v=18"></script>
 </body>
 
 </html>

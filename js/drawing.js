@@ -3,8 +3,6 @@ import { GameLogic } from "./gameLogic.js";
 import { Config } from "./config.js";
 
 export const Drawing = {
-  pixelatedBubbleCache: {},
-
   drawAll() {
     if (!Game.localPlayer) return;
     const mainCanvas = document.getElementById("gameCanvas");
@@ -400,78 +398,68 @@ export const Drawing = {
   drawBubble(ctx, b, rad, x, y) {
     if (!b || !b.color) return;
 
-    const diameter = Math.round(rad * 2);
-    const colorKey = b.color.main;
-    const cacheKey = b.isSpellBubble && b.spell ? `spell_${b.spell}_${colorKey}` : `norm_${colorKey}`;
+    // === Main sphere with 3D metallic gradient (NO black border) ===
+    const grad = ctx.createRadialGradient(
+      x - rad * 0.35, y - rad * 0.35, rad * 0.05,
+      x + rad * 0.1, y + rad * 0.1, rad
+    );
+    // Bright highlight → main color → dark shadow at edge
+    grad.addColorStop(0, this.lightenColor(b.color.main, 90));
+    grad.addColorStop(0.25, this.lightenColor(b.color.main, 40));
+    grad.addColorStop(0.6, b.color.main);
+    grad.addColorStop(1, b.color.shadow);
 
-    // Target pixel size for the pixelated look (e.g., 18px diameter)
-    const pixelatedSize = 20;
+    ctx.beginPath();
+    ctx.arc(x, y, rad, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.fill();
 
-    // Create or get from cache
-    if (!this.pixelatedBubbleCache[cacheKey]) {
-      const offCanvas = document.createElement("canvas");
-      offCanvas.width = pixelatedSize;
-      offCanvas.height = pixelatedSize;
-      const offCtx = offCanvas.getContext("2d");
-      const r = pixelatedSize / 2;
-      const cx = r;
-      const cy = r;
+    // === Dark irregular outline (individual pixels at the edge) ===
+    ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+    const dotCount = 12; // Number of "pixels" around the edge
+    for (let i = 0; i < dotCount; i++) {
+      // Skip some dots to make it irregular
+      if (i % 3 === 0) continue;
 
-      // Draw the 3D bubble on the small canvas
-      // 1. Base gradient
-      const grad = offCtx.createRadialGradient(
-        cx - r * 0.35, cy - r * 0.35, r * 0.05,
-        cx + r * 0.1, cy + r * 0.1, r
-      );
-      grad.addColorStop(0, this.lightenColor(b.color.main, 90));
-      grad.addColorStop(0.25, this.lightenColor(b.color.main, 40));
-      grad.addColorStop(0.6, b.color.main);
-      grad.addColorStop(1, b.color.shadow);
+      const angle = (i / dotCount) * Math.PI * 2 + 0.5;
+      const dx = x + Math.cos(angle) * (rad - 0.5);
+      const dy = y + Math.sin(angle) * (rad - 0.5);
 
-      offCtx.beginPath();
-      offCtx.arc(cx, cy, r, 0, Math.PI * 2);
-      offCtx.fillStyle = grad;
-      offCtx.fill();
-
-      // 2. Specular highlight
-      const specGrad = offCtx.createRadialGradient(
-        cx - r * 0.3, cy - r * 0.35, 0,
-        cx - r * 0.3, cy - r * 0.35, r * 0.4
-      );
-      specGrad.addColorStop(0, "rgba(255,255,255,0.7)");
-      specGrad.addColorStop(0.4, "rgba(255,255,255,0.15)");
-      specGrad.addColorStop(1, "rgba(255,255,255,0)");
-      offCtx.beginPath();
-      offCtx.arc(cx - r * 0.3, cy - r * 0.35, r * 0.4, 0, Math.PI * 2);
-      offCtx.fillStyle = specGrad;
-      offCtx.fill();
-
-      // 3. Specular dot
-      offCtx.fillStyle = "rgba(255,255,255,0.6)";
-      offCtx.beginPath();
-      const dr = r * 0.1;
-      const hr = r * 0.06;
-      offCtx.ellipse(cx - r * 0.28, cy - r * 0.32, dr, hr, Math.PI / 4, 0, Math.PI * 2);
-      offCtx.fill();
-
-      // 4. Record the spell symbol if needed
-      if (b.isSpellBubble && b.spell) {
-        const icon = Game.spellIcons[b.spell];
-        if (icon && icon.complete) {
-          const iconSize = r * 1.6;
-          offCtx.drawImage(icon, cx - iconSize / 2, cy - iconSize / 2, iconSize, iconSize);
-        }
-      }
-
-      this.pixelatedBubbleCache[cacheKey] = offCanvas;
+      // Draw a tiny 1x1 or 1.5x1.5 pixel square
+      ctx.fillRect(dx - 0.6, dy - 0.6, 1.2, 1.2);
     }
 
-    // Draw the cached low-res bubble back to main canvas with smoothing OFF
-    const cached = this.pixelatedBubbleCache[cacheKey];
-    const prevSmoothing = ctx.imageSmoothingEnabled;
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(cached, x - rad, y - rad, diameter, diameter);
-    ctx.imageSmoothingEnabled = prevSmoothing;
+    // === Specular highlight (bright area upper-left) ===
+    const specGrad = ctx.createRadialGradient(
+      x - rad * 0.3, y - rad * 0.35, 0,
+      x - rad * 0.3, y - rad * 0.35, rad * 0.4
+    );
+    specGrad.addColorStop(0, "rgba(255,255,255,0.7)");
+    specGrad.addColorStop(0.4, "rgba(255,255,255,0.15)");
+    specGrad.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.beginPath();
+    ctx.arc(x - rad * 0.3, y - rad * 0.35, rad * 0.4, 0, Math.PI * 2);
+    ctx.fillStyle = specGrad;
+    ctx.fill();
+
+    // === Small bright specular dot ===
+    ctx.fillStyle = "rgba(255,255,255,0.6)";
+    ctx.beginPath();
+    ctx.ellipse(
+      x - rad * 0.28, y - rad * 0.32,
+      rad * 0.1, rad * 0.06,
+      Math.PI / 4, 0, Math.PI * 2
+    );
+    ctx.fill();
+
+    // === Spell icon (from extracted reference images) ===
+    if (b.isSpellBubble && b.spell) {
+      const icon = Game.spellIcons[b.spell];
+      if (icon && icon.complete) {
+        const iconSize = rad * 1.6; // 80% of diameter
+        ctx.drawImage(icon, x - iconSize / 2, y - iconSize / 2, iconSize, iconSize);
+      }
+    }
   },
 
   // Lighten a hex color by an amount

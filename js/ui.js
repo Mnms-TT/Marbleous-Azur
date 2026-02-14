@@ -206,32 +206,43 @@ export const UI = {
   },
 
   updateSpellsBar() {
-    const slot = document.getElementById("active-spell-slot");
-    if (!slot || !Game.localPlayer) return;
+    const spellSlots = document.querySelectorAll("#spells-bar .spell-slot");
+    if (!spellSlots.length || !Game.localPlayer) return;
 
     const spells = Game.localPlayer.spells || [];
-    slot.innerHTML = "";
-    slot.style.backgroundColor = "#1e3a5f";
+    const numSlots = spellSlots.length; // 8
 
-    // Afficher le premier sort FIFO (le prochain à lancer)
-    if (spells.length > 0) {
-      const spellName = spells[0];
-      const spellInfo = Config.SPELLS[spellName];
-      if (spellInfo) {
-        const icon = Game.spellIcons[spellName];
-        if (icon && icon.complete) {
-          const img = document.createElement("img");
-          img.src = icon.src;
-          img.style.width = "100%";
-          img.style.height = "100%";
-          img.style.objectFit = "contain";
-          img.style.display = "block";
-          slot.appendChild(img);
-        } else {
-          slot.style.backgroundColor = spellInfo.color;
+    spellSlots.forEach((slot, i) => {
+      slot.innerHTML = "";
+      slot.className = "spell-slot";
+      slot.style.backgroundColor = "#1e3a5f";
+
+      // Les sorts remplissent de droite à gauche : le plus récent à droite
+      // Slot i montre spells[spells.length - numSlots + i]
+      const spellIndex = spells.length - numSlots + i;
+
+      if (spellIndex >= 0 && spellIndex < spells.length) {
+        const spellName = spells[spellIndex];
+        const spellInfo = Config.SPELLS[spellName];
+        if (spellInfo) {
+          slot.classList.add("has-spell");
+
+          // Le premier sort FIFO (index 0) = prochain à lancer = bordure blanche
+          if (spellIndex === 0) {
+            slot.classList.add("active-spell");
+          }
+
+          const icon = Game.spellIcons[spellName];
+          if (icon && icon.complete) {
+            const img = document.createElement("img");
+            img.src = icon.src;
+            slot.appendChild(img);
+          } else {
+            slot.style.backgroundColor = spellInfo.color;
+          }
         }
       }
-    }
+    });
   },
 
   updateSpellAnnouncement(caster, spellInfo, target) {

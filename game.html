@@ -161,12 +161,12 @@
 
     /* Barre de sorts en bas du joueur */
     #spells-bar {
-      height: 40px;
+      height: 42px;
       background: #0c1445;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      padding: 2px 8px;
+      padding: 2px 4px;
+      gap: 3px;
       border-top: 2px solid #1e3a5f;
     }
 
@@ -174,17 +174,37 @@
       color: #94a3b8;
       font-size: 9px;
       font-weight: bold;
+      margin-right: 4px;
+      white-space: nowrap;
     }
 
     .spell-slot {
-      width: 34px;
-      height: 34px;
+      width: 32px;
+      height: 32px;
+      min-width: 32px;
       background: #1e3a5f;
-      border: 2px solid #fff;
+      border: 2px solid #334155;
       border-radius: 4px;
-      flex-shrink: 0;
-      box-shadow: 0 0 6px rgba(255, 255, 255, 0.4);
       overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .spell-slot.has-spell {
+      border-color: #60a5fa;
+    }
+
+    .spell-slot.active-spell {
+      border: 2px solid #fff;
+      box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+    }
+
+    .spell-slot img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
     }
 
     /* ========== ZONE ADVERSAIRES (haut droite, bleu) ========== */
@@ -350,8 +370,15 @@
           <canvas id="gameCanvas"></canvas>
         </div>
         <div id="spells-bar">
-          <span class="spell-label">SORTILEGES</span>
-          <div class="spell-slot" id="active-spell-slot"></div>
+          <span class="spell-label">SORTS</span>
+          <div class="spell-slot"></div>
+          <div class="spell-slot"></div>
+          <div class="spell-slot"></div>
+          <div class="spell-slot"></div>
+          <div class="spell-slot"></div>
+          <div class="spell-slot"></div>
+          <div class="spell-slot"></div>
+          <div class="spell-slot"></div>
         </div>
       </div>
 
@@ -378,7 +405,7 @@
     </div>
   </div>
 
-  <script type="module" src="js/main.js?v=18"></script>
+  <script type="module" src="js/main.js?v=19"></script>
 </body>
 
 </html>

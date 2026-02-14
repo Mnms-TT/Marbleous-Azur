@@ -5,7 +5,11 @@ import { UI } from "./ui.js";
 import { Config } from "./config.js";
 
 export const InputHandler = {
+  initialized: false,
   init() {
+    if (this.initialized) return;
+    this.initialized = true;
+
     window.addEventListener("keydown", this.handleKeyDown.bind(this));
     window.addEventListener("keyup", this.handleKeyUp.bind(this));
     window.addEventListener("mousemove", this.handleMouseMove.bind(this));
@@ -21,6 +25,7 @@ export const InputHandler = {
     if (canvas) {
       // Clic = Se mettre prêt OU Lancer le sort sur soi
       canvas.addEventListener("click", (e) => {
+        e.stopPropagation();
         const p = Game.localPlayer;
         if (!p) return;
 
@@ -49,6 +54,7 @@ export const InputHandler = {
     const oppGrid = document.getElementById("opponents-grid");
     if (oppGrid) {
       oppGrid.addEventListener("click", (e) => {
+        e.stopPropagation();
         const p = Game.localPlayer;
         if (!p || Game.state !== "playing" || !p.isAlive) return;
 

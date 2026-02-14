@@ -391,7 +391,7 @@ export const GameLogic = {
     // Boules qui tombent (avalanche)
     Game.players.forEach((p) =>
       p.fallingBubbles.forEach((b, i) => {
-        b.vy += 0.5;
+        b.vy += 0.15; // Reduced gravity from 0.5
         b.y += b.vy;
         b.x += b.vx;
         if (b.y > mainCanvas.height + 100) p.fallingBubbles.splice(i, 1);
@@ -804,8 +804,10 @@ export const GameLogic = {
           ...b,
           x,
           y,
-          vy: 0,
-          vx: (Math.random() - 0.5) * 2,
+          x,
+          y,
+          vy: 0.5, // Initial slow downward velocity
+          vx: 0,   // No more random horizontal drift
         });
       }
       grid[b.r][b.c] = null;

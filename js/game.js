@@ -34,7 +34,7 @@ export const Game = {
     if (!mainCanvas) return;
     setTimeout(() => {
       for (let i = 0; i < 30; i++) {
-        const radius = Math.random() * 20 + 10;
+        const radius = this.bubbleRadius || 12;
         this.lobbyMarbles.push({
           x: Math.random() * (mainCanvas.width || 400),
           y: Math.random() * -800,
@@ -61,7 +61,7 @@ export const Game = {
 
     GameLogic.loadBubbles(this.localPlayer);
     FirebaseController.updatePlayerDoc(this.localPlayer.id, { isReady: false });
-    this.gameIntervals.push(setInterval(() => GameLogic.levelUp(), 20000)); // Niveau monte toutes les 20s
+    this.gameIntervals.push(setInterval(() => GameLogic.levelUp(), 30000)); // Niveau monte toutes les 30s
     this.gameIntervals.push(setInterval(() => GameLogic.triggerGlobalAttack(), 8000)); // Attaque toutes les 8s
 
     UI.resizeAllCanvases();

@@ -161,27 +161,37 @@
 
     /* Barre de sorts en bas du joueur */
     #spells-bar {
-      height: 34px;
-      background: rgba(0, 0, 0, 0.8);
+      height: 38px;
+      background: #6b9bd2;
       display: flex;
       align-items: center;
-      padding: 0 8px;
+      padding: 2px 6px;
       gap: 3px;
-      border-top: 2px solid #000;
+      border-top: 2px solid #4a7ab5;
     }
 
     .spell-label {
-      color: #fff;
+      color: #1a1a2e;
       font-size: 9px;
       font-weight: bold;
-      margin-right: 6px;
+      margin-right: 4px;
+      text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
     }
 
     .spell-slot {
-      width: 40px;
-      height: 40px;
-      background: rgba(30, 41, 59, 0.9);
-      border: 1px solid #475569;
+      width: 30px;
+      height: 30px;
+      background: #4a7ab5;
+      border: 1px solid #3a6a9e;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    .spell-slot.active-spell {
+      width: 34px;
+      height: 34px;
+      border: 2px solid #fff;
+      box-shadow: 0 0 6px rgba(255, 255, 255, 0.5);
       border-radius: 4px;
     }
 
@@ -382,7 +392,7 @@
     </div>
   </div>
 
-  <script type="module" src="js/main.js?v=16"></script>
+  <script type="module" src="js/main.js?v=17"></script>
 </body>
 
 </html>

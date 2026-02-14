@@ -103,7 +103,7 @@ export const Config = {
   GRID_COLS: 8,
   GAME_OVER_ROW: 11, // 11 rangées autorisées, game over à la 12ème
 
-  SPELL_SPAWN_CHANCE: 0.33, // 1/3 de chance
+  SPELL_SPAWN_CHANCE: 0.43, // +30% (was 0.33)
   FPS: 60,
   LAUNCHER_ROTATION_SPEED: 0.0056,
 

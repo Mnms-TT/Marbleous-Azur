@@ -212,20 +212,23 @@ export const UI = {
     const spells = Game.localPlayer.spells || [];
     const numSlots = spellSlots.length;
 
-    // LIFO: le dernier sort (index length-1) doit être à DROITE (dernier slot)
-    // On affiche les sorts de gauche à droite, les plus récents à droite
     spellSlots.forEach((slot, i) => {
       slot.innerHTML = "";
-      slot.style.backgroundColor = "rgba(30, 41, 59, 0.8)";
+      slot.className = "spell-slot"; // Reset classes
+      slot.style.backgroundColor = "#4a7ab5";
 
-      // Calculer l'index du sort pour ce slot (les sorts les plus anciens à gauche)
-      // Slot 0 = sort le plus ancien, Slot 6 = sort le plus récent
+      // Slot 0 = sort le plus ancien (FIFO = premier à être lancé), Slot 6 = plus récent
       const spellIndex = spells.length - numSlots + i;
 
       if (spellIndex >= 0 && spellIndex < spells.length) {
         const spellName = spells[spellIndex];
         const spellInfo = Config.SPELLS[spellName];
         if (spellInfo) {
+          // Le premier sort (index 0 dans le tableau = le prochain à lancer) est encadré
+          if (spellIndex === 0) {
+            slot.classList.add("active-spell");
+          }
+
           const icon = Game.spellIcons[spellName];
           if (icon && icon.complete) {
             const img = document.createElement("img");
@@ -261,21 +264,43 @@ export const UI = {
     }, 3000);
   },
 
-  // Déclenche un tremblement sur le canvas du joueur
-  triggerShake(intensity = 1) {
+  // Déclenche un tremblement exponentiel sur le canvas du joueur
+  triggerShake(intensity = 1, duration = 500) {
     const canvas = document.getElementById("gameCanvas");
     if (!canvas) return;
 
-    // Nettoyer l'animation précédente
-    canvas.classList.remove("shaking", "shaking-intense");
+    // Amplitude dynamique basée sur l'intensité (1-8)
+    const amplitude = Math.min(intensity * 3, 25); // Max 25px
 
-    if (intensity >= 3) {
-      canvas.classList.add("shaking-intense");
-      setTimeout(() => canvas.classList.remove("shaking-intense"), intensity * 500);
-    } else {
-      canvas.classList.add("shaking");
-      setTimeout(() => canvas.classList.remove("shaking"), 500);
-    }
+    // Créer une animation CSS dynamique
+    const keyframeName = `shake_${Date.now()}`;
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes ${keyframeName} {
+        0%, 100% { transform: translate(0, 0); }
+        10% { transform: translate(${amplitude}px, ${-amplitude * 0.5}px); }
+        20% { transform: translate(${-amplitude}px, ${amplitude * 0.3}px); }
+        30% { transform: translate(${amplitude * 0.7}px, ${amplitude}px); }
+        40% { transform: translate(${-amplitude * 0.8}px, ${-amplitude * 0.6}px); }
+        50% { transform: translate(${amplitude * 0.5}px, ${-amplitude * 0.4}px); }
+        60% { transform: translate(${-amplitude * 0.3}px, ${amplitude * 0.7}px); }
+        70% { transform: translate(${amplitude * 0.6}px, ${-amplitude * 0.3}px); }
+        80% { transform: translate(${-amplitude * 0.4}px, ${amplitude * 0.5}px); }
+        90% { transform: translate(${amplitude * 0.3}px, ${-amplitude * 0.2}px); }
+      }
+    `;
+    document.head.appendChild(style);
+
+    // Appliquer l'animation
+    canvas.style.animation = 'none';
+    canvas.offsetHeight; // Force reflow
+    canvas.style.animation = `${keyframeName} ${Math.min(300, 100 + intensity * 20)}ms ease-in-out ${Math.ceil(duration / 300)}`;
+
+    // Nettoyer après la durée
+    setTimeout(() => {
+      canvas.style.animation = '';
+      style.remove();
+    }, duration);
   },
   preloadSpellIcons: () =>
     Object.entries(Config.SPELLS).forEach(([key, spell]) => {

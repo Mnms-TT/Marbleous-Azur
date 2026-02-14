@@ -114,7 +114,7 @@ export const GameLogic = {
         Game.lobbyMarbles.push({
           x: Math.random() * mainCanvas.width,
           y: Math.random() * mainCanvas.height,
-          r: Math.random() * 8 + 4,
+          r: Game.bubbleRadius || 12,
           vy: Math.random() * 2 + 1, // Vitesse de chute
           color:
             Config.BUBBLE_COLORS[
@@ -196,14 +196,18 @@ export const GameLogic = {
     await this.checkGameOver(player);
   },
 
-  // Gestion des attaques (envoi de boules aux ennemis)
+  // Gestion des attaques (redistribution basée sur le niveau)
   async triggerGlobalAttack() {
     if (Game.state !== "playing") return;
 
     for (const player of Game.players.values()) {
       if (player.isAlive && player.attackBubbleCounter >= 10) {
         const attackUnits = Math.floor(player.attackBubbleCounter / 10);
-        const attackSize = attackUnits * Math.floor(player.level);
+
+        // Coefficient de redistribution basé sur le niveau
+        const level = player.level || 1;
+        const coef = Config.BASE_REDISTRIBUTION_COEF + (level - 1) * Config.REDISTRIBUTION_COEF_PER_LEVEL;
+        const attackSize = Math.max(1, Math.floor(attackUnits * coef * 10));
 
         if (attackSize > 0) {
           // Cibler UNIQUEMENT les ennemis (équipe différente)
@@ -212,6 +216,10 @@ export const GameLogic = {
           );
 
           for (const enemy of enemies) {
+            // Vérifier la protection shake
+            if (enemy.shakeProtectionUntil && Date.now() < enemy.shakeProtectionUntil) {
+              continue; // Protégé pendant le shake
+            }
             this.addJunkBubbles(enemy, attackSize);
           }
         }
@@ -224,35 +232,27 @@ export const GameLogic = {
   },
 
   addJunkBubbles(target, junkCount) {
+    // Vérifier protection shake
+    if (target.shakeProtectionUntil && Date.now() < target.shakeProtectionUntil) return;
+
     const grid = target.grid;
 
-    // Trouver les slots vides adjacents au bas des bulles existantes
-    // (slots qui ont un voisin au-dessus ou diagonal-haut)
+    // Trouver les slots vides EN HAUT de la grille (le plus haut possible)
     const validSlots = [];
 
-    for (let r = 1; r < Config.GRID_ROWS; r++) {
+    for (let r = 0; r < Config.GRID_ROWS; r++) {
       for (let c = 0; c < Config.GRID_COLS; c++) {
         if (!grid[r][c]) {
-          // Vérifier si une bulle existe au-dessus (directement ou en diagonal)
-          const isOdd = r % 2 === 1;
-          const neighbors = [
-            { r: r - 1, c: c },     // Directement au-dessus
-            { r: r - 1, c: isOdd ? c + 1 : c - 1 }  // Diagonal au-dessus
-          ];
-
-          const hasNeighborAbove = neighbors.some(n =>
-            n.r >= 0 && n.c >= 0 && n.c < Config.GRID_COLS && grid[n.r]?.[n.c]
-          );
-
-          if (hasNeighborAbove) {
+          // Vérifier si la case a un voisin (peut s'accrocher)
+          if (r === 0 || this.getNeighborCoords(r, c).some(n => grid[n.r]?.[n.c])) {
             validSlots.push({ r, c });
           }
         }
       }
     }
 
-    // Mélanger et prendre les premiers slots
-    validSlots.sort(() => Math.random() - 0.5);
+    // Trier par rangée (du haut vers le bas) pour remplir en haut d'abord
+    validSlots.sort((a, b) => a.r - b.r);
     const toAdd = Math.min(validSlots.length, junkCount);
 
     for (let i = 0; i < toAdd; i++) {
@@ -271,8 +271,10 @@ export const GameLogic = {
       FirebaseController.updatePlayerDoc(Game.localPlayer.id, {
         level: newLevel,
       });
-      // Annoncer le niveau
-      UI.showAnnouncement(`⬆️ NIVEAU ${newLevel}`);
+      // Coefficient de redistribution pour ce niveau
+      const coef = Config.BASE_REDISTRIBUTION_COEF + (newLevel - 1) * Config.REDISTRIBUTION_COEF_PER_LEVEL;
+      const pct = Math.round(coef * 100);
+      UI.showAnnouncement(`⬆️ NIVEAU ${newLevel} — Redistribution ${pct}%`);
     }
   },
 
@@ -454,7 +456,7 @@ export const GameLogic = {
       // La couleur de la bulle à tirer change constamment
       player.variationColorTimer = (player.variationColorTimer || 0) + 1;
       if (
-        player.variationColorTimer % (Config.FPS / 2) === 0 &&
+        player.variationColorTimer % Config.FPS === 0 &&
         player.launcherBubble
       )
         player.launcherBubble.color =
@@ -491,9 +493,15 @@ export const GameLogic = {
   async applySpellEffect(target, spell) {
     if (!target?.isAlive || !spell) return;
 
-    // Si le sort est reçu par le joueur local, déclencher le tremblement
+    // Si le sort est reçu par le joueur local, déclencher le tremblement exponentiel
     if (target.id === Game.localPlayer.id) {
-      UI.triggerShake(1);
+      target.spellsReceivedCount = (target.spellsReceivedCount || 0) + 1;
+      const count = target.spellsReceivedCount;
+      const duration = Math.min(500 * count, 5000); // Max 5s
+      const intensity = Math.min(count, 8); // Max 8
+      UI.triggerShake(intensity, duration);
+      // Protection pendant le shake
+      target.shakeProtectionUntil = Date.now() + duration;
     }
 
     const DURATION = 10000;
@@ -635,10 +643,12 @@ export const GameLogic = {
       }
 
       case "nettoyage": {
-        // Supprime 2-3 rangées du bas ET donne les sorts présents
-        const rowsToRemove = 2 + Math.floor(Math.random() * 2); // 2 ou 3
+        // Supprime 1-2 rangées du bas avec ANIMATION visible + collecte des sorts
+        const rowsToRemove = 1 + Math.floor(Math.random() * 2); // 1 ou 2
         let rowsCleared = 0;
         target.spells = target.spells || [];
+        target.fallingBubbles = target.fallingBubbles || [];
+        target.effects = target.effects || [];
 
         for (let r = Config.GRID_ROWS - 1; r >= 0 && rowsCleared < rowsToRemove; r--) {
           const hasBubble = grid[r].some((cell) => cell !== null);
@@ -646,13 +656,24 @@ export const GameLogic = {
             for (let c = 0; c < Config.GRID_COLS; c++) {
               const bubble = grid[r][c];
               if (bubble) {
-                // Collecter les sorts présents dans les rangées supprimées
+                // Collecter les sorts présents
                 if (bubble.isSpellBubble && bubble.spell) {
                   if (target.spells.length < Config.MAX_SPELLS) {
                     target.spells.push(bubble.spell);
                     spellsChanged = true;
                   }
                 }
+                // Effet pop visible
+                const { x, y } = this.getBubbleCoords(r, c, Game.bubbleRadius);
+                target.effects.push({
+                  x, y, type: "pop", radius: Game.bubbleRadius, life: 20,
+                });
+                // Faire tomber la bulle visuellement
+                target.fallingBubbles.push({
+                  ...bubble, x, y,
+                  vx: 0,
+                  vy: 0.5,
+                });
                 grid[r][c] = null;
               }
             }
@@ -660,7 +681,7 @@ export const GameLogic = {
           }
         }
         if (rowsCleared > 0) {
-          this.handleAvalanche({ grid, spells: target.spells }, grid, true);
+          this.handleAvalanche({ grid, spells: target.spells, fallingBubbles: target.fallingBubbles, effects: target.effects }, grid, true);
           gridChanged = true;
         }
         break;

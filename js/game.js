@@ -33,13 +33,13 @@ export const Game = {
     const mainCanvas = document.getElementById("gameCanvas");
     if (!mainCanvas) return;
     setTimeout(() => {
-      for (let i = 0; i < 30; i++) {
-        const radius = this.bubbleRadius || 12;
+      for (let i = 0; i < 20; i++) {
+        const radius = (this.bubbleRadius || 14) * 1.8;
         this.lobbyMarbles.push({
           x: Math.random() * (mainCanvas.width || 400),
           y: Math.random() * -800,
           r: radius,
-          vy: Math.random() * 2 + 1,
+          vy: Math.random() * 1 + 0.5,
           color:
             Config.BUBBLE_COLORS[
             Math.floor(Math.random() * Config.BUBBLE_COLORS.length)

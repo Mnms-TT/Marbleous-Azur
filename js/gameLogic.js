@@ -110,12 +110,13 @@ export const GameLogic = {
     // Initialisation des billes de pluie si nécessaire
     if (!Game.lobbyMarbles || Game.lobbyMarbles.length === 0) {
       Game.lobbyMarbles = [];
-      for (let i = 0; i < 35; i++) {
+      // Moins de boules en même temps, mais plus grosses
+      for (let i = 0; i < 20; i++) {
         Game.lobbyMarbles.push({
           x: Math.random() * mainCanvas.width,
           y: Math.random() * mainCanvas.height,
-          r: Game.bubbleRadius || 12,
-          vy: Math.random() * 2 + 1, // Vitesse de chute
+          r: (Game.bubbleRadius || 14) * 1.8, // Plus grosses
+          vy: Math.random() * 1 + 0.5, // Vitesse de chute plus lente
           color:
             Config.BUBBLE_COLORS[
             Math.floor(Math.random() * Config.BUBBLE_COLORS.length)
@@ -129,7 +130,7 @@ export const GameLogic = {
       marble.y += marble.vy;
       // Si sort en bas, revient en haut
       if (marble.y - marble.r > mainCanvas.height) {
-        marble.y = -marble.r;
+        marble.y = -marble.r * 2;
         marble.x = Math.random() * mainCanvas.width;
       }
     });

@@ -403,9 +403,9 @@ export const Drawing = {
       x - rad * 0.35, y - rad * 0.35, rad * 0.05,
       x + rad * 0.1, y + rad * 0.1, rad
     );
-    // Rendu un peu moins brillant/lisse (moins bowling, plus rétro/plastique)
-    grad.addColorStop(0, this.lightenColor(b.color.main, 40)); 
-    grad.addColorStop(0.2, this.lightenColor(b.color.main, 15));
+    // Smooth transitions without harsh contrast
+    grad.addColorStop(0, this.lightenColor(b.color.main, 50));
+    grad.addColorStop(0.2, this.lightenColor(b.color.main, 20));
     grad.addColorStop(0.5, b.color.main);
     grad.addColorStop(1, b.color.shadow);
 
@@ -414,32 +414,18 @@ export const Drawing = {
     ctx.fillStyle = grad;
     ctx.fill();
 
-    // === Contour irrégulier (effet rétro pixelisé/anti-aliasing) ===
-    const edgeColor = this.darkenColor(b.color.main, 50);
-    const outlineRgb = this.hexToRgb ? this.hexToRgb(edgeColor) : "0,0,0";
-    ctx.fillStyle = `rgba(${outlineRgb}, 0.5)`;
-    const dotCount = 28;
-    for (let i = 0; i < dotCount; i++) {
-      if (Math.sin(i * 1.7) > 0.7) continue; 
-      const angle = (i / dotCount) * Math.PI * 2 + (b.color.main.charCodeAt(1) % 10) / 10;
-      const dx = x + Math.cos(angle) * (rad - 0.5);
-      const dy = y + Math.sin(angle) * (rad - 0.5);
-      ctx.fillRect(dx - 0.75, dy - 0.75, 1.5, 1.5);
-    }
-
     // === Symbole de sort spécifique - Dessiné SOUS le reflet principal ===
     if (b.isSpellBubble && b.spell) {
       this.drawSpellSymbol(ctx, x, y, rad, b.spell);
     }
 
     // === Specular highlight (Tache de lumière) ===
-    // On le rend beaucoup plus doux (0.3 au lieu de 0.7)
     const specGrad = ctx.createRadialGradient(
       x - rad * 0.3, y - rad * 0.35, 0,
       x - rad * 0.3, y - rad * 0.35, rad * 0.4
     );
-    specGrad.addColorStop(0, "rgba(255,255,255,0.30)"); 
-    specGrad.addColorStop(0.4, "rgba(255,255,255,0.05)");
+    specGrad.addColorStop(0, "rgba(255,255,255,0.40)");
+    specGrad.addColorStop(0.4, "rgba(255,255,255,0.1)");
     specGrad.addColorStop(1, "rgba(255,255,255,0)");
     ctx.beginPath();
     ctx.arc(x - rad * 0.3, y - rad * 0.35, rad * 0.4, 0, Math.PI * 2);
@@ -447,7 +433,7 @@ export const Drawing = {
     ctx.fill();
 
     // === Petit point blanc lumineux ===
-    ctx.fillStyle = "rgba(255,255,255,0.25)"; 
+    ctx.fillStyle = "rgba(255,255,255,0.3)";
     ctx.beginPath();
     ctx.ellipse(
       x - rad * 0.28, y - rad * 0.32,
@@ -483,19 +469,19 @@ export const Drawing = {
       ctx.beginPath();
       ctx.arc(x, y, rad * 0.95, 0, Math.PI * 2);
       ctx.clip();
-      
+
       // On agrandit drastiquement le ratio des icônes pour remplir presque toute la boule
-      const iconSize = rad * 1.85; 
-      
+      const iconSize = rad * 1.85;
+
       // On le dessine d'abord en incrustation overlay (très légère opacité) pour le tinting de la boule
-      ctx.globalCompositeOperation = 'overlay'; 
+      ctx.globalCompositeOperation = 'overlay';
       ctx.globalAlpha = 0.5;
       ctx.drawImage(icon, x - iconSize / 2, y - iconSize / 2, iconSize, iconSize);
-      
+
       // Et le calque principal pur par dessus pour avoir l'opacité originale
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = 0.95;
-      const innerSize = rad * 1.8; 
+      const innerSize = rad * 1.8;
       ctx.drawImage(icon, x - innerSize / 2, y - innerSize / 2, innerSize, innerSize);
 
       ctx.restore();

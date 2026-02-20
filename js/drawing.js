@@ -398,27 +398,32 @@ export const Drawing = {
   drawBubble(ctx, b, rad, x, y) {
     if (!b || !b.color) return;
 
-    // 1. Ombre extÃ©rieure / bordure foncÃ©e (lisse)
+    // 1. Ombre extérieure / bordure foncée (lisse)
     ctx.beginPath();
     ctx.arc(x, y, rad, 0, Math.PI * 2);
     ctx.fillStyle = this.darkenColor(b.color.main, 100);
     ctx.fill();
 
-    // 2. DÃ©gradÃ© principal de la sphÃ¨re (effet 3D)
+    // 2. Dégradé principal de la sphère (effet 3D)
     const grad = ctx.createRadialGradient(
       x - rad * 0.25, y - rad * 0.25, rad * 0.1,
       x, y, rad * 0.95
     );
-    grad.addColorStop(0, this.lightenColor(b.color.main, 70)); // plus clair en haut Ã  gauche
+    grad.addColorStop(0, this.lightenColor(b.color.main, 70)); // plus clair en haut à gauche
     grad.addColorStop(0.4, b.color.main); // couleur principale au milieu
-    grad.addColorStop(1, this.darkenColor(b.color.main, 60)); // foncÃ© en bas Ã  droite
+    grad.addColorStop(1, this.darkenColor(b.color.main, 60)); // foncé en bas à droite
 
     ctx.beginPath();
     ctx.arc(x, y, rad * 0.9, 0, Math.PI * 2);
     ctx.fillStyle = grad;
     ctx.fill();
 
-    // 3. Highlight (Crescent / Arc lumineux) en haut Ã  gauche
+    // === Symbole de sort spécifique - Dessiné SOUS le reflet ===
+    if (b.isSpellBubble && b.spell) {
+      this.drawSpellSymbol(ctx, x, y, rad, b.spell);
+    }
+
+    // 3. Highlight (Crescent / Arc lumineux) en haut à gauche
     ctx.beginPath();
     ctx.arc(x, y, rad * 0.7, Math.PI + 0.3, Math.PI * 1.5 - 0.3);
     ctx.strokeStyle = "rgba(255, 255, 255, 0.7)";
@@ -431,11 +436,6 @@ export const Drawing = {
     ctx.arc(x - rad * 0.45, y - rad * 0.45, rad * 0.18, 0, Math.PI * 2);
     ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
     ctx.fill();
-
-    // === Symbole de sort spÃ©cifique ===
-    if (b.isSpellBubble && b.spell) {
-      this.drawSpellSymbol(ctx, x, y, rad, b.spell);
-    }
   },
 
   // Lighten a hex color by an amount
@@ -457,105 +457,28 @@ export const Drawing = {
 
   // Draw spell symbol on bubble matching reference images EXACTLY
   drawSpellSymbol(ctx, x, y, rad, spellKey) {
-    const s = rad * 0.5; // Scale for symbols
-    ctx.save();
-    ctx.translate(x, y);
+    const icon = Game.spellIcons[spellKey];
+    if (icon && icon.complete) {
+      ctx.save();
+      // On clip au cercle de la boule pour ne pas déborder si l'image est carrée
+      ctx.beginPath();
+      ctx.arc(x, y, rad * 0.85, 0, Math.PI * 2);
+      ctx.clip();
 
-    switch (spellKey) {
-      case "plateauRenverse": { // Rouge -> Plus Rouge FoncÃ© / Noir
-        ctx.fillStyle = "#8B0000"; // Dark red / Crimson
-        ctx.beginPath();
-        ctx.fillRect(-s * 0.2, -s * 0.7, s * 0.4, s * 1.4);
-        ctx.fillRect(-s * 0.7, -s * 0.2, s * 1.4, s * 0.4);
-        break;
-      }
-      case "canonCasse": { // Jaune -> Double flÃ¨che rouge horizontale <->
-        ctx.fillStyle = "#E4080A"; // Rouge vif
-        // FlÃ¨che gauche
-        ctx.beginPath();
-        ctx.moveTo(-s * 0.7, 0);
-        ctx.lineTo(-s * 0.3, -s * 0.4);
-        ctx.lineTo(-s * 0.3, -s * 0.15);
-        ctx.lineTo(s * 0.3, -s * 0.15);
-        ctx.lineTo(s * 0.3, -s * 0.4);
-        ctx.lineTo(s * 0.7, 0);
-        ctx.lineTo(s * 0.3, s * 0.4);
-        ctx.lineTo(s * 0.3, s * 0.15);
-        ctx.lineTo(-s * 0.3, s * 0.15);
-        ctx.lineTo(-s * 0.3, s * 0.4);
-        ctx.closePath();
-        ctx.fill();
-        break;
-      }
-      case "disparitionSorts": { // Vert -> Croix rouge X
-        ctx.fillStyle = "#E4080A"; // Rouge
-        ctx.save();
-        ctx.rotate(Math.PI / 4);
-        ctx.fillRect(-s * 0.2, -s * 0.7, s * 0.4, s * 1.4);
-        ctx.fillRect(-s * 0.7, -s * 0.2, s * 1.4, s * 0.4);
-        ctx.restore();
-        break;
-      }
-      case "variationCouleur": { // Cyan -> Cercle 4 couleurs (Rouge, Vert, Bleu, Jaune)
-        // Quartier Rouge (0 Ã  90deg)
-        ctx.fillStyle = "#E4080A";
-        ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0, 0, s * 0.7, 0, Math.PI/2); ctx.fill();
-        // Quartier Vert (90 Ã  180deg)
-        ctx.fillStyle = "#1FC23F";
-        ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0, 0, s * 0.7, Math.PI/2, Math.PI); ctx.fill();
-        // Quartier Jaune (180 Ã  270deg)
-        ctx.fillStyle = "#FAD402";
-        ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0, 0, s * 0.7, Math.PI, Math.PI*1.5); ctx.fill();
-        // Quartier Bleu (270 Ã  360deg)
-        ctx.fillStyle = "#365EDF";
-        ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0, 0, s * 0.7, Math.PI*1.5, Math.PI*2); ctx.fill();
-        
-        // Bordure sombre
-        ctx.strokeStyle = "#111";
-        ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(0,0, s * 0.7, 0, Math.PI*2); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(-s*0.7,0); ctx.lineTo(s*0.7,0); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(0,-s*0.7); ctx.lineTo(0,s*0.7); ctx.stroke();
-        break;
-      }
-      case "boulesSupplementaires": { // Bleu foncÃ© -> Plus rouge Ã©pais +
-        ctx.fillStyle = "#E4080A"; // Rouge vif
-        ctx.fillRect(-s * 0.2, -s * 0.7, s * 0.4, s * 1.4);
-        ctx.fillRect(-s * 0.7, -s * 0.2, s * 1.4, s * 0.4);
-        break;
-      }
-      case "nukeBomb": { // Violet/Magenta -> FlÃ¨che verte pointant vers le haut ^
-        ctx.fillStyle = "#1FC23F"; // Vert
-        ctx.beginPath();
-        ctx.moveTo(0, -s * 0.6); // pointe haut
-        ctx.lineTo(-s * 0.5, 0); // bas gauche du triangle
-        ctx.lineTo(-s * 0.2, 0);
-        ctx.lineTo(-s * 0.2, s * 0.6); // tige gauche
-        ctx.lineTo(s * 0.2, s * 0.6); // tige droite
-        ctx.lineTo(s * 0.2, 0);
-        ctx.lineTo(s * 0.5, 0); // bas droite du triangle
-        ctx.closePath();
-        ctx.fill();
-        break;
-      }
-      case "toutesMemeCouleur": { // Gris -> Point vert central entourÃ© d'un anneau foncÃ©
-        ctx.fillStyle = "#222222";
-        ctx.beginPath();
-        ctx.arc(0, 0, s * 0.6, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = "#1FC23F"; // Vert brillant
-        ctx.beginPath();
-        ctx.arc(0, 0, s * 0.4, 0, Math.PI * 2);
-        ctx.fill();
-        break;
-      }
-      case "nettoyage": { // Noir -> Signe moins vert -
-        ctx.fillStyle = "#1FC23F"; // Vert
-        ctx.fillRect(-s * 0.6, -s * 0.15, s * 1.2, s * 0.3);
-        break;
-      }
+      // L'image du sort doit fusionner avec le fond
+      ctx.globalCompositeOperation = 'overlay';
+      const iconSize = rad * 1.5;
+      ctx.globalAlpha = 0.9;
+      ctx.drawImage(icon, x - iconSize / 2, y - iconSize / 2, iconSize, iconSize);
+
+      // On le dessine une 2ème fois sans overlay pour garder les couleurs originales fortes au centre
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 0.8;
+      const innerSize = rad * 1.25;
+      ctx.drawImage(icon, x - innerSize / 2, y - innerSize / 2, innerSize, innerSize);
+
+      ctx.restore();
     }
-    ctx.restore();
   },
 
   drawCannonNeedle(ctx, player, pos, length) {

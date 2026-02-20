@@ -232,14 +232,30 @@ export const UI = {
             slot.classList.add("active-spell");
           }
 
-          const icon = Game.spellIcons[spellName];
-          if (icon && icon.complete) {
-            const img = document.createElement("img");
-            img.src = icon.src;
-            slot.appendChild(img);
-          } else {
-            slot.style.backgroundColor = spellInfo.color;
+          // Render glossy 3D bubble using a small canvas inside the slot
+          const canvas = document.createElement("canvas");
+          const size = slot.clientWidth || 34;
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext("2d");
+
+          let bubbleColorObj = Config.BUBBLE_COLORS[0];
+          for (const [hex, spell] of Object.entries(Config.COLOR_TO_SPELL_MAP)) {
+            if (spell === spellName) {
+              bubbleColorObj = Config.BUBBLE_COLORS.find(c => c.main === hex) || bubbleColorObj;
+              break;
+            }
           }
+
+          const radius = size / 2 * 0.9;
+          const dummyBubble = {
+            color: bubbleColorObj,
+            isSpellBubble: true,
+            spell: spellName
+          };
+          Drawing.drawBubble(ctx, dummyBubble, radius, size / 2, size / 2);
+
+          slot.appendChild(canvas);
         }
       }
     });

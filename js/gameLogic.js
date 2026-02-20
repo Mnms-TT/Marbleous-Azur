@@ -478,7 +478,7 @@ export const GameLogic = {
     )
       return;
     const spellName = Game.localPlayer.spells[spellIndex];
-    Game.localPlayer.spells.splice(spellIndex, 1); // FIFO
+    Game.localPlayer.spells.splice(spellIndex, 1);
 
     await FirebaseController.updatePlayerDoc(Game.localPlayer.id, {
       spells: Game.localPlayer.spells,

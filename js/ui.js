@@ -219,9 +219,12 @@ export const UI = {
       slot.style.border = "";
       slot.style.boxShadow = "";
 
-      // Les sorts remplissent de droite à gauche : le prochain sort à lancer (index 0) est tout à droite
-      // Donc pour la case i (0=gauche, 7=droite) : l'index du sort est (numSlots - 1) - i
-      const spellIndex = (numSlots - 1) - i;
+      // Les sorts remplissent de droite à gauche. Avec 7 slots, slot 6 (i=6) est tout à droite.
+      // C'est le LIFO : le sort qu'on lancera est spells[spells.length - 1] (le dernier ajouté).
+      // On veut que le sort à lancer apparaisse tout à droite (i=numSlots - 1).
+      // Donc pour le slot i, l'index dans le tableau `spells` est :
+      // index = spells.length - 1 - (numSlots - 1 - i)
+      const spellIndex = spells.length - numSlots + i;
 
       if (spellIndex >= 0 && spellIndex < spells.length) {
         const spellName = spells[spellIndex];
@@ -229,15 +232,17 @@ export const UI = {
         if (spellInfo) {
           slot.classList.add("has-spell");
 
-          // Le premier sort FIFO (index 0) = bordure blanche et fond coloré
-          if (spellIndex === 0) {
+          // LIFO : Le "dernier" sort tombé/récupéré est celui qui se lancera (index fin de tableau)
+          if (spellIndex === spells.length - 1) {
             slot.classList.add("active-spell");
-            slot.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+            // Le seul cadre autorisé : bordure sans fond rempli pour garder la boule détourée 
+            slot.style.border = "2px solid white";
+            slot.style.borderRadius = "4px";
           }
 
           // Render glossy 3D bubble using a small canvas inside the slot
           const canvas = document.createElement("canvas");
-          const size = slot.clientWidth || 34;
+          const size = slot.clientWidth || 34; // La boule remplit le conteneur
           canvas.width = size;
           canvas.height = size;
           const ctx = canvas.getContext("2d");
@@ -250,7 +255,8 @@ export const UI = {
             }
           }
 
-          const radius = size / 2 * 0.9;
+          // Agrandir légèrement la boule pour qu'elle touche presque les bords du frame
+          const radius = size / 2 * 0.95;
           const dummyBubble = {
             color: bubbleColorObj,
             isSpellBubble: true,

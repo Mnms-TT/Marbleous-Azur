@@ -215,11 +215,13 @@ export const UI = {
     spellSlots.forEach((slot, i) => {
       slot.innerHTML = "";
       slot.className = "spell-slot";
-      slot.style.backgroundColor = "#1e3a5f";
+      slot.style.backgroundColor = "transparent";
+      slot.style.border = "";
+      slot.style.boxShadow = "";
 
-      // Les sorts remplissent de droite à gauche : le plus récent à droite
-      // Slot i montre spells[spells.length - numSlots + i]
-      const spellIndex = spells.length - numSlots + i;
+      // Les sorts remplissent de droite à gauche : le prochain sort à lancer (index 0) est tout à droite
+      // Donc pour la case i (0=gauche, 7=droite) : l'index du sort est (numSlots - 1) - i
+      const spellIndex = (numSlots - 1) - i;
 
       if (spellIndex >= 0 && spellIndex < spells.length) {
         const spellName = spells[spellIndex];
@@ -227,9 +229,10 @@ export const UI = {
         if (spellInfo) {
           slot.classList.add("has-spell");
 
-          // Le premier sort FIFO (index 0) = prochain à lancer = bordure blanche
+          // Le premier sort FIFO (index 0) = bordure blanche et fond coloré
           if (spellIndex === 0) {
             slot.classList.add("active-spell");
+            slot.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
           }
 
           // Render glossy 3D bubble using a small canvas inside the slot

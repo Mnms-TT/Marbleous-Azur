@@ -403,11 +403,11 @@ export const Drawing = {
       x - rad * 0.35, y - rad * 0.35, rad * 0.05,
       x + rad * 0.1, y + rad * 0.1, rad
     );
-    // Smooth transitions without harsh contrast
-    grad.addColorStop(0, this.lightenColor(b.color.main, 50));
-    grad.addColorStop(0.2, this.lightenColor(b.color.main, 20));
-    grad.addColorStop(0.5, b.color.main);
-    grad.addColorStop(1, b.color.shadow);
+    // Harder, less smooth plastic feel
+    grad.addColorStop(0, this.lightenColor(b.color.main, 60));
+    grad.addColorStop(0.15, b.color.main);
+    grad.addColorStop(0.7, b.color.shadow);
+    grad.addColorStop(1, this.darkenColor(b.color.main, 60)); // Sombre sur le bord mais pas noir
 
     ctx.beginPath();
     ctx.arc(x, y, rad, 0, Math.PI * 2);
@@ -419,21 +419,21 @@ export const Drawing = {
       this.drawSpellSymbol(ctx, x, y, rad, b.spell);
     }
 
-    // === Specular highlight (Tache de lumière) ===
+    // === Specular highlight (Tache de lumière - durcie et moins diffuse) ===
     const specGrad = ctx.createRadialGradient(
-      x - rad * 0.3, y - rad * 0.35, 0,
-      x - rad * 0.3, y - rad * 0.35, rad * 0.4
+      x - rad * 0.35, y - rad * 0.35, 0,
+      x - rad * 0.35, y - rad * 0.35, rad * 0.35
     );
-    specGrad.addColorStop(0, "rgba(255,255,255,0.40)");
-    specGrad.addColorStop(0.4, "rgba(255,255,255,0.1)");
-    specGrad.addColorStop(1, "rgba(255,255,255,0)");
+    specGrad.addColorStop(0, "rgba(255,255,255,0.5)");
+    specGrad.addColorStop(0.2, "rgba(255,255,255,0.4)");
+    specGrad.addColorStop(0.3, "rgba(255,255,255,0)"); // Coupure nette pour l'effet plastique
     ctx.beginPath();
-    ctx.arc(x - rad * 0.3, y - rad * 0.35, rad * 0.4, 0, Math.PI * 2);
+    ctx.arc(x - rad * 0.35, y - rad * 0.35, rad * 0.35, 0, Math.PI * 2);
     ctx.fillStyle = specGrad;
     ctx.fill();
 
-    // === Petit point blanc lumineux ===
-    ctx.fillStyle = "rgba(255,255,255,0.3)";
+    // === Petit point blanc (plus franc) ===
+    ctx.fillStyle = "rgba(255,255,255,0.5)";
     ctx.beginPath();
     ctx.ellipse(
       x - rad * 0.28, y - rad * 0.32,
@@ -470,18 +470,21 @@ export const Drawing = {
       ctx.arc(x, y, rad * 0.95, 0, Math.PI * 2);
       ctx.clip();
 
-      // On agrandit drastiquement le ratio des icônes pour remplir presque toute la boule
-      const iconSize = rad * 1.85;
+      // On agrandit drastiquement le ratio des icônes
+      let multiplier = 2.0;
+      if (spellKey === "variationCouleur") multiplier = 2.3; // Encore plus gros pour la cyan multicolore
+
+      const iconSize = rad * multiplier;
 
       // On le dessine d'abord en incrustation overlay (très légère opacité) pour le tinting de la boule
       ctx.globalCompositeOperation = 'overlay';
-      ctx.globalAlpha = 0.5;
+      ctx.globalAlpha = 0.4;
       ctx.drawImage(icon, x - iconSize / 2, y - iconSize / 2, iconSize, iconSize);
 
       // Et le calque principal pur par dessus pour avoir l'opacité originale
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = 0.95;
-      const innerSize = rad * 1.8;
+      const innerSize = rad * (multiplier - 0.05);
       ctx.drawImage(icon, x - innerSize / 2, y - innerSize / 2, innerSize, innerSize);
 
       ctx.restore();

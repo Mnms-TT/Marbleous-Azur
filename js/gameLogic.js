@@ -644,44 +644,47 @@ export const GameLogic = {
       }
 
       case "nettoyage": {
-        // Supprime 1-2 rangées du bas avec ANIMATION visible + collecte des sorts
-        const rowsToRemove = 1 + Math.floor(Math.random() * 2); // 1 ou 2
-        let rowsCleared = 0;
+        // Supprime les boules les plus basses (équivalent à ~1.5 lignes, environ 10 à 14 boules)
+        const bubbles = [];
+        for (let r = 0; r < Config.GRID_ROWS; r++) {
+          for (let c = 0; c < Config.GRID_COLS; c++) {
+            if (grid[r][c]) {
+              bubbles.push({ r, c, bubble: grid[r][c] });
+            }
+          }
+        }
+
+        // Trier par 'r' décroissant (les plus basses d'abord)
+        bubbles.sort((a, b) => b.r - a.r);
+
+        // Prendre environ 10 à 14 boules
+        const toRemove = Math.min(bubbles.length, 10 + Math.floor(Math.random() * 5));
+
         target.spells = target.spells || [];
         target.fallingBubbles = target.fallingBubbles || [];
         target.effects = target.effects || [];
 
-        for (let r = Config.GRID_ROWS - 1; r >= 0 && rowsCleared < rowsToRemove; r--) {
-          const hasBubble = grid[r].some((cell) => cell !== null);
-          if (hasBubble) {
-            for (let c = 0; c < Config.GRID_COLS; c++) {
-              const bubble = grid[r][c];
-              if (bubble) {
-                // Collecter les sorts présents
-                if (bubble.isSpellBubble && bubble.spell) {
-                  if (target.spells.length < Config.MAX_SPELLS) {
-                    target.spells.push(bubble.spell);
-                    spellsChanged = true;
-                  }
-                }
-                // Effet pop visible
-                const { x, y } = this.getBubbleCoords(r, c, Game.bubbleRadius);
-                target.effects.push({
-                  x, y, type: "pop", radius: Game.bubbleRadius, life: 20,
-                });
-                // Faire tomber la bulle visuellement
-                target.fallingBubbles.push({
-                  ...bubble, x, y,
-                  vx: 0,
-                  vy: 0.5,
-                });
-                grid[r][c] = null;
-              }
+        for (let i = 0; i < toRemove; i++) {
+          const { r, c, bubble } = bubbles[i];
+
+          if (bubble.isSpellBubble && bubble.spell) {
+            if (target.spells.length < Config.MAX_SPELLS) {
+              target.spells.push(bubble.spell);
+              spellsChanged = true;
             }
-            rowsCleared++;
           }
+
+          const { x, y } = this.getBubbleCoords(r, c, Game.bubbleRadius);
+          target.effects.push({
+            x, y, type: "pop", radius: Game.bubbleRadius, life: 20,
+          });
+          target.fallingBubbles.push({
+            ...bubble, x, y, vx: 0, vy: 0.5,
+          });
+          grid[r][c] = null;
         }
-        if (rowsCleared > 0) {
+
+        if (toRemove > 0) {
           this.handleAvalanche({ grid, spells: target.spells, fallingBubbles: target.fallingBubbles, effects: target.effects }, grid, true);
           gridChanged = true;
         }

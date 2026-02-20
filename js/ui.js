@@ -222,9 +222,13 @@ export const UI = {
       // Les sorts remplissent de droite à gauche. Avec 7 slots, slot 6 (i=6) est tout à droite.
       // C'est le LIFO : le sort qu'on lancera est spells[spells.length - 1] (le dernier ajouté).
       // On veut que le sort à lancer apparaisse tout à droite (i=numSlots - 1).
-      // Donc pour le slot i, l'index dans le tableau `spells` est :
-      // index = spells.length - 1 - (numSlots - 1 - i)
       const spellIndex = spells.length - numSlots + i;
+
+      // Le slot tout à droite (i = 6 pour 7 slots) est TOUJOURS le slot actif avec la bordure
+      if (i === numSlots - 1) {
+        slot.style.border = "2px solid white";
+        slot.style.borderRadius = "4px";
+      }
 
       if (spellIndex >= 0 && spellIndex < spells.length) {
         const spellName = spells[spellIndex];
@@ -232,12 +236,8 @@ export const UI = {
         if (spellInfo) {
           slot.classList.add("has-spell");
 
-          // LIFO : Le "dernier" sort tombé/récupéré est celui qui se lancera (index fin de tableau)
           if (spellIndex === spells.length - 1) {
             slot.classList.add("active-spell");
-            // Le seul cadre autorisé : bordure sans fond rempli pour garder la boule détourée 
-            slot.style.border = "2px solid white";
-            slot.style.borderRadius = "4px";
           }
 
           // Render glossy 3D bubble using a small canvas inside the slot

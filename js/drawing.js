@@ -476,16 +476,10 @@ export const Drawing = {
 
       const iconSize = rad * multiplier;
 
-      // On le dessine d'abord en incrustation overlay (très légère opacité) pour le tinting de la boule
-      ctx.globalCompositeOperation = 'overlay';
-      ctx.globalAlpha = 0.4;
-      ctx.drawImage(icon, x - iconSize / 2, y - iconSize / 2, iconSize, iconSize);
-
-      // Et le calque principal pur par dessus pour avoir l'opacité originale
+      // L'image du sort dicte tout le centre. On dessine directement par dessus.
       ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 0.95;
-      const innerSize = rad * (multiplier - 0.05);
-      ctx.drawImage(icon, x - innerSize / 2, y - innerSize / 2, innerSize, innerSize);
+      ctx.globalAlpha = 1.0;
+      ctx.drawImage(icon, x - iconSize / 2, y - iconSize / 2, iconSize, iconSize);
 
       ctx.restore();
     }

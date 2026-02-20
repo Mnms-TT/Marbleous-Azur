@@ -103,10 +103,14 @@ export const Config = {
   GAME_OVER_ROW: 11, // 11 rangées autorisées, game over à la 12ème
 
   SPELL_SPAWN_CHANCE: 0.43, // +30% (was 0.33)
+  FPS: 60,
+  LAUNCHER_ROTATION_SPEED: 0.0056,
+
   // Divers
-  LAUNCHER_ROTATION_SPEED: 0.1,
   MAX_SPELLS: 7, // Limite d'inventaire de sorts
-  GAME_OVER_ROW: 11, // Ligne limite avant Game Overau
+  GAME_OVER_ROW: 11, // Ligne limite avant Game Over
+
+  // Coefficient de redistribution des bulles - augmente avec le niveau
   BASE_REDISTRIBUTION_COEF: 0.1, // Coefficient initial
   REDISTRIBUTION_COEF_PER_LEVEL: 0.05, // +0.05 par niveau
 };

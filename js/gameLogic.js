@@ -565,7 +565,7 @@ export const GameLogic = {
         }
         gridChanged = true;
         // Aussi la couleur de la bulle à tirer change constamment
-        effects.variationCouleur = { endTime: Date.now() + DURATION };
+        effects.variationCouleur = { endTime: Date.now() + 8000 };
         break;
 
 

@@ -338,21 +338,41 @@ export const UI = {
       i.src = spell.icon;
       Game.spellIcons[key] = i; // Utiliser la clé (ex: "plateauRenverse") pas le nom affiché
     }),
+  // Chat : messages réseau (Firestore) + messages système locaux, fusionnés par date
+  remoteChat: [],
+  localChat: [],
+
   addChatMessage(name, msg) {
+    this.localChat.push({ author: name, text: msg, ts: Date.now(), local: true });
+    if (this.localChat.length > 50) this.localChat.shift();
+    this.renderChat();
+  },
+
+  escapeHtml(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  },
+
+  renderChat() {
     const chat = document.getElementById("chat-messages");
-    if (chat) {
-      let color;
-      // System messages in gold
-      if (name === 'Système' || name === '🏆 Système' || name === '⚔️ Sort') {
-        color = '#fbbf24';
-      } else {
-        color = Game.localPlayer?.team !== undefined
-          ? Config.TEAM_COLORS[Game.localPlayer.team]
-          : "#93c5fd";
+    if (!chat) return;
+
+    const all = [...this.remoteChat, ...this.localChat].sort((a, b) => (a.ts || 0) - (b.ts || 0));
+
+    chat.innerHTML = all.map(m => {
+      // Messages système locaux (annonces, /fps, /canon...) en doré
+      if (m.local) {
+        return `<div class="msg"><span style="color:#fbbf24;font-weight:bold">${this.escapeHtml(m.author)}:</span> ${this.escapeHtml(m.text)}</div>`;
       }
-      chat.innerHTML += `<div class="mb-1"><span class="font-bold" style="color:${color}">${name}:</span> ${msg}</div>`;
-      chat.scrollTop = chat.scrollHeight;
-    }
+      const isDM = !!m.toUid;
+      const color = (m.team !== null && m.team !== undefined)
+        ? (Config.TEAM_COLORS[m.team] || "#93c5fd")
+        : "#93c5fd";
+      const prefix = isDM ? `<span style="color:#c084fc">[MP${m.toName ? ' à ' + this.escapeHtml(m.toName) : ''}]</span> ` : '';
+      const style = isDM ? 'color:#a855f7;font-style:italic' : '';
+      return `<div class="msg" style="${style}"><span style="color:${color};font-weight:bold">${this.escapeHtml(m.author)}:</span> ${prefix}${this.escapeHtml(m.text)}</div>`;
+    }).join('');
+
+    chat.scrollTop = chat.scrollHeight;
   },
   triggerScreenShake(intensity) {
     Game.shakeUntil = Date.now() + 500;

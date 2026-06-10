@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, doc, setDoc, onSnapshot, collection, runTransaction, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, onSnapshot, collection, runTransaction, deleteDoc, getDocs, addDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { Game } from './game.js';
 import { Player } from './player.js';
@@ -8,7 +8,7 @@ import { UI } from './ui.js';
 import { roomId } from './main.js';
 
 export const FirebaseController = {
-    db: null, auth: null, unsubscribePlayers: null, unsubscribeGameSession: null,
+    db: null, auth: null, unsubscribePlayers: null, unsubscribeGameSession: null, unsubscribeChat: null,
 
     async init() {
         const firebaseConfig = {
@@ -127,6 +127,7 @@ export const FirebaseController = {
             }
 
             this.listenForGameChanges();
+            this.listenToRoomChat();
             Game.gameLoop();
         } catch (e) {
             console.error("Erreur pour rejoindre la salle: ", e);
@@ -218,6 +219,38 @@ export const FirebaseController = {
                 Game.resetForNewRound();
             }
         });
+    },
+
+    // Chat de salle partagé : tout le monde voit les messages publics,
+    // les MP (/pseudo message) ne sont visibles que par l'expéditeur et le destinataire
+    listenToRoomChat() {
+        if (this.unsubscribeChat) this.unsubscribeChat();
+        const chatRef = collection(this.db, "rooms", roomId, "chat");
+        const q = query(chatRef, orderBy("ts", "desc"), limit(50));
+        this.unsubscribeChat = onSnapshot(q, (snapshot) => {
+            const myUid = this.auth.currentUser?.uid;
+            const msgs = [];
+            snapshot.docs.forEach(d => {
+                const m = d.data();
+                // Public OU je suis l'expéditeur OU je suis le destinataire
+                if (!m.toUid || m.uid === myUid || m.toUid === myUid) msgs.unshift(m);
+            });
+            UI.remoteChat = msgs;
+            UI.renderChat();
+        });
+    },
+
+    async sendChatMessage(text, toUid = null, toName = null) {
+        if (!text || !this.auth.currentUser) return;
+        const msg = {
+            author: Game.localPlayer?.name || 'Joueur',
+            uid: this.auth.currentUser.uid,
+            team: Game.localPlayer?.team ?? null,
+            text,
+            ts: Date.now()
+        };
+        if (toUid) { msg.toUid = toUid; msg.toName = toName; }
+        await addDoc(collection(this.db, "rooms", roomId, "chat"), msg);
     },
 
     async updatePlayerDoc(playerId, data) { await setDoc(doc(this.db, "rooms", roomId, "players", playerId), data, { merge: true }); },

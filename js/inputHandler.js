@@ -188,7 +188,30 @@ export const InputHandler = {
           input.value = "";
           return;
         }
-        UI.addChatMessage(Game.localPlayer.name, msg);
+
+        // MP : /pseudo message → visible uniquement par le destinataire
+        if (msg.startsWith("/")) {
+          const spaceIndex = msg.indexOf(" ");
+          if (spaceIndex > 1) {
+            const targetPseudo = msg.substring(1, spaceIndex);
+            const messageText = msg.substring(spaceIndex + 1).trim();
+            const target = Array.from(Game.players.values()).find(
+              (p) =>
+                p.id !== Game.localPlayer.id &&
+                (p.name || "").toLowerCase() === targetPseudo.toLowerCase()
+            );
+            if (target && messageText) {
+              FirebaseController.sendChatMessage(messageText, target.id, target.name);
+            } else {
+              UI.addChatMessage("Système", `Joueur "${targetPseudo}" introuvable dans la salle.`);
+            }
+            input.value = "";
+            return;
+          }
+        }
+
+        // Message public : envoyé à toute la salle via Firestore
+        FirebaseController.sendChatMessage(msg);
         input.value = "";
       }
     }

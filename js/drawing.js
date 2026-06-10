@@ -227,8 +227,11 @@ export const Drawing = {
           player.shotBubble.y
         );
 
-      // FPS à droite du coquillage (comme l'original)
-      BubbleRenderer.drawFpsCounter(ctx, Game.targetFPS, layout.centerX, layout.pivotY, layout.radius);
+      // Prochaine boule (bien visible) + fps, à droite du coquillage
+      BubbleRenderer.drawCannonSideInfo(
+        ctx, canvas, layout.centerX, layout.pivotY, layout.radius,
+        rad, player.nextBubble || null, Game.targetFPS, Game.spellIcons
+      );
     }
 
     // --- Effet de rotation du plateau (plateauRenverse) ---
@@ -244,11 +247,11 @@ export const Drawing = {
       rotationApplied = true;
     }
 
-    // --- CADRE BLANC ARRONDI + tube/cercle de la prochaine boule (comme l'original) ---
+    // --- CADRE BLANC ARRONDI + tube/cercle avec la boule COULEUR D'ÉQUIPE ---
     BubbleRenderer.drawPlayfieldFrame(ctx, canvas, deadLineY);
-    BubbleRenderer.drawNextBubbleHolder(
+    BubbleRenderer.drawTeamBubbleHolder(
       ctx, rad, deadLineY, layout.pivotY,
-      player.nextBubble || null, Game.spellIcons
+      Config.TEAM_COLORS[player.team || 0]
     );
 
     // Grille

@@ -199,8 +199,8 @@ export const BubbleRenderer = {
     ctx.restore();
   },
 
-  // Tube + cercle en bas à gauche contenant la prochaine boule (comme l'original)
-  drawNextBubbleHolder(ctx, rad, deadLineY, pivotY, nextBubble, spellIcons) {
+  // Tube + cercle en bas à gauche : boule à la COULEUR D'ÉQUIPE (comme l'original)
+  drawTeamBubbleHolder(ctx, rad, deadLineY, pivotY, teamColorHex) {
     const circleR = rad * 1.35;
     const cx = rad * 1.9;
     const cy = Math.max(deadLineY + circleR + 14, Math.min(pivotY - 4, deadLineY + 26 + circleR));
@@ -224,9 +224,32 @@ export const BubbleRenderer = {
 
     ctx.restore();
 
-    if (nextBubble) {
-      this.drawBubble(ctx, nextBubble, rad, cx, cy, spellIcons);
+    if (teamColorHex) {
+      this.drawBubble(ctx, {
+        color: { main: teamColorHex, shadow: this.darkenColor(teamColorHex, 50) }
+      }, rad, cx, cy);
     }
+  },
+
+  // Prochaine boule (bien visible) + fps, à droite du coquillage
+  drawCannonSideInfo(ctx, canvas, centerX, pivotY, radius, rad, nextBubble, fps, spellIcons) {
+    const nx = Math.min(centerX + radius + rad + 4, canvas.width - rad - 4);
+    const ny = pivotY - rad + 2;
+
+    if (nextBubble) {
+      this.drawBubble(ctx, nextBubble, rad, nx, ny, spellIcons);
+    }
+
+    // fps au-dessus de la prochaine boule
+    ctx.save();
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 11px Arial, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "alphabetic";
+    ctx.shadowColor = "rgba(0,0,0,0.7)";
+    ctx.shadowBlur = 2;
+    ctx.fillText(`${fps} fps`, nx, ny - rad - 8);
+    ctx.restore();
   },
 
   // Nom du joueur (bas gauche) + score au-dessus, comme "[DarkaL]" dans l'original
@@ -248,25 +271,6 @@ export const BubbleRenderer = {
     ctx.restore();
   },
 
-  // Compteur fps à droite du coquillage, petite boule verte devant (comme l'original)
-  drawFpsCounter(ctx, fps, centerX, pivotY, radius) {
-    // Calé pour ne jamais déborder du canvas
-    const x = Math.min(centerX + radius + 8, ctx.canvas.width - 52);
-    const y = pivotY - 10;
-    ctx.save();
-    ctx.fillStyle = "#22c55e";
-    ctx.beginPath();
-    ctx.arc(x, y - 4, 4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 11px Arial, sans-serif";
-    ctx.textAlign = "left";
-    ctx.textBaseline = "middle";
-    ctx.shadowColor = "rgba(0,0,0,0.7)";
-    ctx.shadowBlur = 2;
-    ctx.fillText(`${fps} fps`, x + 7, y - 4);
-    ctx.restore();
-  },
 
   drawEffect(ctx, e) {
     if (e.type === "pop") {

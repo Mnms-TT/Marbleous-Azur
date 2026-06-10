@@ -234,23 +234,12 @@ export const GameLogic = {
     });
   },
 
-  // Réception de boules adverses : différée pendant le tremblement, sinon
-  // arrivée animée par le bord gauche
+  // Réception de boules adverses : PERDUES pendant le tremblement (le shake
+  // est un vrai gain de temps, pas un report), sinon arrivée animée par la gauche
   receiveJunk(count) {
     const p = Game.localPlayer;
     if (!p?.isAlive) return;
-    p.deferredJunk = (p.deferredJunk || 0) + count;
-    this.processDeferredJunk();
-  },
-
-  processDeferredJunk() {
-    const p = Game.localPlayer;
-    if (!p?.isAlive || !p.deferredJunk) return;
-    // Pas de boules pendant le tremblement
     if (p.shakeProtectionUntil && Date.now() < p.shakeProtectionUntil) return;
-
-    const count = p.deferredJunk;
-    p.deferredJunk = 0;
 
     // Cases libres accrochables, en haut d'abord (comme avant)
     const validSlots = [];
@@ -303,9 +292,6 @@ export const GameLogic = {
     if (!mainCanvas) return;
 
     this.processStatusEffects(Game.localPlayer);
-
-    // Libérer les boules adverses mises en attente pendant un tremblement
-    this.processDeferredJunk();
 
     // Effets visuels (pops)
     Game.players.forEach((p) =>

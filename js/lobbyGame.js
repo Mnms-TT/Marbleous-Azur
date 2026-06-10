@@ -632,8 +632,11 @@ export const LobbyGame = {
             BubbleRenderer.drawBubble(ctx, p.shotBubble, rad, p.shotBubble.x, p.shotBubble.y, this.spellIcons);
         }
 
-        // Vitesse de jeu affichée à droite du coquillage (réglable via /fps)
-        BubbleRenderer.drawFpsCounter(ctx, this.targetFPS, layout.centerX, layout.pivotY, layout.radius);
+        // Prochaine boule (bien visible) + vitesse de jeu, à droite du coquillage
+        BubbleRenderer.drawCannonSideInfo(
+            ctx, canvas, layout.centerX, layout.pivotY, layout.radius,
+            rad, p.nextBubble || null, this.targetFPS, this.spellIcons
+        );
 
         // --- Rotation du plateau (plateauRenverse), grille uniquement ---
         let rotationApplied = false;
@@ -646,11 +649,10 @@ export const LobbyGame = {
             rotationApplied = true;
         }
 
-        // Cadre blanc arrondi + tube/cercle de la prochaine boule (comme l'original)
+        // Cadre blanc arrondi + tube/cercle avec la boule "équipe" (grise en solo)
         BubbleRenderer.drawPlayfieldFrame(ctx, canvas, deadLineY);
-        BubbleRenderer.drawNextBubbleHolder(
-            ctx, rad, deadLineY, layout.pivotY,
-            p.nextBubble || null, this.spellIcons
+        BubbleRenderer.drawTeamBubbleHolder(
+            ctx, rad, deadLineY, layout.pivotY, "#b6b4b9"
         );
 
         // Grille

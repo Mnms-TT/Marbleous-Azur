@@ -46,6 +46,13 @@ export const BubbleRenderer = {
     ctx.fillStyle = grad;
     ctx.fill();
 
+    // Contour sombre marqué (comme l'original)
+    ctx.beginPath();
+    ctx.arc(x, y, rad - 0.5, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(${this.hexToRgb(this.darkenColor(b.color.main, 80))}, 0.85)`;
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+
     // === Symbole de sort - dessiné SOUS le reflet principal ===
     if (b.isSpellBubble && b.spell && spellIcons) {
       this.drawSpellSymbol(ctx, x, y, rad, b.spell, spellIcons);
@@ -96,60 +103,168 @@ export const BubbleRenderer = {
     }
   },
 
-  // Éventail radar du canon (fond + rayons)
-  drawCannonFan(ctx, centerX, pivotY, radius) {
+  // Position et taille du canon : coquillage juste sous la barre, ~30% de la largeur
+  computeCannonLayout(canvas, deadLineY) {
+    const radius = Math.max(
+      36,
+      Math.min(canvas.width * 0.30, canvas.height - 30 - deadLineY - 10)
+    );
+    const pivotY = Math.min(canvas.height - 18, deadLineY + 12 + radius);
+    return { centerX: canvas.width / 2, pivotY, radius };
+  },
+
+  // Coquillage du canon : lamelles grises pleines séparées de blanc (comme l'original)
+  drawCannonShell(ctx, centerX, pivotY, radius) {
     ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(centerX, pivotY);
-    ctx.arc(centerX, pivotY, radius, Math.PI, 0);
-    ctx.closePath();
-    ctx.fillStyle = "rgba(255, 255, 255, 0.15)";
-    ctx.fill();
 
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
-    ctx.lineWidth = 2;
-    ctx.stroke();
+    // Dégradé métallique commun aux lamelles
+    const metal = ctx.createRadialGradient(
+      centerX, pivotY, radius * 0.08,
+      centerX, pivotY, radius
+    );
+    metal.addColorStop(0, "#ececec");
+    metal.addColorStop(0.65, "#c9c9c9");
+    metal.addColorStop(1, "#a8a8a8");
 
-    const rays = 6;
-    for (let i = 0; i <= rays; i++) {
-      const angle = Math.PI + (i * Math.PI) / rays;
+    const petals = 9;
+    const gap = 0.022; // espace blanc entre lamelles
+    for (let i = 0; i < petals; i++) {
+      const a0 = Math.PI + (i * Math.PI) / petals + gap;
+      const a1 = Math.PI + ((i + 1) * Math.PI) / petals - gap;
       ctx.beginPath();
       ctx.moveTo(centerX, pivotY);
-      ctx.lineTo(
-        centerX + Math.cos(angle) * radius,
-        pivotY + Math.sin(angle) * radius
-      );
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
+      ctx.arc(centerX, pivotY, radius, a0, a1);
+      ctx.closePath();
+      ctx.fillStyle = metal;
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.9)";
+      ctx.lineWidth = 1.5;
       ctx.stroke();
     }
+
+    // Contour blanc du demi-cercle + base
+    ctx.beginPath();
+    ctx.arc(centerX, pivotY, radius, Math.PI, 0);
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(centerX - radius, pivotY);
+    ctx.lineTo(centerX + radius, pivotY);
+    ctx.stroke();
+
     ctx.restore();
   },
 
+  // Aiguille fine noire style aiguille d'horloge (verte si canon cassé)
   drawCannonNeedle(ctx, angle, pos, length, brokenCanon = false) {
     ctx.save();
     ctx.translate(pos.x, pos.y);
     ctx.rotate(angle + Math.PI / 2);
 
-    // Noir par défaut, vert si sous sort jaune (canonCasse)
-    const needleColor = brokenCanon ? "#10b981" : "#1a1a1a";
+    const needleColor = brokenCanon ? "#10b981" : "#111111";
 
-    ctx.fillStyle = needleColor;
+    ctx.strokeStyle = needleColor;
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = "round";
     ctx.beginPath();
-    ctx.moveTo(0, -length);
-    ctx.lineTo(-5, 0);
-    ctx.lineTo(5, 0);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.strokeStyle = brokenCanon ? "#064e3b" : "#000";
-    ctx.lineWidth = 1;
+    ctx.moveTo(0, 3);
+    ctx.lineTo(0, -length * 1.08);
     ctx.stroke();
 
-    ctx.fillStyle = "#1a1a1a";
+    // Pivot
+    ctx.fillStyle = "#111111";
     ctx.beginPath();
-    ctx.arc(0, 0, 8, 0, Math.PI * 2);
+    ctx.arc(0, 0, 5, 0, Math.PI * 2);
     ctx.fill();
 
+    ctx.restore();
+  },
+
+  // Cadre blanc arrondi du plateau : montants gauche/droite + barre horizontale
+  drawPlayfieldFrame(ctx, canvas, deadLineY) {
+    const m = 2.5;  // marge des montants
+    const r = 12;   // rayon des coins arrondis
+    ctx.save();
+    ctx.strokeStyle = "rgba(255,255,255,0.95)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(m, -5);
+    ctx.lineTo(m, deadLineY - r);
+    ctx.quadraticCurveTo(m, deadLineY, m + r, deadLineY);
+    ctx.lineTo(canvas.width - m - r, deadLineY);
+    ctx.quadraticCurveTo(canvas.width - m, deadLineY, canvas.width - m, deadLineY - r);
+    ctx.lineTo(canvas.width - m, -5);
+    ctx.stroke();
+    ctx.restore();
+  },
+
+  // Tube + cercle en bas à gauche contenant la prochaine boule (comme l'original)
+  drawNextBubbleHolder(ctx, rad, deadLineY, pivotY, nextBubble, spellIcons) {
+    const circleR = rad * 1.35;
+    const cx = rad * 1.9;
+    const cy = Math.max(deadLineY + circleR + 14, Math.min(pivotY - 4, deadLineY + 26 + circleR));
+
+    ctx.save();
+    ctx.strokeStyle = "rgba(255,255,255,0.95)";
+    ctx.lineWidth = 2;
+
+    // Tube : deux montants qui descendent de la barre vers le cercle
+    ctx.beginPath();
+    ctx.moveTo(cx - rad * 0.5, deadLineY);
+    ctx.lineTo(cx - rad * 0.5, cy - circleR * 0.8);
+    ctx.moveTo(cx + rad * 0.5, deadLineY);
+    ctx.lineTo(cx + rad * 0.5, cy - circleR * 0.8);
+    ctx.stroke();
+
+    // Cercle
+    ctx.beginPath();
+    ctx.arc(cx, cy, circleR, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.restore();
+
+    if (nextBubble) {
+      this.drawBubble(ctx, nextBubble, rad, cx, cy, spellIcons);
+    }
+  },
+
+  // Nom du joueur (bas gauche) + score au-dessus, comme "[DarkaL]" dans l'original
+  // Le score prend la couleur d'équipe en salle
+  drawPlayerLabel(ctx, canvas, name, score, scoreColor = "#ffffff") {
+    ctx.save();
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+    ctx.shadowColor = "rgba(0,0,0,0.7)";
+    ctx.shadowBlur = 3;
+    if (score !== undefined && score !== null) {
+      ctx.fillStyle = scoreColor;
+      ctx.font = "bold 13px Arial, sans-serif";
+      ctx.fillText(`${score}`, 8, canvas.height - 22);
+    }
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 12px Arial, sans-serif";
+    ctx.fillText(`[${name}]`, 8, canvas.height - 6);
+    ctx.restore();
+  },
+
+  // Compteur fps à droite du coquillage, petite boule verte devant (comme l'original)
+  drawFpsCounter(ctx, fps, centerX, pivotY, radius) {
+    // Calé pour ne jamais déborder du canvas
+    const x = Math.min(centerX + radius + 8, ctx.canvas.width - 52);
+    const y = pivotY - 10;
+    ctx.save();
+    ctx.fillStyle = "#22c55e";
+    ctx.beginPath();
+    ctx.arc(x, y - 4, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 11px Arial, sans-serif";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.shadowColor = "rgba(0,0,0,0.7)";
+    ctx.shadowBlur = 2;
+    ctx.fillText(`${fps} fps`, x + 7, y - 4);
     ctx.restore();
   },
 

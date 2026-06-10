@@ -191,64 +191,33 @@ export const Drawing = {
     // Calcul de la ligne de séparation (entre rangée 10 et 11)
     const deadLineY = (Config.GAME_OVER_ROW) * (rad * 1.732) + rad;
 
-    // Le fond orange est géré par CSS, pas de dashboard dessiné ici
+    // --- CANON COQUILLAGE (joueur principal ET miniatures, comme l'original) ---
+    const layout = BubbleRenderer.computeCannonLayout(canvas, deadLineY);
+    BubbleRenderer.drawCannonShell(ctx, layout.centerX, layout.pivotY, layout.radius);
 
-    // --- CANON (Viseur Radar) ---
+    const needleAngle = player.launcher?.angle ?? -Math.PI / 2;
+    BubbleRenderer.drawCannonNeedle(
+      ctx,
+      needleAngle,
+      { x: layout.centerX, y: layout.pivotY },
+      layout.radius,
+      !!player.statusEffects?.canonCasse
+    );
+
     if (isMain) {
-      // Le canon est positionné dans la zone dashboard
-      // On le centre horizontalement
-      const centerX = canvas.width / 2;
-      // Le pivot est en bas du canvas avec une petite marge
-      const cannonPivotY = canvas.height - 15;
-
-      // Rayon du radar : Doit tenir entre la ligne noire et le pivot
-      // On le limite pour qu'il ne soit pas trop grand
-      const maxRadius = Math.min(120, cannonPivotY - deadLineY - 15);
-      const cannonRadius = Math.max(40, maxRadius);
-
-      // Éventail radar (fond + rayons)
-      BubbleRenderer.drawCannonFan(ctx, centerX, cannonPivotY, cannonRadius);
-
-      // Logique Canon
-      Game.cannonPosition = { x: centerX, y: cannonPivotY };
+      Game.cannonPosition = { x: layout.centerX, y: layout.pivotY };
       if (player.isAlive && !player.launcherBubble && !player.shotBubble) {
         GameLogic.loadBubbles(player);
       }
 
-      // Aiguille
-      this.drawCannonNeedle(ctx, player, Game.cannonPosition, cannonRadius);
-
-      // Indicateur Equipe
-      const teamColor = Config.TEAM_COLORS[player.team || 0];
-      ctx.beginPath();
-      ctx.arc(
-        centerX - cannonRadius - 20,
-        cannonPivotY - 20,
-        14,
-        0,
-        Math.PI * 2
-      );
-      ctx.fillStyle = teamColor;
-      ctx.fill();
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = "white";
-      ctx.stroke();
-
-      // Boules
       if (player.launcherBubble)
         this.drawBubble(
           ctx,
           player.launcherBubble,
           rad,
           Game.cannonPosition.x,
-          Game.cannonPosition.y,
-          true
+          Game.cannonPosition.y
         );
-      if (player.nextBubble) {
-        const nextX = centerX + cannonRadius + 20;
-        const nextY = cannonPivotY - 20;
-        this.drawBubble(ctx, player.nextBubble, rad * 0.8, nextX, nextY);
-      }
       if (player.shotBubble)
         this.drawBubble(
           ctx,
@@ -257,18 +226,9 @@ export const Drawing = {
           player.shotBubble.x,
           player.shotBubble.y
         );
-    }
 
-
-    // --- FPS COUNTER (fixed display) ---
-    if (isMain) {
-      ctx.save();
-      ctx.font = 'bold 11px monospace';
-      ctx.fillStyle = '#0f0';
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'bottom';
-      ctx.fillText(`${Game.targetFPS} fps`, 8, canvas.height - 4);
-      ctx.restore();
+      // FPS à droite du coquillage (comme l'original)
+      BubbleRenderer.drawFpsCounter(ctx, Game.targetFPS, layout.centerX, layout.pivotY, layout.radius);
     }
 
     // --- Effet de rotation du plateau (plateauRenverse) ---
@@ -284,16 +244,12 @@ export const Drawing = {
       rotationApplied = true;
     }
 
-    // --- LIGNE BLANCHE (Barre de Game Over) ---
-    ctx.beginPath();
-    ctx.moveTo(0, deadLineY);
-    ctx.lineTo(canvas.width, deadLineY);
-    ctx.strokeStyle = "white";
-    ctx.lineWidth = 1; // Ligne très fine
-    ctx.stroke();
-
-    // --- LIGNES VERTICALES DE GRILLE ---
-    this.drawGridLines(ctx, canvas, rad);
+    // --- CADRE BLANC ARRONDI + tube/cercle de la prochaine boule (comme l'original) ---
+    BubbleRenderer.drawPlayfieldFrame(ctx, canvas, deadLineY);
+    BubbleRenderer.drawNextBubbleHolder(
+      ctx, rad, deadLineY, layout.pivotY,
+      player.nextBubble || null, Game.spellIcons
+    );
 
     // Grille
     if (player.grid) {
@@ -318,6 +274,12 @@ export const Drawing = {
 
     (player.effects || []).forEach((e) => this.drawEffect(ctx, e));
 
+    if (rotationApplied) ctx.restore();
+
+    // Nom + score (couleur d'équipe), en bas à gauche comme "[DarkaL]" dans l'original
+    const teamColor = Config.TEAM_COLORS[player.team || 0];
+    BubbleRenderer.drawPlayerLabel(ctx, canvas, player.name || "Joueur", player.score || 0, teamColor);
+
     if (!player.isAlive) this.drawOverlayText(ctx, canvas, "PERDU", "red");
     if (player.hasWon) this.drawOverlayText(ctx, canvas, "GAGNÉ", "#22c55e");
 
@@ -329,8 +291,6 @@ export const Drawing = {
         this.drawOverlayText(ctx, canvas, "Prêt", "#22c55e");
       }
     }
-
-    if (rotationApplied) ctx.restore();
   },
 
   drawSpellBar(ctx, canvas, player) {

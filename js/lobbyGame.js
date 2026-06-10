@@ -25,6 +25,8 @@ export const LobbyGame = {
     spellIcons: {},
     intervals: [],
     announcement: null, // { text, until }
+    playerName: "Joueur",
+    fps: { frames: 0, last: 0, value: 0 },
 
     init(canvas) {
         this.canvas = canvas;
@@ -38,6 +40,11 @@ export const LobbyGame = {
 
         this.isRunning = true;
         this.resizeCanvas();
+
+        try {
+            this.playerName = localStorage.getItem("marbleous_pseudo") || "Joueur";
+        } catch (e) { /* stockage restreint */ }
+        this.fps = { frames: 0, last: performance.now(), value: 0 };
 
         this.player = {
             launcher: { angle: -Math.PI / 2 },
@@ -165,6 +172,15 @@ export const LobbyGame = {
 
         this.update();
         this.draw();
+
+        // Mesure des fps réels (affichés à droite du canon comme l'original)
+        this.fps.frames++;
+        const now = performance.now();
+        if (now - this.fps.last >= 500) {
+            this.fps.value = Math.round((this.fps.frames * 1000) / (now - this.fps.last));
+            this.fps.frames = 0;
+            this.fps.last = now;
+        }
 
         this.animationId = requestAnimationFrame(() => this.gameLoop());
     },
@@ -544,32 +560,28 @@ export const LobbyGame = {
 
         const deadLineY = Config.GAME_OVER_ROW * (rad * 1.732) + rad;
 
-        // --- CANON (hors rotation plateau, comme en salle) ---
-        const centerX = canvas.width / 2;
-        const cannonPivotY = canvas.height - 15;
-        const maxRadius = Math.min(120, cannonPivotY - deadLineY - 15);
-        const cannonRadius = Math.max(40, maxRadius);
+        // --- CANON COQUILLAGE (hors rotation plateau, comme en salle) ---
+        const layout = BubbleRenderer.computeCannonLayout(canvas, deadLineY);
+        this.cannonPosition = { x: layout.centerX, y: layout.pivotY };
 
-        this.cannonPosition = { x: centerX, y: cannonPivotY };
-
-        BubbleRenderer.drawCannonFan(ctx, centerX, cannonPivotY, cannonRadius);
+        BubbleRenderer.drawCannonShell(ctx, layout.centerX, layout.pivotY, layout.radius);
         BubbleRenderer.drawCannonNeedle(
             ctx,
             p.launcher.angle,
             this.cannonPosition,
-            cannonRadius,
+            layout.radius,
             !!p.statusEffects.canonCasse
         );
 
         if (p.launcherBubble) {
-            BubbleRenderer.drawBubble(ctx, p.launcherBubble, rad, centerX, cannonPivotY, this.spellIcons);
-        }
-        if (p.nextBubble) {
-            BubbleRenderer.drawBubble(ctx, p.nextBubble, rad * 0.8, centerX + cannonRadius + 20, cannonPivotY - 20, this.spellIcons);
+            BubbleRenderer.drawBubble(ctx, p.launcherBubble, rad, layout.centerX, layout.pivotY, this.spellIcons);
         }
         if (p.shotBubble) {
             BubbleRenderer.drawBubble(ctx, p.shotBubble, rad, p.shotBubble.x, p.shotBubble.y, this.spellIcons);
         }
+
+        // FPS réels à droite du coquillage
+        BubbleRenderer.drawFpsCounter(ctx, this.fps.value, layout.centerX, layout.pivotY, layout.radius);
 
         // --- Rotation du plateau (plateauRenverse), grille uniquement ---
         let rotationApplied = false;
@@ -582,15 +594,12 @@ export const LobbyGame = {
             rotationApplied = true;
         }
 
-        // Ligne blanche de game over
-        ctx.beginPath();
-        ctx.moveTo(0, deadLineY);
-        ctx.lineTo(canvas.width, deadLineY);
-        ctx.strokeStyle = "white";
-        ctx.lineWidth = 1;
-        ctx.stroke();
-
-        BubbleRenderer.drawGridLines(ctx, canvas, rad, Config.GRID_COLS);
+        // Cadre blanc arrondi + tube/cercle de la prochaine boule (comme l'original)
+        BubbleRenderer.drawPlayfieldFrame(ctx, canvas, deadLineY);
+        BubbleRenderer.drawNextBubbleHolder(
+            ctx, rad, deadLineY, layout.pivotY,
+            p.nextBubble || null, this.spellIcons
+        );
 
         // Grille
         for (let r = 0; r < Config.GRID_ROWS; r++) {
@@ -610,14 +619,8 @@ export const LobbyGame = {
 
         if (rotationApplied) ctx.restore();
 
-        // Score + niveau (échauffement solo)
-        ctx.fillStyle = "white";
-        ctx.font = "bold 14px Inter, sans-serif";
-        ctx.textAlign = "left";
-        ctx.textBaseline = "alphabetic";
-        ctx.fillText(`Score: ${p.score}`, 10, 20);
-        ctx.font = "bold 11px Inter, sans-serif";
-        ctx.fillText(`Niv. ${p.level}`, 10, 36);
+        // Score + pseudo en bas à gauche, comme "[DarkaL]" dans l'original
+        BubbleRenderer.drawPlayerLabel(ctx, canvas, this.playerName, p.score);
 
         // Annonce (niveau, sort lancé...)
         if (this.announcement) {

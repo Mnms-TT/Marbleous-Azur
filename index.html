@@ -592,6 +592,8 @@
         <div id="players-header">
           <h3>🎮 En ligne</h3>
           <span class="count-badge" id="player-count-badge">0</span>
+          <button id="btn-history" title="Historique des connexions"
+            style="margin-left:auto;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);border-radius:6px;color:#fff;font-size:12px;padding:2px 8px;cursor:pointer;">🕐</button>
         </div>
         <div id="players-list">
           <!-- Rempli dynamiquement -->
@@ -668,6 +670,11 @@
     // Temps de connexion pour filtrer le chat (ne pas afficher l'historique)
     let connectionTime = Date.now();
 
+    // Historique des connexions (outil 🕐)
+    let connectionLogged = false;
+    let historyMode = false;
+    let connectionLog = [];
+
     // Charger pseudo sauvegardé dans l'overlay (pré-rempli mais toujours affiché)
     try {
       entryPseudo.value = localStorage.getItem('marbleous_pseudo') || '';
@@ -738,6 +745,16 @@
         uid: auth.currentUser.uid
       });
 
+      // Journal des connexions (une entrée par session)
+      if (!connectionLogged) {
+        connectionLogged = true;
+        addDoc(collection(db, "connectionLog"), {
+          name: currentPseudo,
+          uid: auth.currentUser.uid,
+          ts: Date.now()
+        }).catch(console.error);
+      }
+
       // Heartbeat pour rester actif
       setInterval(async () => {
         if (myLobbyDocRef) {
@@ -791,8 +808,19 @@
         }
         initializeLobby();
         listenToChat();
+        listenToConnectionLog();
       }
     });
+
+    // Bascule joueurs en ligne / historique des connexions
+    const btnHistory = document.getElementById('btn-history');
+    if (btnHistory) {
+      btnHistory.onclick = () => {
+        historyMode = !historyMode;
+        btnHistory.style.background = historyMode ? '#a78bfa' : 'rgba(255,255,255,0.15)';
+        renderSidePanel();
+      };
+    }
 
     function initializeLobby() {
       for (let i = 1; i <= MAX_ROOMS; i++) {
@@ -879,7 +907,50 @@
         roomMap.forEach((p, id) => allOnlinePlayers.set(id, p));
       });
 
-      updatePlayersList();
+      renderSidePanel();
+    }
+
+    // Panneau latéral : joueurs en ligne OU historique des connexions
+    function renderSidePanel() {
+      if (historyMode) renderConnectionHistory();
+      else updatePlayersList();
+    }
+
+    function listenToConnectionLog() {
+      const q = query(collection(db, "connectionLog"), orderBy("ts", "desc"), limit(40));
+      onSnapshot(q, (snapshot) => {
+        connectionLog = snapshot.docs.map(d => d.data());
+        if (historyMode) renderConnectionHistory();
+      });
+    }
+
+    function formatConnectionTime(ts) {
+      const d = new Date(ts);
+      const hm = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      const sameDay = d.toDateString() === new Date().toDateString();
+      return sameDay ? hm : d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) + ' ' + hm;
+    }
+
+    function renderConnectionHistory() {
+      const playersList = document.getElementById('players-list');
+      if (!playersList) return;
+
+      if (connectionLog.length === 0) {
+        playersList.innerHTML = '<div style="color:#a78bfa;font-size:11px;text-align:center;padding:20px;">Aucune connexion enregistrée</div>';
+        return;
+      }
+
+      playersList.innerHTML =
+        '<div style="color:#a78bfa;font-size:10px;font-weight:bold;text-transform:uppercase;padding:2px 4px 6px;">🕐 Dernières connexions</div>' +
+        connectionLog.map(c => `
+          <div class="player-item" style="cursor:default;">
+            <span class="player-avatar">${getPlayerEmoji(c.uid || '?')}</span>
+            <div class="player-info">
+              <span class="player-name">${(c.name || 'Joueur')}</span>
+              <span class="player-location">connecté à ${formatConnectionTime(c.ts)}</span>
+            </div>
+          </div>
+        `).join('');
     }
 
     const PLAYER_EMOJIS = ['🐉', '🦉', '🦊', '🐻', '🐼', '🦁', '🐯', '🐵', '🦋', '🐺', '🦎', '🦅', '💥', '🔥', '⚡', '🌟'];

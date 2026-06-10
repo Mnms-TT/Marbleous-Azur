@@ -7,15 +7,15 @@
 
 // Palette échantillonnée sur les captures du jeu original (du plus soutenu au plus pâle)
 const PALETTE = [
-  "#ED7D1F",
+  "#E8741C",
+  "#F08A2A",
   "#F5983A",
   "#FFA54F",
-  "#FFB05A",
   "#FFB864",
   "#FFC080",
-  "#FFCD96",
   "#FFD4A8",
-  "#FFE0BD",
+  "#FFE3C6",
+  "#FFEFDC",
 ];
 
 // PRNG déterministe (mulberry32) pour un patchwork stable d'une page à l'autre
@@ -45,10 +45,12 @@ export function generatePatchworkDataURI(cols = 8, rows = 14, seed = 1337) {
       } else {
         // Biais vertical : indices clairs (fin de palette) favorisés vers le bas
         const t = y / (rows - 1);
-        const center = 1.5 + t * (PALETTE.length - 3.5);
-        idx = Math.round(center + (rnd() * 2 - 1) * 2.2);
+        const center = 1.2 + t * (PALETTE.length - 2.6);
+        idx = Math.round(center + (rnd() * 2 - 1) * 2.6);
         idx = Math.max(0, Math.min(PALETTE.length - 1, idx));
       }
+      // Les 3 dernières rangées (zone canon) restent pâles/crème comme l'original
+      if (y >= rows - 3) idx = Math.max(idx, PALETTE.length - 4);
       grid[y].push(idx);
     }
   }
@@ -65,8 +67,8 @@ export function generatePatchworkDataURI(cols = 8, rows = 14, seed = 1337) {
     `<svg xmlns='http://www.w3.org/2000/svg' width='${cols}' height='${rows}' shape-rendering='crispEdges'>` +
     `<defs><linearGradient id='g' x1='0' y1='0' x2='0' y2='1'>` +
     `<stop offset='0' stop-color='#E96D10' stop-opacity='0.12'/>` +
-    `<stop offset='0.55' stop-color='#FFFFFF' stop-opacity='0'/>` +
-    `<stop offset='1' stop-color='#FFFFFF' stop-opacity='0.22'/>` +
+    `<stop offset='0.5' stop-color='#FFFFFF' stop-opacity='0'/>` +
+    `<stop offset='1' stop-color='#FFFFFF' stop-opacity='0.30'/>` +
     `</linearGradient></defs>` +
     rects +
     `<rect x='0' y='0' width='${cols}' height='${rows}' fill='url(#g)'/>` +

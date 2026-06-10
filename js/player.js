@@ -10,6 +10,7 @@ export class Player {
     this.shotBubble = null;
     this.nextBubble = null;
     this.fallingBubbles = [];
+    this.incomingBubbles = [];
     this.effects = [];
     this.variationColorTimer = 0;
     this.update(data);
@@ -38,7 +39,45 @@ export class Player {
 
   update(data) {
     this.name = data.name || `Joueur_${this.id.substring(0, 4)}`;
-    this.grid = data.grid ? JSON.parse(data.grid) : GameLogic.createEmptyGrid();
+    const newGrid = data.grid ? JSON.parse(data.grid) : GameLogic.createEmptyGrid();
+
+    // Boules reçues des adversaires : elles arrivent en volant par la gauche
+    // au lieu d'apparaître de nulle part (uniquement pour le joueur local).
+    // Nos propres tirs sont déjà dans la grille locale, donc pas re-détectés ici.
+    if (
+      this.grid &&
+      Game.state === "playing" &&
+      Game.localPlayer?.id === this.id &&
+      this.isAlive
+    ) {
+      const added = [];
+      for (let r = 0; r < newGrid.length; r++) {
+        for (let c = 0; c < newGrid[r].length; c++) {
+          if (newGrid[r][c] && !this.grid[r]?.[c]) added.push({ r, c });
+        }
+      }
+      // Au-delà de 16 nouvelles cases (ex: rangées décalées par un sort),
+      // on applique directement, sinon on anime l'arrivée en file indienne.
+      if (added.length > 0 && added.length <= 16) {
+        this.incomingBubbles = this.incomingBubbles || [];
+        added.forEach(({ r, c }, i) => {
+          const b = newGrid[r][c];
+          const { y } = GameLogic.getBubbleCoords(r, c, Game.bubbleRadius);
+          this.incomingBubbles.push({
+            ...b,
+            targetRow: r,
+            targetCol: c,
+            x: -Game.bubbleRadius * (2 + i * 2.5),
+            y,
+            vx: Game.bubbleRadius * 0.45,
+            fromLeft: true,
+          });
+          newGrid[r][c] = null; // caché tant que la boule n'est pas arrivée
+        });
+      }
+    }
+
+    this.grid = newGrid;
     this.score = data.score || 0;
     this.isAlive = data.isAlive !== undefined ? data.isAlive : true;
     this.spells = data.spells || [];
@@ -61,6 +100,7 @@ export class Player {
     this.shotBubble = null;
     this.nextBubble = null;
     this.fallingBubbles = [];
+    this.incomingBubbles = [];
     this.effects = [];
     this.isReady = false;
   }

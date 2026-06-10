@@ -1067,9 +1067,33 @@
       });
     }
 
+    // Message système local (non envoyé sur Firestore)
+    function addLocalSystemMessage(msg) {
+      chatMessages.innerHTML += `<div class="chat-msg"><span class="author">Système:</span> <span class="text">${msg}</span></div>`;
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
     async function sendMessage() {
       let text = chatInput.value.trim();
       if (!text || !auth.currentUser) return;
+
+      // Commandes locales pour l'échauffement : /fps X et /canon X (comme en salle)
+      if (text.toLowerCase().startsWith('/fps ')) {
+        const val = parseInt(text.split(' ')[1]);
+        addLocalSystemMessage(LobbyGame.setFps(val)
+          ? `FPS réglés à ${val} — vitesse du jeu d'échauffement`
+          : 'FPS doit être entre 30 et 300');
+        chatInput.value = '';
+        return;
+      }
+      if (text.toLowerCase().startsWith('/canon ')) {
+        const val = parseFloat(text.split(' ')[1]);
+        addLocalSystemMessage(LobbyGame.setCannonSpeed(val)
+          ? `Vitesse canon réglée à ${val}`
+          : 'Valeur canon invalide');
+        chatInput.value = '';
+        return;
+      }
 
       const author = currentPseudo || 'Joueur';
       let toUid = null;

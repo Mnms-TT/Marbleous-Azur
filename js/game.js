@@ -101,12 +101,26 @@ export const Game = {
   },
 
   gameLoop(timestamp = 0) {
-    // Animation fluide - pas de throttle artificiel
-    if (this.state === "waiting" || this.state === "spectating") {
-      GameLogic.updateLobbyAnimation();
-    } else if (this.state === "playing") {
-      GameLogic.updateLocalAnimations();
+    // Pas de simulation fixe : la vitesse du jeu = targetFPS (réglable via /fps 30-300).
+    // Comme dans le jeu original, tout est calé sur les frames : plus de fps = jeu plus rapide.
+    if (!this.lastFrameTime) this.lastFrameTime = timestamp;
+    let elapsed = timestamp - this.lastFrameTime;
+    if (elapsed > 250) elapsed = 250; // onglet inactif : pas de rattrapage massif
+    this.lastFrameTime = timestamp;
+
+    this.accumulator = (this.accumulator || 0) + elapsed;
+    const stepMs = 1000 / this.targetFPS;
+    let steps = 0;
+    while (this.accumulator >= stepMs && steps < 30) {
+      if (this.state === "waiting" || this.state === "spectating") {
+        GameLogic.updateLobbyAnimation();
+      } else if (this.state === "playing") {
+        GameLogic.updateLocalAnimations();
+      }
+      this.accumulator -= stepMs;
+      steps++;
     }
+    if (steps >= 30) this.accumulator = 0;
 
     Drawing.drawAll();
     requestAnimationFrame((t) => this.gameLoop(t));

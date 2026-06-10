@@ -26,7 +26,10 @@ export const LobbyGame = {
     intervals: [],
     announcement: null, // { text, until }
     playerName: "Joueur",
-    fps: { frames: 0, last: 0, value: 0 },
+    targetFPS: 100, // vitesse du jeu (réglable via /fps 30-300, comme en salle)
+    currentRotationSpeed: Config.LAUNCHER_ROTATION_SPEED, // réglable via /canon X
+    lastFrameTime: 0,
+    accumulator: 0,
 
     init(canvas) {
         this.canvas = canvas;
@@ -44,7 +47,8 @@ export const LobbyGame = {
         try {
             this.playerName = localStorage.getItem("marbleous_pseudo") || "Joueur";
         } catch (e) { /* stockage restreint */ }
-        this.fps = { frames: 0, last: performance.now(), value: 0 };
+        this.lastFrameTime = 0;
+        this.accumulator = 0;
 
         this.player = {
             launcher: { angle: -Math.PI / 2 },
@@ -55,6 +59,7 @@ export const LobbyGame = {
             score: 0,
             isAlive: true,
             fallingBubbles: [],
+            incomingBubbles: [],
             effects: [],
             statusEffects: {},
             level: 1,
@@ -167,22 +172,41 @@ export const LobbyGame = {
         this.loadBubbles();
     },
 
-    gameLoop() {
+    gameLoop(timestamp = 0) {
         if (!this.isRunning) return;
 
-        this.update();
+        // Pas de simulation fixe identique aux salles : vitesse du jeu = targetFPS
+        if (!this.lastFrameTime) this.lastFrameTime = timestamp;
+        let elapsed = timestamp - this.lastFrameTime;
+        if (elapsed > 250) elapsed = 250;
+        this.lastFrameTime = timestamp;
+
+        this.accumulator += elapsed;
+        const stepMs = 1000 / this.targetFPS;
+        let steps = 0;
+        while (this.accumulator >= stepMs && steps < 30) {
+            this.update();
+            this.accumulator -= stepMs;
+            steps++;
+        }
+        if (steps >= 30) this.accumulator = 0;
+
         this.draw();
 
-        // Mesure des fps réels (affichés à droite du canon comme l'original)
-        this.fps.frames++;
-        const now = performance.now();
-        if (now - this.fps.last >= 500) {
-            this.fps.value = Math.round((this.fps.frames * 1000) / (now - this.fps.last));
-            this.fps.frames = 0;
-            this.fps.last = now;
-        }
+        this.animationId = requestAnimationFrame((t) => this.gameLoop(t));
+    },
 
-        this.animationId = requestAnimationFrame(() => this.gameLoop());
+    // Réglages via le chat de l'accueil (/fps X, /canon X) — mêmes commandes qu'en salle
+    setFps(value) {
+        if (isNaN(value) || value < 30 || value > 300) return false;
+        this.targetFPS = value;
+        return true;
+    },
+
+    setCannonSpeed(value) {
+        if (isNaN(value) || value <= 0) return false;
+        this.currentRotationSpeed = Config.LAUNCHER_ROTATION_SPEED * (value / 5);
+        return true;
     },
 
     update() {
@@ -199,7 +223,7 @@ export const LobbyGame = {
         });
 
         // Rotation du canon — mêmes variantes canonCasse que les salles
-        let rotSpeed = Config.LAUNCHER_ROTATION_SPEED;
+        let rotSpeed = this.currentRotationSpeed;
         const canonEffect = p.statusEffects.canonCasse;
 
         if (canonEffect) {
@@ -292,6 +316,25 @@ export const LobbyGame = {
             b.x += b.vx;
             if (b.y > this.canvas.height + 100) {
                 p.fallingBubbles.splice(i, 1);
+            }
+        });
+
+        // Boules envoyées par l'ordinateur : vol depuis le bord gauche vers leur case
+        p.incomingBubbles.forEach((b, i) => {
+            const target = this.getBubbleCoords(b.targetRow, b.targetCol);
+            b.x += b.vx;
+            if (b.x >= target.x) {
+                p.incomingBubbles.splice(i, 1);
+                let spot = { r: b.targetRow, c: b.targetCol };
+                // Case prise entre-temps : accrocher au plus proche
+                if (p.grid[spot.r][spot.c]) {
+                    const fallback = this.findBestSnapSpot({ x: target.x, y: target.y });
+                    if (!fallback) return;
+                    spot = fallback;
+                }
+                const placed = this.createBubble(spot.r, spot.c, b.color, b.spell || null);
+                p.grid[spot.r][spot.c] = placed;
+                this.checkGameOver();
             }
         });
     },
@@ -521,15 +564,24 @@ export const LobbyGame = {
             }
         }
 
-        // Remplir en haut d'abord, comme en salle
+        // Remplir en haut d'abord, comme en salle — les boules arrivent en volant
+        // par le bord gauche (file indienne) au lieu d'apparaître de nulle part
         validSlots.sort((a, b) => a.r - b.r);
         const toAdd = Math.min(validSlots.length, count);
         for (let i = 0; i < toAdd; i++) {
             const s = validSlots[i];
-            p.grid[s.r][s.c] = this.createBubble(s.r, s.c);
+            const bubble = this.createBubble(s.r, s.c);
+            const { y } = this.getBubbleCoords(s.r, s.c);
+            p.incomingBubbles.push({
+                ...bubble,
+                targetRow: s.r,
+                targetCol: s.c,
+                x: -this.bubbleRadius * (2 + i * 2.5),
+                y,
+                vx: this.bubbleRadius * 0.45,
+                fromLeft: true,
+            });
         }
-
-        this.checkGameOver();
     },
 
     levelUp() {
@@ -580,8 +632,8 @@ export const LobbyGame = {
             BubbleRenderer.drawBubble(ctx, p.shotBubble, rad, p.shotBubble.x, p.shotBubble.y, this.spellIcons);
         }
 
-        // FPS réels à droite du coquillage
-        BubbleRenderer.drawFpsCounter(ctx, this.fps.value, layout.centerX, layout.pivotY, layout.radius);
+        // Vitesse de jeu affichée à droite du coquillage (réglable via /fps)
+        BubbleRenderer.drawFpsCounter(ctx, this.targetFPS, layout.centerX, layout.pivotY, layout.radius);
 
         // --- Rotation du plateau (plateauRenverse), grille uniquement ---
         let rotationApplied = false;
@@ -612,6 +664,11 @@ export const LobbyGame = {
         }
 
         p.fallingBubbles.forEach(b => {
+            BubbleRenderer.drawBubble(ctx, b, rad, b.x, b.y, this.spellIcons);
+        });
+
+        // Boules envoyées par l'ordinateur (en vol depuis la gauche)
+        p.incomingBubbles.forEach(b => {
             BubbleRenderer.drawBubble(ctx, b, rad, b.x, b.y, this.spellIcons);
         });
 

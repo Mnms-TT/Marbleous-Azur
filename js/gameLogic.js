@@ -401,11 +401,41 @@ export const GameLogic = {
       })
     );
 
-    // Boules entrantes (sort boulesSupplementaires)
+    // Boules entrantes (attaques adverses : arrivent par la gauche / sort boulesSupplementaires)
     Game.players.forEach((p) => {
       if (!p.incomingBubbles) p.incomingBubbles = [];
 
       p.incomingBubbles.forEach((b, i) => {
+        // Boules d'attaque : vol horizontal depuis le bord gauche jusqu'à leur case
+        if (b.fromLeft) {
+          const target = this.getBubbleCoords(b.targetRow, b.targetCol, Game.bubbleRadius);
+          b.x += b.vx;
+          if (b.x >= target.x) {
+            p.incomingBubbles.splice(i, 1);
+            let spot = { r: b.targetRow, c: b.targetCol };
+            // Si la case a été prise entre-temps, accrocher au plus proche
+            if (p.grid[spot.r][spot.c]) {
+              const fallback = this.findBestSnapSpot(p, { x: target.x, y: target.y });
+              if (!fallback) return;
+              spot = fallback;
+            }
+            p.grid[spot.r][spot.c] = {
+              ...b,
+              r: spot.r,
+              c: spot.c,
+              isStatic: true,
+            };
+            delete p.grid[spot.r][spot.c].targetRow;
+            delete p.grid[spot.r][spot.c].targetCol;
+            delete p.grid[spot.r][spot.c].fromLeft;
+            delete p.grid[spot.r][spot.c].vx;
+            delete p.grid[spot.r][spot.c].x;
+            delete p.grid[spot.r][spot.c].y;
+            if (p.id === Game.localPlayer?.id) this.checkGameOver(p);
+          }
+          return;
+        }
+
         const targetY = this.getBubbleCoords(b.targetRow, b.targetCol, Game.bubbleRadius).y;
 
         b.y += b.vy;

@@ -70,9 +70,9 @@ export const LobbyGame = {
         this.loadBubbles();
         this.updateSpellsBar();
 
-        // Même rythme que les salles : niveau toutes les 30s, envoi de boules toutes les 8s
+        // Même rythme que les salles : niveau toutes les 30s, envoi de boules toutes les 5s
         this.intervals.push(setInterval(() => this.levelUp(), 30000));
-        this.intervals.push(setInterval(() => this.computerAttack(), 8000));
+        this.intervals.push(setInterval(() => this.computerAttack(), 5000));
 
         this.gameLoop();
     },
@@ -593,7 +593,7 @@ export const LobbyGame = {
         this.showAnnouncement(`NIVEAU ${p.level} — Envoi ${Math.round(coef * 100)}%`);
     },
 
-    showAnnouncement(text, duration = 2500) {
+    showAnnouncement(text, duration = 3000) {
         this.announcement = { text, until: Date.now() + duration };
     },
 

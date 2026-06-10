@@ -9,6 +9,7 @@ import { roomId } from './main.js';
 
 export const FirebaseController = {
     db: null, auth: null, unsubscribePlayers: null, unsubscribeGameSession: null, unsubscribeChat: null,
+    unsubscribeEvents: null, lastSpellTsSeen: 0,
 
     async init() {
         const firebaseConfig = {
@@ -128,6 +129,7 @@ export const FirebaseController = {
 
             this.listenForGameChanges();
             this.listenToRoomChat();
+            this.listenToMyEvents();
             Game.gameLoop();
         } catch (e) {
             console.error("Erreur pour rejoindre la salle: ", e);
@@ -218,6 +220,51 @@ export const FirebaseController = {
                 }
                 Game.resetForNewRound();
             }
+
+            // Annonce de sort synchronisée : tout le monde voit qui lance quoi à qui.
+            // Au premier snapshot on mémorise l'éventuelle annonce passée sans la rejouer.
+            if (!this.sessionSnapshotSeen) {
+                this.sessionSnapshotSeen = true;
+                if (sessionData.lastSpell) this.lastSpellTsSeen = sessionData.lastSpell.ts;
+            } else if (sessionData.lastSpell && sessionData.lastSpell.ts > this.lastSpellTsSeen) {
+                this.lastSpellTsSeen = sessionData.lastSpell.ts;
+                const ls = sessionData.lastSpell;
+                UI.queueSpellAnnouncement(ls.casterName, ls.spell, ls.targetName);
+            }
+        });
+    },
+
+    // --- ÉVÉNEMENTS JOUEUR (attaques & sorts) ---
+    // Chaque joueur est propriétaire de SA grille : les adversaires envoient des
+    // événements, la victime les applique localement puis écrit sa propre grille.
+    // (Avant, l'attaquant réécrivait toute la grille de la victime → conflits
+    // d'écriture et plateau qui "change tout seul".)
+    async sendEventToPlayer(targetId, payload) {
+        await addDoc(collection(this.db, "rooms", roomId, "players", targetId, "events"), {
+            ...payload,
+            ts: Date.now()
+        });
+    },
+
+    listenToMyEvents() {
+        if (this.unsubscribeEvents) this.unsubscribeEvents();
+        const myId = this.auth.currentUser.uid;
+        const eventsRef = collection(this.db, "rooms", roomId, "players", myId, "events");
+        this.unsubscribeEvents = onSnapshot(eventsRef, (snapshot) => {
+            snapshot.docChanges().forEach((change) => {
+                if (change.type !== "added") return;
+                const ev = change.doc.data();
+                // Consommer l'événement immédiatement (une seule application)
+                deleteDoc(change.doc.ref).catch(() => { });
+
+                if (!Game.localPlayer?.isAlive || Game.state !== "playing") return;
+
+                if (ev.type === "spell" && ev.spell) {
+                    GameLogic.applySpellEffect(Game.localPlayer, ev.spell);
+                } else if (ev.type === "junk" && ev.count > 0) {
+                    GameLogic.receiveJunk(ev.count);
+                }
+            });
         });
     },
 

@@ -149,7 +149,7 @@ export const UI = {
         "<span class='text-white font-bold text-xs'>Annonces</span>";
   },
 
-  showAnnouncement(message, duration = 2000) {
+  showAnnouncement(message, duration = 3000) {
     const slot = document.getElementById("spell-announcement");
     if (!slot) return;
 
@@ -275,23 +275,72 @@ export const UI = {
     });
   },
 
-  updateSpellAnnouncement(caster, spellInfo, target) {
-    const announcement = document.getElementById("spell-announcement");
-    if (!announcement || !spellInfo) return;
+  // --- ANNONCES DE SORTS ANIMÉES ---
+  // Lanceur en haut, receveur en bas, la boule du sort descend doucement
+  // de l'un vers l'autre en ~3s. File d'attente (max 5) si plusieurs sorts.
+  spellAnnounceQueue: [],
+  spellAnnouncePlaying: false,
 
-    // Format: Caster (haut), Spell (milieu), Target (bas)
-    announcement.innerHTML = `
-      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:2px;text-align:center;">
-        <div style="font-size:10px;color:#94a3b8;">⚔️ ${caster}</div>
-        <div style="font-size:14px;font-weight:bold;color:${spellInfo.color || '#fff'}">${spellInfo.name}</div>
-        <div style="font-size:10px;color:#fbbf24;">→ ${target}</div>
-      </div>
-    `;
+  queueSpellAnnouncement(casterName, spellKey, targetName) {
+    if (this.spellAnnounceQueue.length >= 5) this.spellAnnounceQueue.shift();
+    this.spellAnnounceQueue.push({ casterName, spellKey, targetName });
+    if (!this.spellAnnouncePlaying) this.playNextSpellAnnouncement();
+  },
 
-    // Effacer après 3 secondes
-    setTimeout(() => {
-      if (announcement) announcement.innerHTML = "";
-    }, 3000);
+  playNextSpellAnnouncement() {
+    const slot = document.getElementById("spell-announcement");
+    const next = this.spellAnnounceQueue.shift();
+
+    if (!next || !slot) {
+      this.spellAnnouncePlaying = false;
+      // Retour à l'affichage normal
+      if (slot) {
+        if (Game.state === "playing") {
+          slot.innerHTML = "<span class='text-white font-bold text-xs'>Annonces</span>";
+        } else {
+          this.checkVoteStatus();
+        }
+      }
+      return;
+    }
+
+    this.spellAnnouncePlaying = true;
+
+    slot.innerHTML = `
+      <div style="position:relative;width:100%;height:100%;background:rgba(0,0,0,0.85);overflow:hidden;">
+        <div style="position:absolute;top:3px;width:100%;text-align:center;font-size:11px;font-weight:bold;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${this.escapeHtml(next.casterName)}</div>
+        <div class="spell-fly" style="position:absolute;left:50%;transform:translateX(-50%);top:18px;"></div>
+        <div style="position:absolute;bottom:3px;width:100%;text-align:center;font-size:11px;font-weight:bold;color:#fbbf24;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${this.escapeHtml(next.targetName)}</div>
+      </div>`;
+
+    // Boule du sort — même rendu que dans le jeu
+    const holder = slot.querySelector(".spell-fly");
+    const size = 34;
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    let colorObj = Config.BUBBLE_COLORS[0];
+    for (const [hex, sp] of Object.entries(Config.COLOR_TO_SPELL_MAP)) {
+      if (sp === next.spellKey) {
+        colorObj = Config.BUBBLE_COLORS.find(c => c.main === hex) || colorObj;
+        break;
+      }
+    }
+    Drawing.drawBubble(
+      canvas.getContext("2d"),
+      { color: colorObj, isSpellBubble: true, spell: next.spellKey },
+      (size / 2) * 0.95, size / 2, size / 2
+    );
+    holder.appendChild(canvas);
+
+    // Descente douce : part de sous le nom du lanceur, arrive au-dessus du receveur
+    const slotH = slot.clientHeight || 120;
+    holder.animate(
+      [{ top: "18px" }, { top: Math.max(24, slotH - size - 18) + "px" }],
+      { duration: 3000, easing: "linear", fill: "forwards" }
+    );
+
+    setTimeout(() => this.playNextSpellAnnouncement(), 3000);
   },
 
   // Déclenche un tremblement exponentiel sur le canvas du joueur

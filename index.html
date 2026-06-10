@@ -675,11 +675,18 @@
     let historyMode = false;
     let connectionLog = [];
 
-    // Charger pseudo sauvegardé dans l'overlay (pré-rempli mais toujours affiché)
+    // Pseudo sauvegardé : entrée directe dans le lobby (la page pseudo ne
+    // s'affiche qu'à la première visite — "retour accueil" tombe sur l'accueil)
+    let autoEnter = false;
     try {
-      entryPseudo.value = localStorage.getItem('marbleous_pseudo') || '';
+      const savedPseudo = localStorage.getItem('marbleous_pseudo') || '';
+      entryPseudo.value = savedPseudo;
+      autoEnter = savedPseudo.length >= 2;
     } catch (e) {
       console.warn("Storage access restricted:", e);
+    }
+    if (autoEnter) {
+      enterLobby();
     }
 
     signInAnonymously(auth).catch(console.error);

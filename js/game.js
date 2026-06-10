@@ -62,7 +62,7 @@ export const Game = {
     GameLogic.loadBubbles(this.localPlayer);
     FirebaseController.updatePlayerDoc(this.localPlayer.id, { isReady: false });
     this.gameIntervals.push(setInterval(() => GameLogic.levelUp(), 30000)); // Niveau monte toutes les 30s
-    this.gameIntervals.push(setInterval(() => GameLogic.triggerGlobalAttack(), 8000)); // Attaque toutes les 8s
+    this.gameIntervals.push(setInterval(() => GameLogic.triggerGlobalAttack(), 5000)); // Attaque toutes les 5s
 
     UI.resizeAllCanvases();
   },

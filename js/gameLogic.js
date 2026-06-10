@@ -197,73 +197,90 @@ export const GameLogic = {
     await this.checkGameOver(player);
   },
 
-  // Gestion des attaques (redistribution basée sur le niveau)
+  // Gestion des attaques (redistribution basée sur le niveau).
+  // Chaque client ne traite que SON compteur : sinon chaque client enverrait
+  // l'attaque de tous les joueurs et tout serait multiplié.
   async triggerGlobalAttack() {
     if (Game.state !== "playing") return;
+    const player = Game.localPlayer;
+    if (!player?.isAlive || player.attackBubbleCounter < 10) return;
 
-    for (const player of Game.players.values()) {
-      if (player.isAlive && player.attackBubbleCounter >= 10) {
-        const attackUnits = Math.floor(player.attackBubbleCounter / 10);
+    const attackUnits = Math.floor(player.attackBubbleCounter / 10);
 
-        // Coefficient de redistribution basé sur le niveau
-        const level = player.level || 1;
-        const coef = Config.BASE_REDISTRIBUTION_COEF + (level - 1) * Config.REDISTRIBUTION_COEF_PER_LEVEL;
-        const attackSize = Math.max(1, Math.floor(attackUnits * coef * 10));
+    // Coefficient de redistribution basé sur le niveau
+    const level = player.level || 1;
+    const coef = Config.BASE_REDISTRIBUTION_COEF + (level - 1) * Config.REDISTRIBUTION_COEF_PER_LEVEL;
+    const attackSize = Math.max(1, Math.floor(attackUnits * coef * 10));
 
-        if (attackSize > 0) {
-          // Cibler UNIQUEMENT les ennemis (équipe différente)
-          const enemies = Array.from(Game.players.values()).filter(
-            (p) => p.id !== player.id && p.isAlive && p.team !== player.team
-          );
+    if (attackSize > 0) {
+      // Cibler UNIQUEMENT les ennemis (équipe différente)
+      const enemies = Array.from(Game.players.values()).filter(
+        (p) => p.id !== player.id && p.isAlive && p.team !== player.team
+      );
 
-          for (const enemy of enemies) {
-            // Vérifier la protection shake
-            if (enemy.shakeProtectionUntil && Date.now() < enemy.shakeProtectionUntil) {
-              continue; // Protégé pendant le shake
-            }
-            this.addJunkBubbles(enemy, attackSize);
-          }
-        }
-
-        await FirebaseController.updatePlayerDoc(player.id, {
-          attackBubbleCounter: player.attackBubbleCounter % 10,
+      for (const enemy of enemies) {
+        // Événement : la machine de la victime anime l'arrivée par la gauche
+        // et applique elle-même (différé si elle tremble)
+        FirebaseController.sendEventToPlayer(enemy.id, {
+          type: "junk",
+          count: attackSize,
+          from: player.name,
         });
       }
     }
+
+    await FirebaseController.updatePlayerDoc(player.id, {
+      attackBubbleCounter: player.attackBubbleCounter % 10,
+    });
   },
 
-  addJunkBubbles(target, junkCount) {
-    // Vérifier protection shake
-    if (target.shakeProtectionUntil && Date.now() < target.shakeProtectionUntil) return;
+  // Réception de boules adverses : différée pendant le tremblement, sinon
+  // arrivée animée par le bord gauche
+  receiveJunk(count) {
+    const p = Game.localPlayer;
+    if (!p?.isAlive) return;
+    p.deferredJunk = (p.deferredJunk || 0) + count;
+    this.processDeferredJunk();
+  },
 
-    const grid = target.grid;
+  processDeferredJunk() {
+    const p = Game.localPlayer;
+    if (!p?.isAlive || !p.deferredJunk) return;
+    // Pas de boules pendant le tremblement
+    if (p.shakeProtectionUntil && Date.now() < p.shakeProtectionUntil) return;
 
-    // Trouver les slots vides EN HAUT de la grille (le plus haut possible)
+    const count = p.deferredJunk;
+    p.deferredJunk = 0;
+
+    // Cases libres accrochables, en haut d'abord (comme avant)
     const validSlots = [];
-
     for (let r = 0; r < Config.GRID_ROWS; r++) {
       for (let c = 0; c < Config.GRID_COLS; c++) {
-        if (!grid[r][c]) {
-          // Vérifier si la case a un voisin (peut s'accrocher)
-          if (r === 0 || this.getNeighborCoords(r, c).some(n => grid[n.r]?.[n.c])) {
+        if (!p.grid[r][c]) {
+          if (r === 0 || this.getNeighborCoords(r, c).some(n => p.grid[n.r]?.[n.c])) {
             validSlots.push({ r, c });
           }
         }
       }
     }
-
-    // Trier par rangée (du haut vers le bas) pour remplir en haut d'abord
     validSlots.sort((a, b) => a.r - b.r);
-    const toAdd = Math.min(validSlots.length, junkCount);
 
+    p.incomingBubbles = p.incomingBubbles || [];
+    const toAdd = Math.min(validSlots.length, count);
     for (let i = 0; i < toAdd; i++) {
       const s = validSlots[i];
-      grid[s.r][s.c] = this.createBubble(s.r, s.c);
+      const bubble = this.createBubble(s.r, s.c);
+      const { y } = this.getBubbleCoords(s.r, s.c, Game.bubbleRadius);
+      p.incomingBubbles.push({
+        ...bubble,
+        targetRow: s.r,
+        targetCol: s.c,
+        x: -Game.bubbleRadius * (2 + i * 2.5),
+        y,
+        vx: Game.bubbleRadius * 0.45,
+        fromLeft: true,
+      });
     }
-
-    FirebaseController.updatePlayerDoc(target.id, {
-      grid: JSON.stringify(grid),
-    });
   },
 
   levelUp: () => {
@@ -286,6 +303,9 @@ export const GameLogic = {
     if (!mainCanvas) return;
 
     this.processStatusEffects(Game.localPlayer);
+
+    // Libérer les boules adverses mises en attente pendant un tremblement
+    this.processDeferredJunk();
 
     // Effets visuels (pops)
     Game.players.forEach((p) =>
@@ -431,7 +451,13 @@ export const GameLogic = {
             delete p.grid[spot.r][spot.c].vx;
             delete p.grid[spot.r][spot.c].x;
             delete p.grid[spot.r][spot.c].y;
-            if (p.id === Game.localPlayer?.id) this.checkGameOver(p);
+            if (p.id === Game.localPlayer?.id) {
+              // Dernière boule posée : on persiste NOTRE grille (on en est propriétaire)
+              if (!p.incomingBubbles.some(ib => ib.fromLeft)) {
+                FirebaseController.updatePlayerDoc(p.id, { grid: JSON.stringify(p.grid) });
+              }
+              this.checkGameOver(p);
+            }
           }
           return;
         }
@@ -513,26 +539,47 @@ export const GameLogic = {
     await FirebaseController.updatePlayerDoc(Game.localPlayer.id, {
       spells: Game.localPlayer.spells,
     });
-    UI.updateSpellAnnouncement(
-      Game.localPlayer.name,
-      Config.SPELLS[spellName],
-      targetPlayer.name
-    );
-    await this.applySpellEffect(targetPlayer, spellName);
+
+    // Annonce pour TOUT LE MONDE via le document de session
+    FirebaseController.updateSessionDoc({
+      lastSpell: {
+        casterName: Game.localPlayer.name,
+        targetName: targetPlayer.name,
+        targetId: targetPlayer.id,
+        spell: spellName,
+        ts: Date.now(),
+      },
+    });
+
+    if (targetPlayer.id === Game.localPlayer.id) {
+      // Sort sur soi-même : application directe
+      await this.applySpellEffect(Game.localPlayer, spellName);
+    } else {
+      // Sort sur un adversaire : événement — c'est SA machine qui l'applique
+      // (chacun est propriétaire de sa grille, pas de conflit d'écriture)
+      await FirebaseController.sendEventToPlayer(targetPlayer.id, {
+        type: "spell",
+        spell: spellName,
+        from: Game.localPlayer.name,
+      });
+    }
   },
 
   async applySpellEffect(target, spell) {
     if (!target?.isAlive || !spell) return;
 
-    // Si le sort est reçu par le joueur local, déclencher le tremblement exponentiel
+    // Tremblement à la réception : intensité selon le nombre de sorts reçus
+    // dans les 4 dernières secondes (plusieurs sorts en même temps = bien plus fort)
     if (target.id === Game.localPlayer.id) {
-      target.spellsReceivedCount = (target.spellsReceivedCount || 0) + 1;
-      const count = target.spellsReceivedCount;
-      const duration = Math.min(500 * count, 5000); // Max 5s
-      const intensity = Math.min(count, 8); // Max 8
+      const now = Date.now();
+      target.recentSpellTimes = (target.recentSpellTimes || []).filter(t => now - t < 4000);
+      target.recentSpellTimes.push(now);
+      const count = target.recentSpellTimes.length;
+      const duration = Math.min(800 + 700 * count, 5000);
+      const intensity = Math.min(count * 2, 8);
       UI.triggerShake(intensity, duration);
-      // Protection pendant le shake
-      target.shakeProtectionUntil = Date.now() + duration;
+      // Protection : pas de boules adverses pendant le tremblement
+      target.shakeProtectionUntil = now + duration;
     }
 
     const DURATION = 10000;

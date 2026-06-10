@@ -104,6 +104,7 @@ export const Config = {
 
   SPELL_SPAWN_CHANCE: 0.43, // +30% (was 0.33)
   FPS: 60,
+  DEFAULT_GAME_FPS: 140, // Vitesse de simulation par défaut (réglable via /fps 30-300)
   LAUNCHER_ROTATION_SPEED: 0.0056,
 
   // Divers

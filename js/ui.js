@@ -28,7 +28,12 @@ export const UI = {
       } else {
         const p = opponents[oppIndex];
         const slot = p ? p.container : this.createEmptySlot();
-        if (p) p.canvas.dataset.playerId = p.id;
+        // L'id doit être sur le conteneur .opponent-view : c'est lui que
+        // InputHandler retrouve via closest() pour lancer un sort au clic
+        if (p) {
+          p.container.dataset.playerId = p.id;
+          p.canvas.dataset.playerId = p.id;
+        }
         grid.appendChild(slot);
         oppIndex++;
       }

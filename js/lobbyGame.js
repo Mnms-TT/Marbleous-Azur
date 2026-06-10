@@ -26,7 +26,7 @@ export const LobbyGame = {
     intervals: [],
     announcement: null, // { text, until }
     playerName: "Joueur",
-    targetFPS: 100, // vitesse du jeu (réglable via /fps 30-300, comme en salle)
+    targetFPS: Config.DEFAULT_GAME_FPS, // vitesse du jeu (réglable via /fps 30-300, comme en salle)
     currentRotationSpeed: Config.LAUNCHER_ROTATION_SPEED, // réglable via /canon X
     lastFrameTime: 0,
     accumulator: 0,

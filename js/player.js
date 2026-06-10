@@ -27,14 +27,8 @@ export class Player {
     this.teamIndicator.className = "team-indicator";
     this.container.appendChild(this.canvas);
     this.container.appendChild(this.teamIndicator);
-
-    this.container.addEventListener("click", () => {
-      if (Game.localPlayer?.isAlive && UI.selectedSpellIndex !== null) {
-        GameLogic.castSpecificSpell(this, UI.selectedSpellIndex);
-        UI.selectedSpellIndex = null;
-        UI.updatePlayerStats();
-      }
-    });
+    // Le lancement de sorts au clic est géré par InputHandler (délégation
+    // sur #opponents-grid, LIFO) — pas de listener ici.
   }
 
   update(data) {

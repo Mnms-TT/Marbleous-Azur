@@ -18,7 +18,7 @@ export const Game = {
   countdownInterval: null,
   lobbyMarbles: [],
   currentRotationSpeed: Config.LAUNCHER_ROTATION_SPEED,
-  targetFPS: 100,
+  targetFPS: Config.DEFAULT_GAME_FPS,
   lastFrameTime: 0,
   gameEndAnnounced: false,
 

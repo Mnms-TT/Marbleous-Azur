@@ -1,4 +1,8 @@
 import { Game } from "./game.js";
+import { applyPatchworkBackground } from "./patchwork.js";
+
+// Fond patchwork orange identique à l'accueil
+applyPatchworkBackground();
 
 const urlParams = new URLSearchParams(window.location.search);
 const roomId = urlParams.get("roomId");

@@ -1,9 +1,17 @@
 /**
- * lobbyGame.js - Jeu solo dans le lobby (identique aux salles)
- * Utilise une logique standalone pour éviter les dépendances Firebase du module Game principal
+ * lobbyGame.js - Échauffement solo dans le lobby
+ * MÊME jeu que dans les salles (rendu, sorts, niveaux, boules envoyées par
+ * l'ordinateur), en version locale sans Firebase. Seules différences :
+ * - on ne perd que lorsqu'une boule dépasse la barre du bas ;
+ * - après un game over, un clic relance une nouvelle partie.
+ *
+ * Contrôles identiques aux salles : souris pour viser, Espace/Flèche haut
+ * pour tirer, Gauche/Droite pour tourner, clic = lancer le dernier sort
+ * sur soi-même (LIFO).
  */
 
 import { Config } from "./config.js";
+import { BubbleRenderer } from "./bubbleRenderer.js";
 
 export const LobbyGame = {
     canvas: null,
@@ -15,8 +23,9 @@ export const LobbyGame = {
     animationId: null,
     keys: { left: false, right: false },
     spellIcons: {},
+    intervals: [],
+    announcement: null, // { text, until }
 
-    // Initialise le jeu solo
     init(canvas) {
         this.canvas = canvas;
         this.ctx = canvas.getContext("2d");
@@ -24,14 +33,12 @@ export const LobbyGame = {
         this.setupInputHandlers();
     },
 
-    // Démarre une nouvelle partie
     start() {
         if (this.isRunning) return;
 
         this.isRunning = true;
         this.resizeCanvas();
 
-        // Créer le joueur local
         this.player = {
             launcher: { angle: -Math.PI / 2 },
             launcherBubble: null,
@@ -44,29 +51,35 @@ export const LobbyGame = {
             effects: [],
             statusEffects: {},
             level: 1,
-            spells: []
+            spells: [],
+            variationColorTimer: 0,
         };
 
         this.loadBubbles();
+        this.updateSpellsBar();
+
+        // Même rythme que les salles : niveau toutes les 30s, envoi de boules toutes les 8s
+        this.intervals.push(setInterval(() => this.levelUp(), 30000));
+        this.intervals.push(setInterval(() => this.computerAttack(), 8000));
+
         this.gameLoop();
     },
 
-    // Stoppe le jeu
     stop() {
         this.isRunning = false;
         if (this.animationId) {
             cancelAnimationFrame(this.animationId);
             this.animationId = null;
         }
+        this.intervals.forEach(clearInterval);
+        this.intervals = [];
     },
 
-    // Restart après game over
     restart() {
         this.stop();
         this.start();
     },
 
-    // Redimensionne le canvas pour le conteneur
     resizeCanvas() {
         const container = this.canvas.parentElement;
         if (!container) return;
@@ -75,14 +88,11 @@ export const LobbyGame = {
         this.canvas.width = containerRect.width;
         this.canvas.height = containerRect.height;
 
-        // Calculer le rayon des bulles
-        const cols = Config.GRID_COLS;
-        this.bubbleRadius = Math.floor(this.canvas.width / cols / 2);
+        // Même calcul que les salles : 8 colonnes + offset = 17 rayons de large
+        this.bubbleRadius = this.canvas.width / 17;
     },
 
-    // Configuration des contrôles
     setupInputHandlers() {
-        // Mouvement souris pour viser
         this.canvas.addEventListener("mousemove", (e) => {
             if (!this.isRunning || !this.player?.isAlive) return;
 
@@ -97,22 +107,24 @@ export const LobbyGame = {
             this.player.launcher.angle = angle;
         });
 
-        // Clic pour tirer
+        // Clic : rejouer si game over, sinon lancer le dernier sort sur soi (comme en salle)
         this.canvas.addEventListener("click", () => {
-            if (!this.isRunning || !this.player?.isAlive) return;
+            if (!this.isRunning || !this.player) return;
 
-            // Restart après game over
             if (!this.player.isAlive) {
                 this.restart();
                 return;
             }
 
-            this.shoot();
+            this.castActiveSpell();
         });
 
-        // Touches clavier
         window.addEventListener("keydown", (e) => {
             if (!this.isRunning) return;
+            // Ne pas jouer pendant la saisie chat/pseudo
+            const active = document.activeElement;
+            if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) return;
+
             if (e.key === "ArrowLeft") this.keys.left = true;
             if (e.key === "ArrowRight") this.keys.right = true;
             if (e.key === "ArrowUp" || e.code === "Space") {
@@ -125,9 +137,12 @@ export const LobbyGame = {
             if (e.key === "ArrowLeft") this.keys.left = false;
             if (e.key === "ArrowRight") this.keys.right = false;
         });
+
+        window.addEventListener("resize", () => {
+            if (this.isRunning) this.resizeCanvas();
+        });
     },
 
-    // Tirer
     shoot() {
         const p = this.player;
         if (!p?.isAlive || !p.launcherBubble || p.shotBubble) return;
@@ -145,7 +160,6 @@ export const LobbyGame = {
         this.loadBubbles();
     },
 
-    // Boucle principale
     gameLoop() {
         if (!this.isRunning) return;
 
@@ -155,31 +169,73 @@ export const LobbyGame = {
         this.animationId = requestAnimationFrame(() => this.gameLoop());
     },
 
-    // Mise à jour logique
     update() {
-        if (!this.player) return;
+        const p = this.player;
+        if (!p) return;
 
-        // Rotation du canon avec touches
-        const rotSpeed = Config.LAUNCHER_ROTATION_SPEED;
-        if (this.keys.left) this.player.launcher.angle -= rotSpeed;
-        if (this.keys.right) this.player.launcher.angle += rotSpeed;
+        this.processStatusEffects();
 
-        // Limites de rotation
-        this.player.launcher.angle = Math.max(
-            -Math.PI + 0.1,
-            Math.min(-0.1, this.player.launcher.angle)
-        );
-
-        // Mise à jour des effets
-        this.player.effects.forEach((e, i) => {
+        // Effets visuels (pops)
+        p.effects.forEach((e, i) => {
             e.life--;
             if (e.type === "pop") e.radius += 0.25;
-            if (e.life <= 0) this.player.effects.splice(i, 1);
+            if (e.life <= 0) p.effects.splice(i, 1);
         });
 
+        // Rotation du canon — mêmes variantes canonCasse que les salles
+        let rotSpeed = Config.LAUNCHER_ROTATION_SPEED;
+        const canonEffect = p.statusEffects.canonCasse;
+
+        if (canonEffect) {
+            const variant = canonEffect.variant || 0;
+            switch (variant) {
+                case 0: // Inversé
+                    if (this.keys.left) p.launcher.angle += rotSpeed;
+                    if (this.keys.right) p.launcher.angle -= rotSpeed;
+                    break;
+                case 1: // Bloqué
+                    break;
+                case 2: // Aléatoire
+                    rotSpeed *= 0.4;
+                    p.launcher.angle += (Math.random() - 0.5) * 0.08;
+                    if (this.keys.left) p.launcher.angle -= rotSpeed;
+                    if (this.keys.right) p.launcher.angle += rotSpeed;
+                    break;
+                case 3: // Auto-tir
+                    if (this.keys.left) p.launcher.angle -= rotSpeed;
+                    if (this.keys.right) p.launcher.angle += rotSpeed;
+                    if (!canonEffect.nextAutoFire) {
+                        canonEffect.nextAutoFire = Date.now() + 2000 + Math.random() * 2000;
+                    }
+                    if (Date.now() > canonEffect.nextAutoFire && !p.shotBubble && p.launcherBubble) {
+                        this.shoot();
+                        canonEffect.nextAutoFire = Date.now() + 2000 + Math.random() * 2000;
+                    }
+                    break;
+            }
+        } else {
+            if (this.keys.left) p.launcher.angle -= rotSpeed;
+            if (this.keys.right) p.launcher.angle += rotSpeed;
+        }
+
+        // Limites de rotation
+        p.launcher.angle = Math.max(
+            -Math.PI + 0.1,
+            Math.min(-0.1, p.launcher.angle)
+        );
+
         // Mouvement boule tirée
-        if (this.player.shotBubble) {
-            const b = this.player.shotBubble;
+        if (p.shotBubble) {
+            const b = p.shotBubble;
+            b.vx = b.vx || 0;
+            b.vy = b.vy || 0;
+
+            // Plateau renversé : gravité latérale comme en salle
+            if (p.statusEffects.plateauRenverse) {
+                const rotAngle = p.statusEffects.plateauRenverse.angle || 0;
+                b.vx += Math.sin((rotAngle * Math.PI) / 180) * 0.3;
+            }
+
             b.x += b.vx;
             b.y += b.vy;
 
@@ -190,7 +246,7 @@ export const LobbyGame = {
             if (!collided) {
                 for (let r = 0; r < Config.GRID_ROWS; r++) {
                     for (let c = 0; c < Config.GRID_COLS; c++) {
-                        if (this.player.grid[r][c]) {
+                        if (p.grid[r][c]) {
                             const coords = this.getBubbleCoords(r, c);
                             if (Math.hypot(b.x - coords.x, b.y - coords.y) < this.bubbleRadius * 1.8) {
                                 collided = true;
@@ -214,64 +270,281 @@ export const LobbyGame = {
         }
 
         // Boules qui tombent
-        this.player.fallingBubbles.forEach((b, i) => {
+        p.fallingBubbles.forEach((b, i) => {
             b.vy += 0.15;
             b.y += b.vy;
             b.x += b.vx;
             if (b.y > this.canvas.height + 100) {
-                this.player.fallingBubbles.splice(i, 1);
+                p.fallingBubbles.splice(i, 1);
             }
         });
     },
 
-    // Accroche la bulle à la grille
+    // Expiration des effets + variation de couleur du canon (comme en salle)
+    processStatusEffects() {
+        const p = this.player;
+        const now = Date.now();
+        for (const key in p.statusEffects) {
+            if (now > p.statusEffects[key].endTime) {
+                delete p.statusEffects[key];
+            }
+        }
+        if (p.statusEffects.variationCouleur) {
+            p.variationColorTimer = (p.variationColorTimer || 0) + 1;
+            if (p.variationColorTimer % Config.FPS === 0 && p.launcherBubble) {
+                p.launcherBubble.color =
+                    Config.BUBBLE_COLORS[Math.floor(Math.random() * Config.BUBBLE_COLORS.length)];
+            }
+        }
+    },
+
     snapBubble(shotBubble) {
-        this.player.shotBubble = null;
+        const p = this.player;
+        p.shotBubble = null;
 
         const bestSpot = this.findBestSnapSpot(shotBubble);
         if (bestSpot) {
             const { r, c } = bestSpot;
-            this.player.grid[r][c] = this.createBubble(r, c, shotBubble.color);
+            p.grid[r][c] = this.createBubble(r, c, shotBubble.color);
             const matches = this.findMatches(r, c);
 
             if (matches.length >= 3) {
                 let cleared = matches.length;
 
-                // Supprimer les bulles matchées
-                matches.forEach((b) => {
-                    const { x, y } = this.getBubbleCoords(b.r, b.c);
-                    this.player.effects.push({
+                matches.forEach((m) => {
+                    const { x, y } = this.getBubbleCoords(m.r, m.c);
+                    p.effects.push({
                         x, y, type: "pop", radius: this.bubbleRadius, life: 25
                     });
-                    this.player.grid[b.r][b.c] = null;
+                    p.grid[m.r][m.c] = null;
                 });
 
-                // Avalanche
                 const avalanche = this.handleAvalanche();
                 cleared += avalanche;
 
-                // Score
-                this.player.score += cleared * 10 + Math.pow(avalanche, 2) * 10;
+                // Apparition potentielle d'un sort (même chance qu'en salle)
+                if (Math.random() < Config.SPELL_SPAWN_CHANCE) {
+                    this.spawnSpellBubble();
+                }
+
+                p.score += cleared * 10 + Math.pow(avalanche, 2) * 10;
             }
         }
 
         this.checkGameOver();
     },
 
-    // Dessin
+    // --- SORTS (logique identique aux salles, appliquée à soi-même) ---
+
+    castActiveSpell() {
+        const p = this.player;
+        if (!p?.isAlive || !p.spells || p.spells.length === 0) return;
+
+        // LIFO : dernier sort ramassé = premier lancé
+        const spellName = p.spells.pop();
+        this.updateSpellsBar();
+
+        const info = Config.SPELLS[spellName];
+        if (info) this.showAnnouncement(info.name);
+
+        this.applySpellEffect(spellName);
+    },
+
+    applySpellEffect(spell) {
+        const p = this.player;
+        if (!p?.isAlive || !spell) return;
+
+        const DURATION = 10000;
+        const grid = p.grid;
+
+        switch (spell) {
+            case "plateauRenverse": {
+                const rotationAngle = (10 + Math.random() * 30) * (Math.random() < 0.5 ? -1 : 1);
+                p.statusEffects.plateauRenverse = {
+                    endTime: Date.now() + DURATION,
+                    angle: rotationAngle,
+                    direction: rotationAngle > 0 ? 1 : -1,
+                };
+                break;
+            }
+
+            case "canonCasse": {
+                p.statusEffects.canonCasse = {
+                    endTime: Date.now() + DURATION,
+                    variant: Math.floor(Math.random() * 4),
+                };
+                break;
+            }
+
+            case "disparitionSorts": {
+                if (p.spells.length > 0) p.spells.shift();
+                for (let r = 0; r < Config.GRID_ROWS; r++) {
+                    for (let c = 0; c < Config.GRID_COLS; c++) {
+                        if (grid[r][c]?.isSpellBubble) {
+                            grid[r][c].isSpellBubble = false;
+                            grid[r][c].spell = null;
+                        }
+                    }
+                }
+                this.updateSpellsBar();
+                break;
+            }
+
+            case "variationCouleur": {
+                for (let r = 0; r < Config.GRID_ROWS; r++) {
+                    for (let c = 0; c < Config.GRID_COLS; c++) {
+                        if (grid[r][c]) {
+                            grid[r][c].color =
+                                Config.BUBBLE_COLORS[Math.floor(Math.random() * Config.BUBBLE_COLORS.length)];
+                        }
+                    }
+                }
+                p.statusEffects.variationCouleur = { endTime: Date.now() + 8000 };
+                break;
+            }
+
+            case "boulesSupplementaires": {
+                // Décale tout vers le bas, nouvelle ligne partielle en haut
+                for (let r = Config.GRID_ROWS - 1; r > 0; r--) {
+                    for (let c = 0; c < Config.GRID_COLS; c++) {
+                        grid[r][c] = grid[r - 1][c];
+                        if (grid[r][c]) grid[r][c].r = r;
+                    }
+                }
+                for (let c = 0; c < Config.GRID_COLS; c++) {
+                    grid[0][c] = Math.random() < 0.7 ? this.createBubble(0, c) : null;
+                }
+                break;
+            }
+
+            case "nukeBomb": {
+                const bubbles = [];
+                for (let r = 0; r < Config.GRID_ROWS; r++)
+                    for (let c = 0; c < Config.GRID_COLS; c++)
+                        if (grid[r][c]) bubbles.push({ r, c });
+                const destroyPercent = 0.3 + Math.random() * 0.5;
+                const toDestroy = Math.floor(bubbles.length * destroyPercent);
+                bubbles.sort(() => 0.5 - Math.random());
+                for (let i = 0; i < toDestroy; i++) {
+                    const b = bubbles[i];
+                    const { x, y } = this.getBubbleCoords(b.r, b.c);
+                    p.effects.push({
+                        x, y, type: "pop", radius: this.bubbleRadius, life: 30, color: "#af00c1",
+                    });
+                    grid[b.r][b.c] = null;
+                }
+                this.handleAvalanche();
+                break;
+            }
+
+            case "toutesMemeCouleur": {
+                const bubbles = [];
+                for (let r = 0; r < Config.GRID_ROWS; r++)
+                    for (let c = 0; c < Config.GRID_COLS; c++)
+                        if (grid[r][c] && !grid[r][c].isSpellBubble) bubbles.push(grid[r][c]);
+                if (bubbles.length > 0) {
+                    const newColor =
+                        Config.BUBBLE_COLORS[Math.floor(Math.random() * Config.BUBBLE_COLORS.length)];
+                    const toChange = Math.floor(bubbles.length * (0.3 + Math.random() * 0.3));
+                    bubbles.sort(() => 0.5 - Math.random());
+                    for (let i = 0; i < toChange; i++) {
+                        bubbles[i].color = newColor;
+                    }
+                }
+                break;
+            }
+
+            case "nettoyage": {
+                const bubbles = [];
+                for (let r = 0; r < Config.GRID_ROWS; r++)
+                    for (let c = 0; c < Config.GRID_COLS; c++)
+                        if (grid[r][c]) bubbles.push({ r, c, bubble: grid[r][c] });
+
+                bubbles.sort((a, b) => b.r - a.r);
+                const toRemove = Math.min(bubbles.length, 10 + Math.floor(Math.random() * 5));
+
+                for (let i = 0; i < toRemove; i++) {
+                    const { r, c, bubble } = bubbles[i];
+
+                    if (bubble.isSpellBubble && bubble.spell && p.spells.length < Config.MAX_SPELLS) {
+                        p.spells.push(bubble.spell);
+                    }
+
+                    const { x, y } = this.getBubbleCoords(r, c);
+                    p.effects.push({ x, y, type: "pop", radius: this.bubbleRadius, life: 20 });
+                    p.fallingBubbles.push({ ...bubble, x, y, vx: 0, vy: 0.5 });
+                    grid[r][c] = null;
+                }
+
+                if (toRemove > 0) this.handleAvalanche();
+                this.updateSpellsBar();
+                break;
+            }
+        }
+
+        this.checkGameOver();
+    },
+
+    // L'ordinateur envoie des boules régulièrement (comme les adversaires en salle)
+    computerAttack() {
+        const p = this.player;
+        if (!p?.isAlive) return;
+
+        const coef = Config.BASE_REDISTRIBUTION_COEF +
+            (p.level - 1) * Config.REDISTRIBUTION_COEF_PER_LEVEL;
+        const count = Math.max(1, Math.floor(coef * 10));
+
+        const validSlots = [];
+        for (let r = 0; r < Config.GRID_ROWS; r++) {
+            for (let c = 0; c < Config.GRID_COLS; c++) {
+                if (!p.grid[r][c]) {
+                    if (r === 0 || this.getNeighborCoords(r, c).some(n => p.grid[n.r]?.[n.c])) {
+                        validSlots.push({ r, c });
+                    }
+                }
+            }
+        }
+
+        // Remplir en haut d'abord, comme en salle
+        validSlots.sort((a, b) => a.r - b.r);
+        const toAdd = Math.min(validSlots.length, count);
+        for (let i = 0; i < toAdd; i++) {
+            const s = validSlots[i];
+            p.grid[s.r][s.c] = this.createBubble(s.r, s.c);
+        }
+
+        this.checkGameOver();
+    },
+
+    levelUp() {
+        const p = this.player;
+        if (!p?.isAlive) return;
+        p.level++;
+        const coef = Config.BASE_REDISTRIBUTION_COEF +
+            (p.level - 1) * Config.REDISTRIBUTION_COEF_PER_LEVEL;
+        this.showAnnouncement(`NIVEAU ${p.level} — Envoi ${Math.round(coef * 100)}%`);
+    },
+
+    showAnnouncement(text, duration = 2500) {
+        this.announcement = { text, until: Date.now() + duration };
+    },
+
+    // --- DESSIN (identique à Drawing.drawGameState, version solo) ---
+
     draw() {
         const ctx = this.ctx;
         const canvas = this.canvas;
         const rad = this.bubbleRadius;
+        const p = this.player;
 
-        // Fond transparent (le CSS gère le patchwork orange)
+        // Fond transparent : le patchwork orange est géré par le CSS
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        if (!this.player) return;
+        if (!p) return;
 
         const deadLineY = Config.GAME_OVER_ROW * (rad * 1.732) + rad;
 
-        // Canon
+        // --- CANON (hors rotation plateau, comme en salle) ---
         const centerX = canvas.width / 2;
         const cannonPivotY = canvas.height - 15;
         const maxRadius = Math.min(120, cannonPivotY - deadLineY - 15);
@@ -279,47 +552,37 @@ export const LobbyGame = {
 
         this.cannonPosition = { x: centerX, y: cannonPivotY };
 
-        // Eventail radar
-        ctx.save();
-        ctx.beginPath();
-        ctx.moveTo(centerX, cannonPivotY);
-        ctx.arc(centerX, cannonPivotY, cannonRadius, Math.PI, 0);
-        ctx.closePath();
-        ctx.fillStyle = "rgba(255, 255, 255, 0.15)";
-        ctx.fill();
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
-        ctx.lineWidth = 2;
-        ctx.stroke();
+        BubbleRenderer.drawCannonFan(ctx, centerX, cannonPivotY, cannonRadius);
+        BubbleRenderer.drawCannonNeedle(
+            ctx,
+            p.launcher.angle,
+            this.cannonPosition,
+            cannonRadius,
+            !!p.statusEffects.canonCasse
+        );
 
-        // Rayons
-        for (let i = 0; i <= 6; i++) {
-            const angle = Math.PI + (i * Math.PI) / 6;
-            ctx.beginPath();
-            ctx.moveTo(centerX, cannonPivotY);
-            ctx.lineTo(
-                centerX + Math.cos(angle) * cannonRadius,
-                cannonPivotY + Math.sin(angle) * cannonRadius
-            );
-            ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
-            ctx.stroke();
+        if (p.launcherBubble) {
+            BubbleRenderer.drawBubble(ctx, p.launcherBubble, rad, centerX, cannonPivotY, this.spellIcons);
         }
-        ctx.restore();
-
-        // Aiguille du canon
-        this.drawCannonNeedle(ctx, cannonRadius);
-
-        // Boules dans le canon
-        if (this.player.launcherBubble) {
-            this.drawBubble(ctx, this.player.launcherBubble, rad, centerX, cannonPivotY);
+        if (p.nextBubble) {
+            BubbleRenderer.drawBubble(ctx, p.nextBubble, rad * 0.8, centerX + cannonRadius + 20, cannonPivotY - 20, this.spellIcons);
         }
-        if (this.player.nextBubble) {
-            this.drawBubble(ctx, this.player.nextBubble, rad * 0.8, centerX + cannonRadius + 20, cannonPivotY - 20);
-        }
-        if (this.player.shotBubble) {
-            this.drawBubble(ctx, this.player.shotBubble, rad, this.player.shotBubble.x, this.player.shotBubble.y);
+        if (p.shotBubble) {
+            BubbleRenderer.drawBubble(ctx, p.shotBubble, rad, p.shotBubble.x, p.shotBubble.y, this.spellIcons);
         }
 
-        // Ligne de game over
+        // --- Rotation du plateau (plateauRenverse), grille uniquement ---
+        let rotationApplied = false;
+        if (p.statusEffects.plateauRenverse) {
+            const rotAngle = p.statusEffects.plateauRenverse.angle || 0;
+            ctx.save();
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            ctx.rotate((rotAngle * Math.PI) / 180);
+            ctx.translate(-canvas.width / 2, -canvas.height / 2);
+            rotationApplied = true;
+        }
+
+        // Ligne blanche de game over
         ctx.beginPath();
         ctx.moveTo(0, deadLineY);
         ctx.lineTo(canvas.width, deadLineY);
@@ -327,161 +590,130 @@ export const LobbyGame = {
         ctx.lineWidth = 1;
         ctx.stroke();
 
+        BubbleRenderer.drawGridLines(ctx, canvas, rad, Config.GRID_COLS);
+
         // Grille
         for (let r = 0; r < Config.GRID_ROWS; r++) {
             for (let c = 0; c < Config.GRID_COLS; c++) {
-                if (this.player.grid[r][c]) {
+                if (p.grid[r][c]) {
                     const { x, y } = this.getBubbleCoords(r, c);
-                    this.drawBubble(ctx, this.player.grid[r][c], rad, x, y);
+                    BubbleRenderer.drawBubble(ctx, p.grid[r][c], rad, x, y, this.spellIcons);
                 }
             }
         }
 
-        // Boules qui tombent
-        this.player.fallingBubbles.forEach(b => {
-            this.drawBubble(ctx, b, rad, b.x, b.y);
+        p.fallingBubbles.forEach(b => {
+            BubbleRenderer.drawBubble(ctx, b, rad, b.x, b.y, this.spellIcons);
         });
 
-        // Effets
-        this.player.effects.forEach(e => this.drawEffect(ctx, e));
+        p.effects.forEach(e => BubbleRenderer.drawEffect(ctx, e));
 
-        // Score
+        if (rotationApplied) ctx.restore();
+
+        // Score + niveau (échauffement solo)
         ctx.fillStyle = "white";
         ctx.font = "bold 14px Inter, sans-serif";
         ctx.textAlign = "left";
-        ctx.fillText(`Score: ${this.player.score}`, 10, 20);
+        ctx.textBaseline = "alphabetic";
+        ctx.fillText(`Score: ${p.score}`, 10, 20);
+        ctx.font = "bold 11px Inter, sans-serif";
+        ctx.fillText(`Niv. ${p.level}`, 10, 36);
 
-        // Game Over overlay
-        if (!this.player.isAlive) {
+        // Annonce (niveau, sort lancé...)
+        if (this.announcement) {
+            if (Date.now() > this.announcement.until) {
+                this.announcement = null;
+            } else {
+                ctx.save();
+                ctx.font = "bold 13px Inter, sans-serif";
+                ctx.textAlign = "center";
+                ctx.fillStyle = "#fbbf24";
+                ctx.shadowColor = "black";
+                ctx.shadowBlur = 4;
+                ctx.fillText(this.announcement.text, canvas.width / 2, deadLineY + 24);
+                ctx.restore();
+            }
+        }
+
+        // Game Over : clic pour rejouer
+        if (!p.isAlive) {
             ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            ctx.fillStyle = "#ef4444";
-            ctx.font = "bold 24px Inter, sans-serif";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
+            ctx.fillStyle = "#ef4444";
+            ctx.font = "bold 24px Inter, sans-serif";
             ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2 - 20);
 
             ctx.fillStyle = "white";
             ctx.font = "16px Inter, sans-serif";
-            ctx.fillText(`Score: ${this.player.score}`, canvas.width / 2, canvas.height / 2 + 15);
+            ctx.fillText(`Score: ${p.score}`, canvas.width / 2, canvas.height / 2 + 15);
             ctx.fillText("Cliquez pour rejouer", canvas.width / 2, canvas.height / 2 + 45);
         }
     },
 
-    // Dessiner l'aiguille du canon
-    drawCannonNeedle(ctx, length) {
-        const pos = this.cannonPosition;
-        ctx.save();
-        ctx.translate(pos.x, pos.y);
-        ctx.rotate(this.player.launcher.angle + Math.PI / 2);
+    // --- BARRE DE SORTS (même logique LIFO droite→gauche que les salles) ---
 
-        ctx.fillStyle = "#1a1a1a";
-        ctx.beginPath();
-        ctx.moveTo(0, -length);
-        ctx.lineTo(-5, 0);
-        ctx.lineTo(5, 0);
-        ctx.closePath();
-        ctx.fill();
+    updateSpellsBar() {
+        const spellSlots = document.querySelectorAll("#spells-bar .spell-slot");
+        if (!spellSlots.length || !this.player) return;
 
-        ctx.strokeStyle = "#000";
-        ctx.lineWidth = 1;
-        ctx.stroke();
+        const spells = this.player.spells || [];
+        const numSlots = spellSlots.length;
 
-        ctx.fillStyle = "#1a1a1a";
-        ctx.beginPath();
-        ctx.arc(0, 0, 8, 0, Math.PI * 2);
-        ctx.fill();
+        spellSlots.forEach((slot, i) => {
+            slot.innerHTML = "";
+            slot.className = "spell-slot";
+            slot.style.backgroundColor = "transparent";
+            slot.style.border = "";
+            slot.style.boxShadow = "";
 
-        ctx.restore();
+            const spellIndex = spells.length - numSlots + i;
+
+            // Le slot tout à droite est toujours le slot actif (bordure)
+            if (i === numSlots - 1) {
+                slot.style.border = "2px solid white";
+                slot.style.borderRadius = "4px";
+            }
+
+            if (spellIndex >= 0 && spellIndex < spells.length) {
+                const spellName = spells[spellIndex];
+                const spellInfo = Config.SPELLS[spellName];
+                if (spellInfo) {
+                    slot.classList.add("has-spell");
+                    if (spellIndex === spells.length - 1) {
+                        slot.classList.add("active-spell");
+                    }
+
+                    const canvas = document.createElement("canvas");
+                    const size = slot.clientWidth || 34;
+                    canvas.width = size;
+                    canvas.height = size;
+                    const sctx = canvas.getContext("2d");
+
+                    let bubbleColorObj = Config.BUBBLE_COLORS[0];
+                    for (const [hex, spell] of Object.entries(Config.COLOR_TO_SPELL_MAP)) {
+                        if (spell === spellName) {
+                            bubbleColorObj = Config.BUBBLE_COLORS.find(c => c.main === hex) || bubbleColorObj;
+                            break;
+                        }
+                    }
+
+                    const radius = (size / 2) * 0.95;
+                    BubbleRenderer.drawBubble(sctx, {
+                        color: bubbleColorObj,
+                        isSpellBubble: true,
+                        spell: spellName,
+                    }, radius, size / 2, size / 2, this.spellIcons);
+
+                    slot.appendChild(canvas);
+                }
+            }
+        });
     },
 
-    // === Helpers couleur (copiés de Drawing pour éviter l'import) ===
-    lightenColor(hex, amount) {
-        const r = Math.min(255, parseInt(hex.slice(1, 3), 16) + amount);
-        const g = Math.min(255, parseInt(hex.slice(3, 5), 16) + amount);
-        const bv = Math.min(255, parseInt(hex.slice(5, 7), 16) + amount);
-        return `rgb(${r},${g},${bv})`;
-    },
-
-    darkenColor(hex, amount) {
-        const r = Math.max(0, parseInt(hex.slice(1, 3), 16) - amount);
-        const g = Math.max(0, parseInt(hex.slice(3, 5), 16) - amount);
-        const bv = Math.max(0, parseInt(hex.slice(5, 7), 16) - amount);
-        const toHex = (n) => n.toString(16).padStart(2, '0');
-        return `#${toHex(r)}${toHex(g)}${toHex(bv)}`;
-    },
-
-    hexToRgb(hex) {
-        const r = parseInt(hex.slice(1, 3), 16);
-        const g = parseInt(hex.slice(3, 5), 16);
-        const bv = parseInt(hex.slice(5, 7), 16);
-        return `${r},${g},${bv}`;
-    },
-
-    // Dessiner une bulle — rendu 3D identique aux salles (inlined)
-    drawBubble(ctx, b, rad, x, y) {
-        if (!b || !b.color) return;
-
-        // Sphère 3D avec gradient métallique
-        const grad = ctx.createRadialGradient(
-            x - rad * 0.35, y - rad * 0.35, rad * 0.05,
-            x + rad * 0.1, y + rad * 0.1, rad
-        );
-        grad.addColorStop(0, this.lightenColor(b.color.main, 90));
-        grad.addColorStop(0.25, this.lightenColor(b.color.main, 40));
-        grad.addColorStop(0.6, b.color.main);
-        grad.addColorStop(1, b.color.shadow);
-
-        ctx.beginPath();
-        ctx.arc(x, y, rad, 0, Math.PI * 2);
-        ctx.fillStyle = grad;
-        ctx.fill();
-
-        // Contour irrégulier (pixels sombres)
-        const edgeColor = this.darkenColor(b.color.main, 40);
-        ctx.fillStyle = `rgba(${this.hexToRgb(edgeColor)}, 0.6)`;
-        const dotCount = 24;
-        for (let i = 0; i < dotCount; i++) {
-            if (Math.sin(i * 1.5) > 0.8) continue;
-            const angle = (i / dotCount) * Math.PI * 2 + (b.color.main.charCodeAt(1) % 10) / 10;
-            const dx = x + Math.cos(angle) * (rad - 0.5);
-            const dy = y + Math.sin(angle) * (rad - 0.5);
-            ctx.fillRect(dx - 0.6, dy - 0.6, 1.2, 1.2);
-        }
-
-        // Reflet spéculaire
-        const specGrad = ctx.createRadialGradient(
-            x - rad * 0.3, y - rad * 0.35, 0,
-            x - rad * 0.3, y - rad * 0.35, rad * 0.4
-        );
-        specGrad.addColorStop(0, "rgba(255,255,255,0.7)");
-        specGrad.addColorStop(0.4, "rgba(255,255,255,0.15)");
-        specGrad.addColorStop(1, "rgba(255,255,255,0)");
-        ctx.beginPath();
-        ctx.arc(x - rad * 0.3, y - rad * 0.35, rad * 0.4, 0, Math.PI * 2);
-        ctx.fillStyle = specGrad;
-        ctx.fill();
-
-        // Petit point brillant
-        ctx.fillStyle = "rgba(255,255,255,0.6)";
-        ctx.beginPath();
-        ctx.ellipse(x - rad * 0.28, y - rad * 0.32, rad * 0.1, rad * 0.06, Math.PI / 4, 0, Math.PI * 2);
-        ctx.fill();
-    },
-
-    // Dessiner un effet
-    drawEffect(ctx, e) {
-        if (e.type === "pop") {
-            ctx.beginPath();
-            ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
-            ctx.strokeStyle = `rgba(255, 255, 255, ${e.life / 10})`;
-            ctx.lineWidth = 2;
-            ctx.stroke();
-        }
-    },
-
-    // === LOGIQUE DE JEU ===
+    // --- LOGIQUE DE GRILLE (identique aux salles) ---
 
     createEmptyGrid() {
         return Array.from({ length: Config.GRID_ROWS }, () =>
@@ -497,16 +729,15 @@ export const LobbyGame = {
             grid[0][c] = this.createBubble(0, c);
         }
 
-        // Lignes 1-2 aléatoires
+        // Lignes 1-2 denses (même densité que les salles)
         for (let r = 1; r < 3; r++) {
             for (let c = 0; c < Config.GRID_COLS; c++) {
-                if (Math.random() > 0.4) {
+                if (Math.random() > 0.3) {
                     grid[r][c] = this.createBubble(r, c);
                 }
             }
         }
 
-        // Nettoyer les bulles flottantes
         this.cleanFloatingBubbles(grid);
 
         return grid;
@@ -526,14 +757,10 @@ export const LobbyGame = {
         let head = 0;
         while (head < queue.length) {
             const curr = queue[head++];
-            const neighbors = this.getNeighborCoords(curr.r, curr.c);
-
-            for (const n of neighbors) {
-                if (n.r >= 0 && n.r < Config.GRID_ROWS && n.c >= 0 && n.c < Config.GRID_COLS) {
-                    if (grid[n.r][n.c] && !connected.has(`${n.r},${n.c}`)) {
-                        connected.add(`${n.r},${n.c}`);
-                        queue.push(n);
-                    }
+            for (const n of this.getNeighborCoords(curr.r, curr.c)) {
+                if (grid[n.r]?.[n.c] && !connected.has(`${n.r},${n.c}`)) {
+                    connected.add(`${n.r},${n.c}`);
+                    queue.push(n);
                 }
             }
         }
@@ -547,10 +774,12 @@ export const LobbyGame = {
         }
     },
 
-    createBubble(r, c, color = null) {
+    createBubble(r, c, color = null, spell = null) {
         return {
             r, c,
             color: color || Config.BUBBLE_COLORS[Math.floor(Math.random() * Config.BUBBLE_COLORS.length)],
+            spell,
+            isSpellBubble: !!spell,
             isStatic: true
         };
     },
@@ -572,7 +801,7 @@ export const LobbyGame = {
 
     getNeighborCoords(r, c) {
         const odd = r % 2 !== 0;
-        return [
+        const dirs = [
             { r: r - 1, c: odd ? c : c - 1 },
             { r: r - 1, c: odd ? c + 1 : c },
             { r: r, c: c - 1 },
@@ -580,6 +809,9 @@ export const LobbyGame = {
             { r: r + 1, c: odd ? c : c - 1 },
             { r: r + 1, c: odd ? c + 1 : c }
         ];
+        return dirs.filter(n =>
+            n.r >= 0 && n.r < Config.GRID_ROWS && n.c >= 0 && n.c < Config.GRID_COLS
+        );
     },
 
     findBestSnapSpot(bubble) {
@@ -590,10 +822,8 @@ export const LobbyGame = {
             for (let c = 0; c < Config.GRID_COLS; c++) {
                 if (this.player.grid[r][c]) continue;
 
-                const hasNeighbor = r === 0 || this.getNeighborCoords(r, c).some(n =>
-                    n.r >= 0 && n.r < Config.GRID_ROWS && n.c >= 0 && n.c < Config.GRID_COLS &&
-                    this.player.grid[n.r]?.[n.c]
-                );
+                const hasNeighbor = r === 0 ||
+                    this.getNeighborCoords(r, c).some(n => this.player.grid[n.r]?.[n.c]);
 
                 if (hasNeighbor) {
                     const { x, y } = this.getBubbleCoords(r, c);
@@ -606,12 +836,29 @@ export const LobbyGame = {
             }
         }
 
+        // Repli : colonne libre du plafond la plus proche (comme en salle)
+        if (!best) {
+            let cCol = -1, cDist = Infinity;
+            for (let c = 0; c < Config.GRID_COLS; c++) {
+                if (!this.player.grid[0][c]) {
+                    const { x } = this.getBubbleCoords(0, c);
+                    const d = Math.abs(bubble.x - x);
+                    if (d < cDist) {
+                        cDist = d;
+                        cCol = c;
+                    }
+                }
+            }
+            if (cCol !== -1) best = { r: 0, c: cCol };
+        }
+
         return best;
     },
 
     findMatches(startR, startC) {
-        const targetColor = this.player.grid[startR][startC]?.color;
-        if (!targetColor) return [];
+        const start = this.player.grid[startR]?.[startC];
+        if (!start) return [];
+        const targetMain = start.color.main;
 
         const visited = new Set();
         const matches = [];
@@ -624,15 +871,13 @@ export const LobbyGame = {
             visited.add(key);
 
             const bubble = this.player.grid[r]?.[c];
-            if (!bubble || bubble.color !== targetColor) continue;
+            if (!bubble || bubble.color.main !== targetMain) continue;
 
             matches.push({ r, c });
 
             for (const n of this.getNeighborCoords(r, c)) {
-                if (n.r >= 0 && n.r < Config.GRID_ROWS && n.c >= 0 && n.c < Config.GRID_COLS) {
-                    if (!visited.has(`${n.r},${n.c}`)) {
-                        queue.push(n);
-                    }
+                if (!visited.has(`${n.r},${n.c}`)) {
+                    queue.push(n);
                 }
             }
         }
@@ -640,13 +885,14 @@ export const LobbyGame = {
         return matches;
     },
 
+    // Boules décrochées : tombent, et les boules-sorts sont récupérées (comme en salle)
     handleAvalanche() {
+        const p = this.player;
         const connected = new Set();
         const queue = [];
 
-        // Partir du plafond
         for (let c = 0; c < Config.GRID_COLS; c++) {
-            if (this.player.grid[0][c]) {
+            if (p.grid[0][c]) {
                 queue.push({ r: 0, c });
                 connected.add(`0,${c}`);
             }
@@ -656,38 +902,58 @@ export const LobbyGame = {
         while (head < queue.length) {
             const curr = queue[head++];
             for (const n of this.getNeighborCoords(curr.r, curr.c)) {
-                if (n.r >= 0 && n.r < Config.GRID_ROWS && n.c >= 0 && n.c < Config.GRID_COLS) {
-                    if (this.player.grid[n.r][n.c] && !connected.has(`${n.r},${n.c}`)) {
-                        connected.add(`${n.r},${n.c}`);
-                        queue.push(n);
-                    }
+                if (p.grid[n.r][n.c] && !connected.has(`${n.r},${n.c}`)) {
+                    connected.add(`${n.r},${n.c}`);
+                    queue.push(n);
                 }
             }
         }
 
-        // Faire tomber les non-connectées
         let fallen = 0;
+        let spellCollected = false;
         for (let r = 0; r < Config.GRID_ROWS; r++) {
             for (let c = 0; c < Config.GRID_COLS; c++) {
-                if (this.player.grid[r][c] && !connected.has(`${r},${c}`)) {
+                const b = p.grid[r][c];
+                if (b && !connected.has(`${r},${c}`)) {
+                    // Sort récupéré quand la boule tombe sans exploser
+                    if (b.isSpellBubble && b.spell && p.spells.length < Config.MAX_SPELLS) {
+                        p.spells.push(b.spell);
+                        spellCollected = true;
+                    }
                     const { x, y } = this.getBubbleCoords(r, c);
-                    this.player.fallingBubbles.push({
-                        ...this.player.grid[r][c],
-                        x, y,
-                        vx: 0,
-                        vy: 0.5
-                    });
-                    this.player.grid[r][c] = null;
+                    p.fallingBubbles.push({ ...b, x, y, vx: 0, vy: 0.5 });
+                    p.grid[r][c] = null;
                     fallen++;
                 }
             }
         }
 
+        if (spellCollected) this.updateSpellsBar();
+
         return fallen;
     },
 
+    // Un sort apparaît sur une boule existante, couleur => sort (comme en salle)
+    spawnSpellBubble() {
+        const p = this.player;
+        let bubbles = p.grid.flat().filter((b) => b && !b.isSpellBubble && b.r > 5);
+
+        if (bubbles.length < 3) {
+            bubbles = p.grid.flat().filter((b) => b && !b.isSpellBubble);
+        }
+
+        if (bubbles.length > 0) {
+            const target = bubbles[Math.floor(Math.random() * bubbles.length)];
+            const spell = Config.COLOR_TO_SPELL_MAP[target.color.main];
+            if (spell) {
+                target.spell = spell;
+                target.isSpellBubble = true;
+            }
+        }
+    },
+
+    // On ne perd QUE lorsqu'une boule dépasse la barre du bas
     checkGameOver() {
-        // Vérifier si une bulle dépasse la ligne de game over
         for (let c = 0; c < Config.GRID_COLS; c++) {
             if (this.player.grid[Config.GAME_OVER_ROW]?.[c]) {
                 this.player.isAlive = false;

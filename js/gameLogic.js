@@ -571,8 +571,9 @@ export const GameLogic = {
       target.recentSpellTimes = (target.recentSpellTimes || []).filter(t => now - t < 4000);
       target.recentSpellTimes.push(now);
       const count = target.recentSpellTimes.length;
-      const duration = Math.min(800 + 700 * count, 5000);
-      const intensity = Math.min(count * 2, 8);
+      // Plusieurs sorts rapprochés : secousse nettement plus forte et plus longue
+      const duration = Math.min(1000 + 1000 * count, 6500);
+      const intensity = Math.min(1 + count * 2, 10);
       UI.triggerShake(intensity, duration);
       // Protection : pas de boules adverses pendant le tremblement
       target.shakeProtectionUntil = now + duration;

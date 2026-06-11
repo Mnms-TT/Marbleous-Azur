@@ -414,8 +414,8 @@ export const UI = {
     const canvas = document.getElementById("gameCanvas");
     if (!canvas) return;
 
-    // Amplitude dynamique basée sur l'intensité (1-8)
-    const amplitude = Math.min(intensity * 3, 25); // Max 25px
+    // Amplitude dynamique basée sur l'intensité (1-10)
+    const amplitude = Math.min(intensity * 3.5, 32); // Max 32px
 
     // Créer une animation CSS dynamique
     const keyframeName = `shake_${Date.now()}`;
@@ -436,10 +436,14 @@ export const UI = {
     `;
     document.head.appendChild(style);
 
-    // Appliquer l'animation
+    // Appliquer l'animation : les répétitions couvrent TOUTE la durée demandée
+    // (avant, le nombre d'itérations était calculé sur 300ms fixes : la secousse
+    // s'arrêtait bien avant la fin, d'où l'impression de tremblement trop court)
+    const animDur = Math.min(300, 100 + intensity * 20);
+    const iterations = Math.max(1, Math.ceil(duration / animDur));
     canvas.style.animation = 'none';
     canvas.offsetHeight; // Force reflow
-    canvas.style.animation = `${keyframeName} ${Math.min(300, 100 + intensity * 20)}ms ease-in-out ${Math.ceil(duration / 300)}`;
+    canvas.style.animation = `${keyframeName} ${animDur}ms ease-in-out ${iterations}`;
 
     // Nettoyer après la durée
     setTimeout(() => {

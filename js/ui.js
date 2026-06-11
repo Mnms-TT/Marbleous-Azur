@@ -288,11 +288,27 @@ export const UI = {
   // de l'un vers l'autre en ~3s. File d'attente (max 5) si plusieurs sorts.
   spellAnnounceQueue: [],
   spellAnnouncePlaying: false,
+  currentAnnounceTimer: null,
+  currentAnnounceAnim: null,
 
   queueSpellAnnouncement(casterName, spellKey, targetName) {
     if (this.spellAnnounceQueue.length >= 5) this.spellAnnounceQueue.shift();
     this.spellAnnounceQueue.push({ casterName, spellKey, targetName });
-    if (!this.spellAnnouncePlaying) this.playNextSpellAnnouncement();
+    if (!this.spellAnnouncePlaying) {
+      this.playNextSpellAnnouncement();
+    } else {
+      // Un nouveau sort arrive : l'annonce en cours est expédiée (0,3s max)
+      // pour rester à jour — seule la dernière de la file durera 2,5s
+      this.fastForwardCurrentAnnouncement();
+    }
+  },
+
+  fastForwardCurrentAnnouncement() {
+    if (this.currentAnnounceTimer) clearTimeout(this.currentAnnounceTimer);
+    if (this.currentAnnounceAnim) {
+      try { this.currentAnnounceAnim.playbackRate = 9; } catch (e) { /* ignore */ }
+    }
+    this.currentAnnounceTimer = setTimeout(() => this.playNextSpellAnnouncement(), 300);
   },
 
   playNextSpellAnnouncement() {
@@ -341,15 +357,17 @@ export const UI = {
     );
     holder.appendChild(canvas);
 
-    // Descente en 4 étapes glissées (haut → milieu-haut → milieu-bas → bas) sur 2,5s
-    const DUREE = 2500;
+    // Descente en 4 étapes glissées (haut → milieu-haut → milieu-bas → bas).
+    // 2,5s pour la dernière annonce ; 0,3s en accéléré s'il en reste derrière,
+    // pour que l'affichage reste à jour.
+    const DUREE = this.spellAnnounceQueue.length > 0 ? 300 : 2500;
     const slotH = slot.clientHeight || 120;
     const pTop = 18;
     const pBottom = Math.max(24, slotH - size - 18);
     const p1 = pTop + (pBottom - pTop) / 3;
     const p2 = pTop + (2 * (pBottom - pTop)) / 3;
 
-    holder.animate(
+    this.currentAnnounceAnim = holder.animate(
       [
         { top: pTop + "px", offset: 0, easing: "ease-in-out" },
         { top: pTop + "px", offset: 0.16, easing: "ease-in-out" },
@@ -363,7 +381,8 @@ export const UI = {
       { duration: DUREE, fill: "forwards" }
     );
 
-    setTimeout(() => this.playNextSpellAnnouncement(), DUREE);
+    if (this.currentAnnounceTimer) clearTimeout(this.currentAnnounceTimer);
+    this.currentAnnounceTimer = setTimeout(() => this.playNextSpellAnnouncement(), DUREE);
   },
 
   // Déclenche un tremblement exponentiel sur le canvas du joueur

@@ -670,13 +670,18 @@ export const GameLogic = {
         break;
 
       case "variationCouleur":
-        // Change immédiatement TOUTES les couleurs des bulles du plateau (y compris sorts)
+        // Change immédiatement TOUTES les couleurs des bulles du plateau
         for (let r = 0; r < Config.GRID_ROWS; r++) {
           for (let c = 0; c < Config.GRID_COLS; c++) {
             if (grid[r][c]) {
-              // Nouvelle couleur aléatoire
               const newColorIndex = Math.floor(Math.random() * Config.BUBBLE_COLORS.length);
               grid[r][c].color = Config.BUBBLE_COLORS[newColorIndex];
+              // La couleur détermine le sort : on re-synchronise le symbole
+              // avec la nouvelle couleur (sinon symbole/couleur incohérents)
+              if (grid[r][c].isSpellBubble) {
+                grid[r][c].spell = Config.COLOR_TO_SPELL_MAP[grid[r][c].color.main] || null;
+                grid[r][c].isSpellBubble = !!grid[r][c].spell;
+              }
             }
           }
         }

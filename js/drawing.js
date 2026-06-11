@@ -177,12 +177,23 @@ export const Drawing = {
       ctx.fillText(player.name || "Joueur", canvas.width / 2, canvas.height - 2);
       ctx.shadowBlur = 0;
 
-      // Indicateur PRÊT si applicable
+      // Indicateur PRÊT bien visible : bandeau vert + grand texte
       if (player.isReady) {
-        ctx.fillStyle = "#22c55e";
-        ctx.font = "bold 10px Inter, sans-serif";
+        const badgeH = Math.max(22, canvas.height * 0.22);
+        ctx.fillStyle = "rgba(34, 197, 94, 0.92)";
+        ctx.fillRect(0, 0, canvas.width, badgeH);
+        ctx.strokeStyle = "rgba(255,255,255,0.85)";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(1, 1, canvas.width - 2, badgeH - 2);
+
+        ctx.fillStyle = "white";
+        ctx.font = `bold ${Math.max(13, Math.round(canvas.width * 0.16))}px Inter, sans-serif`;
         ctx.textAlign = "center";
-        ctx.fillText("PRÊT", canvas.width / 2, 12);
+        ctx.textBaseline = "middle";
+        ctx.shadowColor = "rgba(0,0,0,0.6)";
+        ctx.shadowBlur = 3;
+        ctx.fillText("✓ PRÊT", canvas.width / 2, badgeH / 2);
+        ctx.shadowBlur = 0;
       }
     }
   },

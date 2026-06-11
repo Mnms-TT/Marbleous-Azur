@@ -105,19 +105,7 @@ export const LobbyGame = {
     },
 
     setupInputHandlers() {
-        this.canvas.addEventListener("mousemove", (e) => {
-            if (!this.isRunning || !this.player?.isAlive) return;
-
-            const rect = this.canvas.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const mouseY = e.clientY - rect.top;
-
-            let angle = Math.atan2(mouseY - this.cannonPosition.y, mouseX - this.cannonPosition.x);
-            if (angle > -0.1) angle = -0.1;
-            if (angle < -Math.PI + 0.1) angle = -Math.PI + 0.1;
-
-            this.player.launcher.angle = angle;
-        });
+        // Visée aux flèches uniquement : pas de mousemove (comme en salle)
 
         // Clic : rejouer si game over, sinon lancer le dernier sort sur soi (comme en salle)
         this.canvas.addEventListener("click", () => {

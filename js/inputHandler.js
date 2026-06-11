@@ -13,7 +13,7 @@ export const InputHandler = {
 
     window.addEventListener("keydown", this.handleKeyDown.bind(this));
     window.addEventListener("keyup", this.handleKeyUp.bind(this));
-    window.addEventListener("mousemove", this.handleMouseMove.bind(this));
+    // Visée aux flèches uniquement : pas de mousemove
     window.addEventListener("resize", UI.resizeAllCanvases);
     window.addEventListener("beforeunload", this.handleBeforeUnload.bind(this));
 
@@ -94,34 +94,6 @@ export const InputHandler = {
   handleKeyUp(e) {
     if (e.key === "ArrowLeft") Game.keys.left = false;
     if (e.key === "ArrowRight") Game.keys.right = false;
-  },
-
-  handleMouseMove(e) {
-    if (
-      !Game.localPlayer?.isAlive ||
-      Game.bubbleRadius === 0 ||
-      Game.state !== "playing"
-    )
-      return;
-
-    const mainCanvas = document.getElementById("gameCanvas");
-    if (!mainCanvas) return;
-
-    const rect = mainCanvas.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-
-    const cannonPos = Game.cannonPosition || {
-      x: mainCanvas.width / 2,
-      y: mainCanvas.height - 50,
-    };
-
-    let angle = Math.atan2(mouseY - cannonPos.y, mouseX - cannonPos.x);
-
-    if (angle > -0.1) angle = -0.1;
-    if (angle < -Math.PI + 0.1) angle = -Math.PI + 0.1;
-
-    Game.localPlayer.launcher.angle = angle;
   },
 
   handleShoot() {

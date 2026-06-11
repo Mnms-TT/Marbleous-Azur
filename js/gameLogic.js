@@ -278,10 +278,7 @@ export const GameLogic = {
       FirebaseController.updatePlayerDoc(Game.localPlayer.id, {
         level: newLevel,
       });
-      // Coefficient de redistribution pour ce niveau
-      const coef = Config.BASE_REDISTRIBUTION_COEF + (newLevel - 1) * Config.REDISTRIBUTION_COEF_PER_LEVEL;
-      const pct = Math.round(coef * 100);
-      UI.showAnnouncement(`⬆️ NIVEAU ${newLevel} — Redistribution ${pct}%`);
+      UI.showLevelAnnouncement(newLevel);
     }
   },
 
@@ -292,6 +289,15 @@ export const GameLogic = {
     if (!mainCanvas) return;
 
     this.processStatusEffects(Game.localPlayer);
+
+    // Messages de sorts reçus : défilement droite → gauche au-dessus de la ligne
+    const tickers = Game.localPlayer.spellTickers;
+    if (tickers && tickers.length) {
+      for (let i = tickers.length - 1; i >= 0; i--) {
+        tickers[i].x -= 1.5;
+        if (tickers[i].x < -400) tickers.splice(i, 1);
+      }
+    }
 
     // Effets visuels (pops) — parcours arrière : suppression sûre pendant l'itération
     Game.players.forEach((p) => {
@@ -355,11 +361,13 @@ export const GameLogic = {
       b.vx = b.vx || 0;
       b.vy = b.vy || 0;
 
-      // Effet plateau renversé - gravité latérale basée sur l'angle de rotation
+      // Plateau renversé : la "gravité" suit l'inclinaison du plateau —
+      // le tir est dévié en courbe au lieu de filer droit
       if (Game.localPlayer.statusEffects.plateauRenverse) {
-        const rotAngle = Game.localPlayer.statusEffects.plateauRenverse.angle || 0;
-        const gravityEffect = Math.sin(rotAngle * Math.PI / 180) * 0.3;
-        b.vx += gravityEffect;
+        const rot = (Game.localPlayer.statusEffects.plateauRenverse.angle || 0) * Math.PI / 180;
+        const g = Game.bubbleRadius * 0.045;
+        b.vx += Math.sin(rot) * g;
+        b.vy += (1 - Math.cos(rot)) * g; // léger tassement vertical de la gravité inclinée
       }
 
       b.x += b.vx;
@@ -443,8 +451,10 @@ export const GameLogic = {
             delete p.grid[spot.r][spot.c].y;
             if (p.id === Game.localPlayer?.id) {
               // Dernière boule posée : on persiste NOTRE grille (on en est propriétaire)
+              // + une seule secousse pour signaler l'arrivée du paquet
               if (!p.incomingBubbles.some(ib => ib.fromLeft)) {
                 FirebaseController.updatePlayerDoc(p.id, { grid: JSON.stringify(p.grid) });
+                UI.triggerShake(1, 180);
               }
               this.checkGameOver(p);
             }
@@ -539,7 +549,7 @@ export const GameLogic = {
 
     if (targetPlayer.id === Game.localPlayer.id) {
       // Sort sur soi-même : application directe
-      await this.applySpellEffect(Game.localPlayer, spellName);
+      await this.applySpellEffect(Game.localPlayer, spellName, Game.localPlayer.name);
     } else {
       // Sort sur un adversaire : événement — c'est SA machine qui l'applique
       // (chacun est propriétaire de sa grille, pas de conflit d'écriture)
@@ -551,7 +561,7 @@ export const GameLogic = {
     }
   },
 
-  async applySpellEffect(target, spell) {
+  async applySpellEffect(target, spell, casterName = null) {
     if (!target?.isAlive || !spell) return;
 
     // Tremblement à la réception : intensité selon le nombre de sorts reçus
@@ -566,6 +576,17 @@ export const GameLogic = {
       UI.triggerShake(intensity, duration);
       // Protection : pas de boules adverses pendant le tremblement
       target.shakeProtectionUntil = now + duration;
+
+      // Message blanc défilant (droite → gauche) au-dessus de la ligne de mort :
+      // qui t'a envoyé quoi
+      const spellInfo = Config.SPELLS[spell];
+      const label = `<${spellInfo ? spellInfo.name : spell}${casterName ? " par " + casterName : ""}`;
+      target.spellTickers = target.spellTickers || [];
+      const mainCanvas = document.getElementById("gameCanvas");
+      target.spellTickers.push({
+        text: label,
+        x: (mainCanvas ? mainCanvas.width : 300) + target.spellTickers.length * 160,
+      });
     }
 
     const DURATION = 10000;
@@ -577,8 +598,8 @@ export const GameLogic = {
     switch (spell) {
       // SORTS OFFENSIFS
       case "plateauRenverse":
-        // Rotation du plateau entre 10 et 40 degrés
-        const rotationAngle = (10 + Math.random() * 30) * (Math.random() < 0.5 ? -1 : 1);
+        // Rotation du plateau : angle aléatoire, 35 degrés au maximum
+        const rotationAngle = (8 + Math.random() * 27) * (Math.random() < 0.5 ? -1 : 1);
         effects.plateauRenverse = {
           endTime: Date.now() + DURATION,
           angle: rotationAngle, // Angle en degrés

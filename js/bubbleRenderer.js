@@ -225,9 +225,16 @@ export const BubbleRenderer = {
     ctx.restore();
 
     if (teamColorHex) {
-      this.drawBubble(ctx, {
-        color: { main: teamColorHex, shadow: this.darkenColor(teamColorHex, 50) }
-      }, rad, cx, cy);
+      // Disque PLAT (pas une boule 3D : ça prêtait à confusion avec le jeu)
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+      ctx.fillStyle = teamColorHex;
+      ctx.fill();
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = this.darkenColor(teamColorHex, 60);
+      ctx.stroke();
+      ctx.restore();
     }
   },
 

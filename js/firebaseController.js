@@ -276,7 +276,7 @@ export const FirebaseController = {
                 if (!Game.localPlayer?.isAlive || Game.state !== "playing") return;
 
                 if (ev.type === "spell" && ev.spell) {
-                    GameLogic.applySpellEffect(Game.localPlayer, ev.spell);
+                    GameLogic.applySpellEffect(Game.localPlayer, ev.spell, ev.from || null);
                 } else if (ev.type === "junk" && ev.count > 0) {
                     GameLogic.receiveJunk(ev.count);
                 }

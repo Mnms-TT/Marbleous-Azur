@@ -279,6 +279,21 @@ export const Drawing = {
 
     if (rotationApplied) ctx.restore();
 
+    // Messages de sorts reçus : texte blanc défilant au-dessus de la ligne de mort
+    if (isMain && player.spellTickers && player.spellTickers.length) {
+      ctx.save();
+      ctx.font = "bold 12px Arial, sans-serif";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "alphabetic";
+      ctx.fillStyle = "#ffffff";
+      ctx.shadowColor = "rgba(0,0,0,0.8)";
+      ctx.shadowBlur = 3;
+      player.spellTickers.forEach((t) => {
+        ctx.fillText(t.text, t.x, deadLineY - 6);
+      });
+      ctx.restore();
+    }
+
     // Nom + score (couleur d'équipe), en bas à gauche comme "[DarkaL]" dans l'original
     const teamColor = Config.TEAM_COLORS[player.team || 0];
     BubbleRenderer.drawPlayerLabel(ctx, canvas, player.name || "Joueur", player.score || 0, teamColor);

@@ -157,6 +157,30 @@ export const UI = {
         "<span class='text-white font-bold text-xs'>Annonces</span>";
   },
 
+  // Annonce de montée de niveau, façon original : panneau vert
+  // "Difficulté Augmentée" + grand chiffre
+  showLevelAnnouncement(level, duration = 3000) {
+    const slot = document.getElementById("spell-announcement");
+    if (!slot) return;
+
+    slot.innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
+                  width:100%;height:100%;background:#2d6a4f;gap:2px;text-align:center;">
+        <div style="color:#fff;font-weight:bold;font-size:13px;">Difficulté</div>
+        <div style="color:#fff;font-weight:bold;font-size:13px;">Augmentée</div>
+        <div style="color:#fff;font-weight:900;font-size:30px;line-height:1;">${level}</div>
+      </div>`;
+
+    setTimeout(() => {
+      if (this.spellAnnouncePlaying) return; // une annonce de sort a repris la main
+      if (Game.state === "playing") {
+        slot.innerHTML = "<span class='text-white font-bold text-xs'>Annonces</span>";
+      } else {
+        this.checkVoteStatus();
+      }
+    }, duration);
+  },
+
   showAnnouncement(message, duration = 3000) {
     const slot = document.getElementById("spell-announcement");
     if (!slot) return;

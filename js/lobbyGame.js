@@ -215,6 +215,14 @@ export const LobbyGame = {
 
         this.processStatusEffects();
 
+        // Messages de sorts : défilement droite → gauche au-dessus de la ligne
+        if (p.spellTickers && p.spellTickers.length) {
+            for (let i = p.spellTickers.length - 1; i >= 0; i--) {
+                p.spellTickers[i].x -= 1.5;
+                if (p.spellTickers[i].x < -400) p.spellTickers.splice(i, 1);
+            }
+        }
+
         // Effets visuels (pops) — parcours arrière : suppression sûre en itérant
         for (let i = p.effects.length - 1; i >= 0; i--) {
             const e = p.effects[i];
@@ -271,10 +279,13 @@ export const LobbyGame = {
             b.vx = b.vx || 0;
             b.vy = b.vy || 0;
 
-            // Plateau renversé : gravité latérale comme en salle
+            // Plateau renversé : la "gravité" suit l'inclinaison — le tir
+            // est dévié en courbe au lieu de filer droit (comme en salle)
             if (p.statusEffects.plateauRenverse) {
-                const rotAngle = p.statusEffects.plateauRenverse.angle || 0;
-                b.vx += Math.sin((rotAngle * Math.PI) / 180) * 0.3;
+                const rot = ((p.statusEffects.plateauRenverse.angle || 0) * Math.PI) / 180;
+                const g = this.bubbleRadius * 0.045;
+                b.vx += Math.sin(rot) * g;
+                b.vy += (1 - Math.cos(rot)) * g;
             }
 
             b.x += b.vx;
@@ -337,6 +348,10 @@ export const LobbyGame = {
                 }
                 const placed = this.createBubble(spot.r, spot.c, b.color, b.spell || null);
                 p.grid[spot.r][spot.c] = placed;
+                // Dernière boule du paquet : une seule secousse
+                if (!p.incomingBubbles.some(ib => ib.fromLeft)) {
+                    this.shakeCanvas();
+                }
                 this.checkGameOver();
             }
         }
@@ -409,7 +424,28 @@ export const LobbyGame = {
         const info = Config.SPELLS[spellName];
         if (info) this.showAnnouncement(info.name);
 
+        // Message blanc défilant au-dessus de la ligne (qui a envoyé quoi)
+        p.spellTickers = p.spellTickers || [];
+        p.spellTickers.push({
+            text: `<${info ? info.name : spellName} par ${this.playerName}`,
+            x: this.canvas.width + p.spellTickers.length * 160,
+        });
+
         this.applySpellEffect(spellName);
+    },
+
+    // Une secousse brève du canvas (arrivée de boules)
+    shakeCanvas(amplitude = 5, duration = 180) {
+        if (!this.canvas?.animate) return;
+        this.canvas.animate(
+            [
+                { transform: "translate(0,0)" },
+                { transform: `translate(${amplitude}px,${-amplitude * 0.6}px)` },
+                { transform: `translate(${-amplitude * 0.7}px,${amplitude * 0.4}px)` },
+                { transform: "translate(0,0)" }
+            ],
+            { duration, easing: "ease-out" }
+        );
     },
 
     applySpellEffect(spell) {
@@ -421,7 +457,8 @@ export const LobbyGame = {
 
         switch (spell) {
             case "plateauRenverse": {
-                const rotationAngle = (10 + Math.random() * 30) * (Math.random() < 0.5 ? -1 : 1);
+                // Angle aléatoire, 35 degrés au maximum (comme en salle)
+                const rotationAngle = (8 + Math.random() * 27) * (Math.random() < 0.5 ? -1 : 1);
                 p.statusEffects.plateauRenverse = {
                     endTime: Date.now() + DURATION,
                     angle: rotationAngle,
@@ -591,9 +628,7 @@ export const LobbyGame = {
         const p = this.player;
         if (!p?.isAlive) return;
         p.level++;
-        const coef = Config.BASE_REDISTRIBUTION_COEF +
-            (p.level - 1) * Config.REDISTRIBUTION_COEF_PER_LEVEL;
-        this.showAnnouncement(`NIVEAU ${p.level} — Envoi ${Math.round(coef * 100)}%`);
+        this.showAnnouncement(`Difficulté augmentée ${p.level}`);
     },
 
     showAnnouncement(text, duration = 3000) {
@@ -680,6 +715,19 @@ export const LobbyGame = {
         p.effects.forEach(e => BubbleRenderer.drawEffect(ctx, e));
 
         if (rotationApplied) ctx.restore();
+
+        // Messages de sorts : texte blanc défilant au-dessus de la ligne de mort
+        if (p.spellTickers && p.spellTickers.length) {
+            ctx.save();
+            ctx.font = "bold 12px Arial, sans-serif";
+            ctx.textAlign = "left";
+            ctx.textBaseline = "alphabetic";
+            ctx.fillStyle = "#ffffff";
+            ctx.shadowColor = "rgba(0,0,0,0.8)";
+            ctx.shadowBlur = 3;
+            p.spellTickers.forEach(t => ctx.fillText(t.text, t.x, deadLineY - 6));
+            ctx.restore();
+        }
 
         // Score + pseudo en bas à gauche, comme "[DarkaL]" dans l'original
         BubbleRenderer.drawPlayerLabel(ctx, canvas, this.playerName, p.score);

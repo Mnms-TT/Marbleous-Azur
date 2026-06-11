@@ -112,6 +112,7 @@ export const Config = {
   GAME_OVER_ROW: 11, // Ligne limite avant Game Over
 
   // Coefficient de redistribution des bulles - augmente avec le niveau
-  BASE_REDISTRIBUTION_COEF: 0.1, // Coefficient initial
-  REDISTRIBUTION_COEF_PER_LEVEL: 0.05, // +0.05 par niveau
+  // (rampe raide pour que les parties ne s'éternisent pas)
+  BASE_REDISTRIBUTION_COEF: 0.15, // Coefficient initial
+  REDISTRIBUTION_COEF_PER_LEVEL: 0.10, // +0.10 par niveau
 };

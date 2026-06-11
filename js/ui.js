@@ -10,6 +10,10 @@ export const UI = {
   renderOpponents() {
     const grid = document.getElementById("opponents-grid");
     if (!grid) return;
+
+    // Préserver le slot d'annonces : renderOpponents est rappelé à chaque
+    // snapshot Firestore et détruisait l'animation d'annonce en cours
+    const existingAnn = document.getElementById("spell-announcement");
     grid.innerHTML = "";
 
     const opponents = Array.from(Game.players.values()).filter(
@@ -21,10 +25,14 @@ export const UI = {
     for (let i = 0; i < 10; i++) {
       if (i === 5) {
         // Position 6 (2nd row, 1st col == index 5) = announcement slot
-        const ann = document.createElement("div");
-        ann.id = "spell-announcement";
-        ann.innerHTML = `<span>Annonces</span>`;
-        grid.appendChild(ann);
+        if (existingAnn) {
+          grid.appendChild(existingAnn);
+        } else {
+          const ann = document.createElement("div");
+          ann.id = "spell-announcement";
+          ann.innerHTML = `<span>Annonces</span>`;
+          grid.appendChild(ann);
+        }
       } else {
         const p = opponents[oppIndex];
         const slot = p ? p.container : this.createEmptySlot();
@@ -333,14 +341,29 @@ export const UI = {
     );
     holder.appendChild(canvas);
 
-    // Descente douce : part de sous le nom du lanceur, arrive au-dessus du receveur
+    // Descente en 4 étapes glissées (haut → milieu-haut → milieu-bas → bas) sur 2,5s
+    const DUREE = 2500;
     const slotH = slot.clientHeight || 120;
+    const pTop = 18;
+    const pBottom = Math.max(24, slotH - size - 18);
+    const p1 = pTop + (pBottom - pTop) / 3;
+    const p2 = pTop + (2 * (pBottom - pTop)) / 3;
+
     holder.animate(
-      [{ top: "18px" }, { top: Math.max(24, slotH - size - 18) + "px" }],
-      { duration: 3000, easing: "linear", fill: "forwards" }
+      [
+        { top: pTop + "px", offset: 0, easing: "ease-in-out" },
+        { top: pTop + "px", offset: 0.16, easing: "ease-in-out" },
+        { top: p1 + "px", offset: 0.28, easing: "ease-in-out" },
+        { top: p1 + "px", offset: 0.44, easing: "ease-in-out" },
+        { top: p2 + "px", offset: 0.56, easing: "ease-in-out" },
+        { top: p2 + "px", offset: 0.72, easing: "ease-in-out" },
+        { top: pBottom + "px", offset: 0.84, easing: "ease-in-out" },
+        { top: pBottom + "px", offset: 1 }
+      ],
+      { duration: DUREE, fill: "forwards" }
     );
 
-    setTimeout(() => this.playNextSpellAnnouncement(), 3000);
+    setTimeout(() => this.playNextSpellAnnouncement(), DUREE);
   },
 
   // Déclenche un tremblement exponentiel sur le canvas du joueur

@@ -215,12 +215,13 @@ export const LobbyGame = {
 
         this.processStatusEffects();
 
-        // Effets visuels (pops)
-        p.effects.forEach((e, i) => {
+        // Effets visuels (pops) — parcours arrière : suppression sûre en itérant
+        for (let i = p.effects.length - 1; i >= 0; i--) {
+            const e = p.effects[i];
             e.life--;
             if (e.type === "pop") e.radius += 0.25;
             if (e.life <= 0) p.effects.splice(i, 1);
-        });
+        }
 
         // Rotation du canon — mêmes variantes canonCasse que les salles
         let rotSpeed = this.currentRotationSpeed;
@@ -309,18 +310,20 @@ export const LobbyGame = {
             }
         }
 
-        // Boules qui tombent
-        p.fallingBubbles.forEach((b, i) => {
+        // Boules qui tombent — parcours arrière
+        for (let i = p.fallingBubbles.length - 1; i >= 0; i--) {
+            const b = p.fallingBubbles[i];
             b.vy += 0.15;
             b.y += b.vy;
             b.x += b.vx;
             if (b.y > this.canvas.height + 100) {
                 p.fallingBubbles.splice(i, 1);
             }
-        });
+        }
 
         // Boules envoyées par l'ordinateur : vol depuis le bord gauche vers leur case
-        p.incomingBubbles.forEach((b, i) => {
+        for (let i = p.incomingBubbles.length - 1; i >= 0; i--) {
+            const b = p.incomingBubbles[i];
             const target = this.getBubbleCoords(b.targetRow, b.targetCol);
             b.x += b.vx;
             if (b.x >= target.x) {
@@ -329,14 +332,14 @@ export const LobbyGame = {
                 // Case prise entre-temps : accrocher au plus proche
                 if (p.grid[spot.r][spot.c]) {
                     const fallback = this.findBestSnapSpot({ x: target.x, y: target.y });
-                    if (!fallback) return;
+                    if (!fallback) continue;
                     spot = fallback;
                 }
                 const placed = this.createBubble(spot.r, spot.c, b.color, b.spell || null);
                 p.grid[spot.r][spot.c] = placed;
                 this.checkGameOver();
             }
-        });
+        }
     },
 
     // Expiration des effets + variation de couleur du canon (comme en salle)

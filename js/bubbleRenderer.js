@@ -231,24 +231,34 @@ export const BubbleRenderer = {
     }
   },
 
-  // Prochaine boule (bien visible) + fps, à droite du coquillage
+  // Prochaine boule : petite, collée à la base droite du coquillage,
+  // avec le fps juste à côté — comme sur les captures de l'original
   drawCannonSideInfo(ctx, canvas, centerX, pivotY, radius, rad, nextBubble, fps, spellIcons) {
-    const nx = Math.min(centerX + radius + rad + 4, canvas.width - rad - 4);
-    const ny = pivotY - rad + 2;
+    const nextRad = rad * 0.65;
+    const nx = Math.min(centerX + radius + nextRad + 3, canvas.width - nextRad - 2);
+    const ny = pivotY - nextRad - 1;
 
     if (nextBubble) {
-      this.drawBubble(ctx, nextBubble, rad, nx, ny, spellIcons);
+      this.drawBubble(ctx, nextBubble, nextRad, nx, ny, spellIcons);
     }
 
-    // fps au-dessus de la prochaine boule
     ctx.save();
     ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 11px Arial, sans-serif";
-    ctx.textAlign = "center";
+    ctx.font = "bold 10px Arial, sans-serif";
     ctx.textBaseline = "alphabetic";
     ctx.shadowColor = "rgba(0,0,0,0.7)";
     ctx.shadowBlur = 2;
-    ctx.fillText(`${fps} fps`, nx, ny - rad - 8);
+    const text = `${fps} fps`;
+    const tw = ctx.measureText(text).width;
+    if (nx + nextRad + 4 + tw <= canvas.width - 2) {
+      // À droite de la boule, sur la ligne de base (comme l'original)
+      ctx.textAlign = "left";
+      ctx.fillText(text, nx + nextRad + 4, pivotY - 6);
+    } else {
+      // Pas la place : au-dessus de la boule
+      ctx.textAlign = "center";
+      ctx.fillText(text, Math.min(nx, canvas.width - tw / 2 - 2), ny - nextRad - 6);
+    }
     ctx.restore();
   },
 

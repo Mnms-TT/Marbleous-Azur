@@ -9,7 +9,7 @@ import { roomId } from './main.js';
 
 export const FirebaseController = {
     db: null, auth: null, unsubscribePlayers: null, unsubscribeGameSession: null, unsubscribeChat: null,
-    unsubscribeEvents: null, lastSpellTsSeen: 0,
+    unsubscribeEvents: null, unsubscribeAnnouncements: null,
 
     async init() {
         const firebaseConfig = {
@@ -130,6 +130,7 @@ export const FirebaseController = {
             this.listenForGameChanges();
             this.listenToRoomChat();
             this.listenToMyEvents();
+            this.listenToAnnouncements();
             Game.gameLoop();
         } catch (e) {
             console.error("Erreur pour rejoindre la salle: ", e);
@@ -221,17 +222,32 @@ export const FirebaseController = {
                 Game.resetForNewRound();
             }
 
-            // Annonce de sort synchronisée : tout le monde voit qui lance quoi à qui.
-            // Au premier snapshot on mémorise l'éventuelle annonce passée sans la rejouer.
-            if (!this.sessionSnapshotSeen) {
-                this.sessionSnapshotSeen = true;
-                if (sessionData.lastSpell) this.lastSpellTsSeen = sessionData.lastSpell.ts;
-            } else if (sessionData.lastSpell && sessionData.lastSpell.ts > this.lastSpellTsSeen) {
-                this.lastSpellTsSeen = sessionData.lastSpell.ts;
-                const ls = sessionData.lastSpell;
-                UI.queueSpellAnnouncement(ls.casterName, ls.spell, ls.targetName);
-            }
         });
+    },
+
+    // Annonces de sorts : une collection dédiée (un doc par sort), sinon les
+    // sorts rapprochés s'écrasent (Firestore ne livre que le dernier état d'un champ)
+    listenToAnnouncements() {
+        if (this.unsubscribeAnnouncements) this.unsubscribeAnnouncements();
+        const joinTs = Date.now();
+        const annRef = collection(this.db, "rooms", roomId, "announcements");
+        this.unsubscribeAnnouncements = onSnapshot(annRef, (snapshot) => {
+            snapshot.docChanges().forEach((change) => {
+                if (change.type !== "added") return;
+                const a = change.doc.data();
+                // Ignorer l'historique d'avant notre arrivée
+                if (!a.ts || a.ts < joinTs) return;
+                UI.queueSpellAnnouncement(a.casterName, a.spell, a.targetName);
+            });
+        });
+    },
+
+    async announceSpell(casterName, spell, targetName) {
+        const ref = await addDoc(collection(this.db, "rooms", roomId, "announcements"), {
+            casterName, spell, targetName, ts: Date.now()
+        });
+        // Ménage : l'annonce ne sert plus à rien après 30s
+        setTimeout(() => deleteDoc(ref).catch(() => { }), 30000);
     },
 
     // --- ÉVÉNEMENTS JOUEUR (attaques & sorts) ---

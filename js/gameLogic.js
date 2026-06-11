@@ -293,14 +293,15 @@ export const GameLogic = {
 
     this.processStatusEffects(Game.localPlayer);
 
-    // Effets visuels (pops)
-    Game.players.forEach((p) =>
-      p.effects.forEach((e, i) => {
+    // Effets visuels (pops) — parcours arrière : suppression sûre pendant l'itération
+    Game.players.forEach((p) => {
+      for (let i = p.effects.length - 1; i >= 0; i--) {
+        const e = p.effects[i];
         e.life--;
         if (e.type === "pop") e.radius += 0.25; // Slower expansion
         if (e.life <= 0) p.effects.splice(i, 1);
-      })
-    );
+      }
+    });
 
     // Rotation Canon
     let rotSpeed = Game.currentRotationSpeed;
@@ -397,21 +398,24 @@ export const GameLogic = {
         b.vx *= -1;
     }
 
-    // Boules qui tombent (avalanche)
-    Game.players.forEach((p) =>
-      p.fallingBubbles.forEach((b, i) => {
+    // Boules qui tombent (avalanche) — parcours arrière
+    Game.players.forEach((p) => {
+      for (let i = p.fallingBubbles.length - 1; i >= 0; i--) {
+        const b = p.fallingBubbles[i];
         b.vy += 0.15; // Reduced gravity from 0.5
         b.y += b.vy;
         b.x += b.vx;
         if (b.y > mainCanvas.height + 100) p.fallingBubbles.splice(i, 1);
-      })
-    );
+      }
+    });
 
     // Boules entrantes (attaques adverses : arrivent par la gauche / sort boulesSupplementaires)
     Game.players.forEach((p) => {
       if (!p.incomingBubbles) p.incomingBubbles = [];
 
-      p.incomingBubbles.forEach((b, i) => {
+      for (let i = p.incomingBubbles.length - 1; i >= 0; i--) {
+        const b = p.incomingBubbles[i];
+
         // Boules d'attaque : vol horizontal depuis le bord gauche jusqu'à leur case
         if (b.fromLeft) {
           const target = this.getBubbleCoords(b.targetRow, b.targetCol, Game.bubbleRadius);
@@ -422,7 +426,7 @@ export const GameLogic = {
             // Si la case a été prise entre-temps, accrocher au plus proche
             if (p.grid[spot.r][spot.c]) {
               const fallback = this.findBestSnapSpot(p, { x: target.x, y: target.y });
-              if (!fallback) return;
+              if (!fallback) continue;
               spot = fallback;
             }
             p.grid[spot.r][spot.c] = {
@@ -445,7 +449,7 @@ export const GameLogic = {
               this.checkGameOver(p);
             }
           }
-          return;
+          continue;
         }
 
         const targetY = this.getBubbleCoords(b.targetRow, b.targetCol, Game.bubbleRadius).y;
@@ -479,7 +483,7 @@ export const GameLogic = {
           // Retirer de la liste
           p.incomingBubbles.splice(i, 1);
         }
-      });
+      }
     });
   },
 
@@ -526,16 +530,12 @@ export const GameLogic = {
       spells: Game.localPlayer.spells,
     });
 
-    // Annonce pour TOUT LE MONDE via le document de session
-    FirebaseController.updateSessionDoc({
-      lastSpell: {
-        casterName: Game.localPlayer.name,
-        targetName: targetPlayer.name,
-        targetId: targetPlayer.id,
-        spell: spellName,
-        ts: Date.now(),
-      },
-    });
+    // Annonce pour TOUT LE MONDE (un doc par sort : rien ne s'écrase)
+    FirebaseController.announceSpell(
+      Game.localPlayer.name,
+      spellName,
+      targetPlayer.name
+    );
 
     if (targetPlayer.id === Game.localPlayer.id) {
       // Sort sur soi-même : application directe

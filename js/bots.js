@@ -165,7 +165,7 @@ export const BotManager = {
                     for (let c = 0; c < Config.GRID_COLS; c++)
                         if (grid[r][c]) cells.push({ r, c });
                 cells.sort(() => 0.5 - Math.random());
-                const toDestroy = Math.floor(cells.length * (0.3 + Math.random() * 0.5));
+                const toDestroy = Math.floor(cells.length * Config.nukeDestroyPercent());
                 for (let i = 0; i < toDestroy; i++) grid[cells[i].r][cells[i].c] = null;
                 this.collectFloating(bot);
                 break;

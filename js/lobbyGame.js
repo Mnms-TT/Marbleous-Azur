@@ -509,7 +509,7 @@ export const LobbyGame = {
                 for (let r = 0; r < Config.GRID_ROWS; r++)
                     for (let c = 0; c < Config.GRID_COLS; c++)
                         if (grid[r][c]) bubbles.push({ r, c });
-                const destroyPercent = 0.3 + Math.random() * 0.5;
+                const destroyPercent = Config.nukeDestroyPercent();
                 const toDestroy = Math.floor(bubbles.length * destroyPercent);
                 bubbles.sort(() => 0.5 - Math.random());
                 for (let i = 0; i < toDestroy; i++) {

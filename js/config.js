@@ -104,6 +104,15 @@ export const Config = {
 
   SPELL_SPAWN_CHANCE: 0.43, // +30% (was 0.33)
   FPS: 60,
+
+  // Nuke "bimodale" : parfois faible (10-35%), parfois puissante (45-95%).
+  // ~45% de chances d'une petite nuke, sinon grosse comme avant.
+  nukeDestroyPercent() {
+    return Math.random() < 0.45
+      ? 0.10 + Math.random() * 0.25   // faible
+      : 0.45 + Math.random() * 0.50;  // forte
+  },
+
   DEFAULT_GAME_FPS: 140, // Vitesse de simulation par défaut (réglable via /fps 30-300)
   LAUNCHER_ROTATION_SPEED: 0.0056,
 

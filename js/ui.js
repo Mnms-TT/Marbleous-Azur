@@ -69,7 +69,8 @@ export const UI = {
       (p) => p.isReady
     ).length;
     const total = Game.players.size;
-    const required = total <= 1 ? 1 : Math.ceil(total / 2) + 1;
+    // Majorité simple : plus de la moitié suffit (3 joueurs → 2 prêts, 5 → 3)
+    const required = total <= 1 ? 1 : Math.floor(total / 2) + 1;
 
     const slot = document.getElementById("spell-announcement");
 

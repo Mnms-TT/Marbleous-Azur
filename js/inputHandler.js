@@ -97,34 +97,7 @@ export const InputHandler = {
   },
 
   handleShoot() {
-    const p = Game.localPlayer;
-    if (
-      Game.state !== "playing" ||
-      !p?.isAlive ||
-      !p.launcherBubble ||
-      p.shotBubble
-    )
-      return;
-
-    const mainCanvas = document.getElementById("gameCanvas");
-
-    p.shotBubble = p.launcherBubble;
-    p.launcherBubble = null;
-
-    const speed = Game.bubbleRadius * 0.6;
-    p.shotBubble.isStatic = false;
-    p.shotBubble.vx = Math.cos(p.launcher.angle) * speed;
-    p.shotBubble.vy = Math.sin(p.launcher.angle) * speed;
-
-    const startPos = Game.cannonPosition || {
-      x: mainCanvas.width / 2,
-      y: mainCanvas.height - 50,
-    };
-    p.shotBubble.x = startPos.x;
-    p.shotBubble.y = startPos.y;
-
-    FirebaseController.updatePlayerDoc(p.id, { lastActive: Date.now() });
-    GameLogic.loadBubbles(p);
+    GameLogic.shoot(Game.localPlayer);
   },
 
   handleChat(e) {

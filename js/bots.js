@@ -139,7 +139,7 @@ export const BotManager = {
             if (Math.random() < 0.5) this.say(bot, pick(PHRASES.spellReceived));
         }
         this.checkBotDeath(bot);
-        this.pushBotState(bot);
+        this.pushBotState(bot, true);
     },
 
     addJunkToBot(bot, count) {
@@ -229,6 +229,8 @@ export const BotManager = {
     // --- TICK PRINCIPAL ---
     tick(bot) {
         const now = Date.now();
+        const wasReady = bot.isReady;
+        const wasAlive = bot.alive;
 
         // Changement de manche : reset comme les humains
         if (Game.state === "waiting" && bot.lastSeenState !== "waiting") {
@@ -277,7 +279,8 @@ export const BotManager = {
             this.say(bot, pick(PHRASES.idle));
         }
 
-        this.pushBotState(bot);
+        // Synchro forcée si transition visible (prêt / mort), sinon throttle 3s
+        this.pushBotState(bot, bot.isReady !== wasReady || bot.alive !== wasAlive);
     },
 
     // Tir simulé, niveau intermédiaire : cherche souvent (pas toujours) un combo
@@ -398,8 +401,13 @@ export const BotManager = {
         }
     },
 
-    // Synchroniser l'état du bot vers Firestore (les autres le voient jouer)
-    pushBotState(bot) {
+    // Synchroniser l'état du bot vers Firestore (les autres le voient jouer).
+    // Throttle ~3s pour économiser le quota d'écritures ; force=true pour les
+    // transitions importantes (prêt, mort, sort/boules reçus).
+    pushBotState(bot, force = false) {
+        const now = Date.now();
+        if (!force && bot.lastPush && now - bot.lastPush < 3000) return;
+        bot.lastPush = now;
         FirebaseController.updatePlayerDoc(bot.id, {
             grid: JSON.stringify(bot.grid),
             score: bot.score,
@@ -408,7 +416,7 @@ export const BotManager = {
             isAlive: bot.alive,
             isReady: bot.isReady,
             attackBubbleCounter: bot.attackCounter,
-            lastActive: Date.now(),
+            lastActive: now,
         }).catch(() => { });
     },
 

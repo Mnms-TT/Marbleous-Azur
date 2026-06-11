@@ -144,6 +144,38 @@ export const GameLogic = {
     player.nextBubble = GameLogic.createBubble(-1, -1);
   },
 
+  // Tir (clavier via InputHandler, ou auto-tir du sort canonCasse)
+  shoot(player) {
+    if (
+      Game.state !== "playing" ||
+      !player?.isAlive ||
+      !player.launcherBubble ||
+      player.shotBubble
+    )
+      return;
+
+    const mainCanvas = document.getElementById("gameCanvas");
+    if (!mainCanvas) return;
+
+    player.shotBubble = player.launcherBubble;
+    player.launcherBubble = null;
+
+    const speed = Game.bubbleRadius * 0.6;
+    player.shotBubble.isStatic = false;
+    player.shotBubble.vx = Math.cos(player.launcher.angle) * speed;
+    player.shotBubble.vy = Math.sin(player.launcher.angle) * speed;
+
+    const startPos = Game.cannonPosition || {
+      x: mainCanvas.width / 2,
+      y: mainCanvas.height - 50,
+    };
+    player.shotBubble.x = startPos.x;
+    player.shotBubble.y = startPos.y;
+
+    FirebaseController.updatePlayerDoc(player.id, { lastActive: Date.now() });
+    this.loadBubbles(player);
+  },
+
   // Gestion du tir et de l'impact
   async snapBubble(player, shotBubble) {
     if (!player || !shotBubble) return;

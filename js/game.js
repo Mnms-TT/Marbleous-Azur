@@ -111,18 +111,25 @@ export const Game = {
     this.accumulator = (this.accumulator || 0) + elapsed;
     const stepMs = 1000 / this.targetFPS;
     let steps = 0;
-    while (this.accumulator >= stepMs && steps < 30) {
-      if (this.state === "waiting" || this.state === "spectating") {
-        GameLogic.updateLobbyAnimation();
-      } else if (this.state === "playing") {
-        GameLogic.updateLocalAnimations();
+    // try/catch : une erreur dans un pas de simulation ou le rendu ne doit
+    // JAMAIS casser la boucle (sinon le jeu gèle définitivement)
+    try {
+      while (this.accumulator >= stepMs && steps < 30) {
+        if (this.state === "waiting" || this.state === "spectating") {
+          GameLogic.updateLobbyAnimation();
+        } else if (this.state === "playing") {
+          GameLogic.updateLocalAnimations();
+        }
+        this.accumulator -= stepMs;
+        steps++;
       }
-      this.accumulator -= stepMs;
-      steps++;
-    }
-    if (steps >= 30) this.accumulator = 0;
+      if (steps >= 30) this.accumulator = 0;
 
-    Drawing.drawAll();
+      Drawing.drawAll();
+    } catch (e) {
+      console.error("Erreur dans la boucle de jeu:", e);
+      this.accumulator = 0;
+    }
     requestAnimationFrame((t) => this.gameLoop(t));
   },
 };

@@ -29,9 +29,9 @@ export const FirebaseController = {
                 await this.joinGame();
             } else { throw new Error("Authentification anonyme échouée."); }
         } catch (error) {
+            // Pas d'alert() bloquant : log + redirection différée
             console.error("Erreur d'initialisation Firebase:", error);
-            alert("Impossible de se connecter au jeu. Redirection vers l'accueil.");
-            window.location.href = 'index.html';
+            setTimeout(() => { window.location.href = 'index.html'; }, 2500);
         }
     },
 
@@ -133,9 +133,13 @@ export const FirebaseController = {
             this.listenToAnnouncements();
             Game.gameLoop();
         } catch (e) {
+            // Pas d'alert() : la modale bloque tout le rendu de la page
             console.error("Erreur pour rejoindre la salle: ", e);
-            alert("Erreur : " + (typeof e === 'string' ? e : e.message));
-            window.location.href = 'index.html';
+            const quota = String(e?.message || e).includes("Quota");
+            UI.addChatMessage("Système", quota
+                ? "Quota Firebase dépassé pour aujourd'hui — réessayez plus tard."
+                : "Erreur de connexion à la salle. Retour à l'accueil...");
+            if (!quota) setTimeout(() => { window.location.href = 'index.html'; }, 2500);
         }
     },
 

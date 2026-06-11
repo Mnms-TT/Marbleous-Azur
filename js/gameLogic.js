@@ -970,12 +970,14 @@ export const GameLogic = {
 
   startHeartbeat() {
     if (Game.heartbeatInterval) clearInterval(Game.heartbeatInterval);
+    // 10s : doit battre nettement plus vite que le seuil fantôme de 30s,
+    // sinon les autres clients nous suppriment entre deux battements
     Game.heartbeatInterval = setInterval(() => {
       if (Game.localPlayer && FirebaseController.auth.currentUser) {
         FirebaseController.updatePlayerDoc(FirebaseController.auth.currentUser.uid, {
           lastActive: Date.now()
         });
       }
-    }, 30000); // Heartbeat toutes les 30 secondes (économie de quota)
+    }, 10000);
   }
 };

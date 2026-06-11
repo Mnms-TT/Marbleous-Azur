@@ -3,6 +3,7 @@ import { GameLogic } from "./gameLogic.js";
 import { FirebaseController } from "./firebaseController.js";
 import { UI } from "./ui.js";
 import { Config } from "./config.js";
+import { BotManager } from "./bots.js";
 
 export const InputHandler = {
   initialized: false,
@@ -189,6 +190,19 @@ export const InputHandler = {
           return;
         }
 
+        // Commande /bot x : ajoute/retire des bots (0-8)
+        if (msg.toLowerCase().startsWith("/bot")) {
+          const parts = msg.split(" ");
+          const n = parseInt(parts[1]);
+          if (isNaN(n) || n < 0 || n > 8) {
+            UI.addChatMessage("Système", "Usage : /bot x (0 à 8 bots)");
+          } else {
+            BotManager.setCount(n);
+          }
+          input.value = "";
+          return;
+        }
+
         // MP : /pseudo message → visible uniquement par le destinataire
         if (msg.startsWith("/")) {
           const spaceIndex = msg.indexOf(" ");
@@ -218,6 +232,8 @@ export const InputHandler = {
   },
 
   handleBeforeUnload() {
+    // Les bots partent avec leur hôte
+    BotManager.removeAll();
     if (FirebaseController.auth.currentUser) {
       FirebaseController.deletePlayerDoc(
         FirebaseController.auth.currentUser.uid

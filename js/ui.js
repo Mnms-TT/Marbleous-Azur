@@ -80,10 +80,12 @@ export const UI = {
         slot.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;width:100%;background:#15803d;"><span style="color:white;font-weight:bold;font-size:12px;">PRÊT ${ready}/${total}</span></div>`;
     }
 
+    // L'hôte est le premier joueur HUMAIN (un bot ne peut pas piloter la session)
+    const humanIds = Array.from(Game.players.keys()).filter(id => !id.startsWith("bot_"));
     if (
       total > 0 &&
       ready >= required &&
-      Game.localPlayer.id === Array.from(Game.players.keys())[0]
+      Game.localPlayer.id === humanIds[0]
     ) {
       FirebaseController.updateSessionDoc({ gameState: "countdown" });
     }
@@ -138,7 +140,10 @@ export const UI = {
         slot.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;background:#16a34a;"><span style="color:white;font-weight:900;font-size:16px;">GO!</span></div>`;
         clearInterval(Game.countdownInterval);
 
-        const hostId = Array.from(Game.players.keys()).sort()[0];
+        // Hôte = premier joueur HUMAIN (jamais un bot)
+        const hostId = Array.from(Game.players.keys())
+          .filter(id => !id.startsWith("bot_"))
+          .sort()[0];
         if (Game.localPlayer.id === hostId) {
           FirebaseController.updateSessionDoc({ gameState: "playing" });
         }

@@ -147,12 +147,11 @@ export const FirebaseController = {
             const now = Date.now();
             snapshot.docs.forEach(doc => {
                 const data = doc.data();
-                // Filtre anti-fantôme : Si inactif depuis > 60 secondes, on l'ignore et on le supprime
-                if (now - (data.lastActive || 0) > 30000) {
-                    // Nettoyage actif des fantômes (sauf soi-même)
-                    if (doc.id !== this.auth.currentUser.uid) {
-                        this.deletePlayerDoc(doc.id);
-                    }
+                // Filtre anti-fantôme : inactif > 30s → supprimé.
+                // JAMAIS pour soi-même : sinon on s'éjecte de sa propre salle
+                // pendant la fenêtre entre deux heartbeats.
+                if (now - (data.lastActive || 0) > 30000 && doc.id !== this.auth.currentUser.uid) {
+                    this.deletePlayerDoc(doc.id);
                     return;
                 }
 

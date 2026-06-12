@@ -309,10 +309,11 @@ export const GameLogic = {
   levelUp: () => {
     if (Game.state === "playing" && Game.localPlayer) {
       const newLevel = Game.localPlayer.level + 1;
+      Game.localPlayer.level = newLevel; // état local (l'écho ne fait plus foi en jeu)
       FirebaseController.updatePlayerDoc(Game.localPlayer.id, {
         level: newLevel,
       });
-      UI.showLevelAnnouncement(newLevel);
+      // Montée silencieuse : pas de bandeau d'annonce
     }
   },
 

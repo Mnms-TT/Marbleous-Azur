@@ -120,8 +120,9 @@ export const Config = {
   MAX_SPELLS: 7, // Limite d'inventaire de sorts
   GAME_OVER_ROW: 11, // Ligne limite avant Game Over
 
-  // Coefficient de redistribution des bulles - augmente avec le niveau
-  // (rampe raide pour que les parties ne s'éternisent pas)
-  BASE_REDISTRIBUTION_COEF: 0.15, // Coefficient initial
+  // Coefficient de redistribution des bulles - augmente avec le niveau.
+  // Départ doux (niveaux 1-2 peu punitifs), puis la rampe reste raide
+  // pour que les parties ne s'éternisent pas.
+  BASE_REDISTRIBUTION_COEF: 0.05, // Coefficient initial
   REDISTRIBUTION_COEF_PER_LEVEL: 0.10, // +0.10 par niveau
 };

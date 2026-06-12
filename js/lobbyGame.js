@@ -615,8 +615,7 @@ export const LobbyGame = {
     levelUp() {
         const p = this.player;
         if (!p?.isAlive) return;
-        p.level++;
-        this.showAnnouncement(`Difficulté augmentée ${p.level}`);
+        p.level++; // montée silencieuse, pas de bandeau
     },
 
     showAnnouncement(text, duration = 3000) {

@@ -13,7 +13,7 @@ import { GameLogic } from "./gameLogic.js";
 import { FirebaseController } from "./firebaseController.js";
 import { UI } from "./ui.js";
 import { roomId } from "./main.js";
-import { collection, addDoc, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const BOT_NAMES = ["Naya", "Marbo", "Tilt", "Pixou", "Lula", "Choco", "Zef", "Mirka"];
 
@@ -99,16 +99,12 @@ export const BotManager = {
             lastActive: Date.now(),
         });
 
-        // Le bot reçoit sorts et boules comme un humain (événements)
-        const eventsRef = collection(FirebaseController.db, "rooms", roomId, "players", id, "events");
-        bot.unsubEvents = onSnapshot(eventsRef, (snapshot) => {
-            snapshot.docChanges().forEach((change) => {
-                if (change.type !== "added") return;
-                const ev = change.doc.data();
-                deleteDoc(change.doc.ref).catch(() => { });
-                this.handleBotEvent(bot, ev);
-            });
+        // Le bot reçoit sorts et boules comme un humain (événements RTDB)
+        bot.unsubEvents = FirebaseController.listenToEventsFor(id, (ev) => {
+            this.handleBotEvent(bot, ev);
         });
+        // Nettoyage automatique si l'hôte se déconnecte brutalement
+        FirebaseController.registerDisconnectCleanup(id);
 
         bot.interval = setInterval(() => this.tick(bot), 1400 + Math.random() * 1300);
         this.bots.set(id, bot);

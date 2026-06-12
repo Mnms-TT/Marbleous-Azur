@@ -1,31 +1,42 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, doc, setDoc, onSnapshot, collection, runTransaction, deleteDoc, getDocs, addDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, onSnapshot, collection, addDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getDatabase, ref as dbRef, get as dbGet, set as dbSet, update as dbUpdate, remove as dbRemove, push as dbPush, onValue, onChildAdded, onDisconnect } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { Game } from './game.js';
 import { Player } from './player.js';
 import { GameLogic } from './gameLogic.js';
 import { UI } from './ui.js';
+import { Config } from './config.js';
 import { roomId } from './main.js';
 
+// ARCHITECTURE DONNÉES :
+// - Realtime Database (europe-west1) : tout l'état de JEU — joueurs, grilles
+//   (écrites case par case en diff), événements, annonces, session. Facturé au
+//   volume téléchargé → quasi gratuit pour du temps réel à notre échelle.
+// - Firestore : le reste — chat de salle, lobby, historique des connexions.
+export const RTDB_URL = "https://marbleous-azur-default-rtdb.europe-west1.firebasedatabase.app";
+
 export const FirebaseController = {
-    db: null, auth: null, unsubscribePlayers: null, unsubscribeGameSession: null, unsubscribeChat: null,
+    db: null, rtdb: null, auth: null,
+    unsubscribePlayers: null, unsubscribeGameSession: null, unsubscribeChat: null,
     unsubscribeEvents: null, unsubscribeAnnouncements: null,
+    lastSentGrids: new Map(), // playerId -> { "r/c": "main|spell" } pour le diff par case
 
     async init() {
         const firebaseConfig = {
             apiKey: "AIzaSyCIMWeeRs9ZWh8izEtzV_P53ar95mNqZOw", authDomain: "marbleous-azur.firebaseapp.com",
+            databaseURL: RTDB_URL,
             projectId: "marbleous-azur", storageBucket: "marbleous-azur.appspot.com",
             messagingSenderId: "297375682236", appId: "1:297375682236:web:765a8de117fdf961cdcab9",
             measurementId: "G-N1WVEB753N"
         };
         const app = initializeApp(firebaseConfig);
         this.db = getFirestore(app);
+        this.rtdb = getDatabase(app, RTDB_URL);
         this.auth = getAuth(app);
         try {
             await signInAnonymously(this.auth);
             if (this.auth.currentUser) {
-                // CHANGEMENT : On supprime cette ligne qui cause l'erreur
-                // document.getElementById('playerId').textContent = this.auth.currentUser.uid;
                 await this.joinGame();
             } else { throw new Error("Authentification anonyme échouée."); }
         } catch (error) {
@@ -35,97 +46,121 @@ export const FirebaseController = {
         }
     },
 
+    // --- ENCODAGE GRILLE (compact, par case : "#couleur" ou "#couleur|sort") ---
+    encodeCell(b) {
+        if (!b || !b.color?.main) return null;
+        return b.color.main + (b.isSpellBubble && b.spell ? "|" + b.spell : "");
+    },
+
+    decodeGridTree(tree) {
+        const grid = GameLogic.createEmptyGrid();
+        if (!tree) return grid;
+        for (let r = 0; r < Config.GRID_ROWS; r++) {
+            const row = tree[r];
+            if (!row) continue;
+            for (let c = 0; c < Config.GRID_COLS; c++) {
+                const v = row[c];
+                if (!v) continue;
+                const [main, spell] = String(v).split("|");
+                const colorObj = Config.BUBBLE_COLORS.find(cc => cc.main === main)
+                    || { main, shadow: main };
+                grid[r][c] = {
+                    r, c,
+                    color: colorObj,
+                    spell: spell || null,
+                    isSpellBubble: !!spell,
+                    isStatic: true,
+                };
+            }
+        }
+        return grid;
+    },
+
+    // Arbre complet (pour le set initial au join)
+    encodeGridTree(gridArr) {
+        const tree = {};
+        const cache = {};
+        for (let r = 0; r < Config.GRID_ROWS; r++) {
+            for (let c = 0; c < Config.GRID_COLS; c++) {
+                const enc = this.encodeCell(gridArr?.[r]?.[c]);
+                cache[`${r}/${c}`] = enc;
+                if (enc) {
+                    if (!tree[r]) tree[r] = {};
+                    tree[r][c] = enc;
+                }
+            }
+        }
+        return { tree, cache };
+    },
+
     async joinGame() {
         if (!this.auth.currentUser) return;
         const localPlayerId = this.auth.currentUser.uid;
-        let initialGrid = GameLogic.createInitialGrid();
+        const initialGrid = GameLogic.createInitialGrid();
 
-        // Récupérer le pseudo depuis l'URL ou localStorage
         const urlParams = new URLSearchParams(window.location.search);
         const urlName = urlParams.get('name');
         const storedName = localStorage.getItem('marbleous_pseudo');
         const playerName = urlName || storedName || `Joueur_${localPlayerId.substring(0, 4)}`;
-
-        // Équipe aléatoire à l'entrée (0-4)
         const randomTeam = Math.floor(Math.random() * 5);
 
-        const initialPlayerData = {
-            name: playerName, isAlive: true, isReady: false, team: randomTeam,
-            grid: JSON.stringify(initialGrid), score: 0, level: 1, spells: [], statusEffects: {},
-            lastActive: Date.now()
-        };
-
-        const roomRef = doc(this.db, "rooms", roomId);
-
         try {
-            let isSpectator = false;
-
-            // Étape 1 : Compter les vrais joueurs actifs (pas le compteur stale)
-            const playersSnap = await getDocs(collection(this.db, "rooms", roomId, "players"));
+            // Étape 1 : compter les joueurs actifs, nettoyer les fantômes
+            const playersSnap = await dbGet(dbRef(this.rtdb, `rooms/${roomId}/players`));
+            const players = playersSnap.val() || {};
             const now = Date.now();
             let activeCount = 0;
-            const ghostIds = [];
 
-            playersSnap.docs.forEach(d => {
-                const data = d.data();
-                if (d.id === localPlayerId) return; // Ignorer soi-même (re-join)
+            for (const [id, data] of Object.entries(players)) {
+                if (id === localPlayerId) continue; // re-join
                 if (now - (data.lastActive || 0) < 30000) {
                     activeCount++;
                 } else {
-                    ghostIds.push(d.id); // Fantôme à nettoyer
+                    this.deletePlayerDoc(id); // fantôme
                 }
-            });
-
-            // Nettoyer les fantômes
-            for (const gid of ghostIds) {
-                try { await deleteDoc(doc(this.db, "rooms", roomId, "players", gid)); } catch (e) { /* ignore */ }
             }
 
             if (activeCount >= 10) {
-                alert("La salle est pleine !");
-                window.location.href = 'index.html';
+                UI.addChatMessage("Système", "La salle est pleine ! Retour à l'accueil...");
+                setTimeout(() => { window.location.href = 'index.html'; }, 2000);
                 return;
             }
 
-            // Étape 2 : Rejoindre via transaction
-            await runTransaction(this.db, async (transaction) => {
-                const roomDoc = await transaction.get(roomRef);
-                let gameState = 'waiting';
+            // Étape 2 : état de session
+            const sessSnap = await dbGet(dbRef(this.rtdb, `rooms/${roomId}/session`));
+            let gameState = sessSnap.val()?.gameState || 'waiting';
+            if (activeCount === 0) gameState = 'waiting';
 
-                if (roomDoc.exists()) {
-                    const roomData = roomDoc.data();
-                    gameState = roomData.gameState || 'waiting';
+            let isSpectator = false;
+            const playerData = {
+                name: playerName, isAlive: true, isReady: false, isSpectator: false,
+                team: randomTeam, score: 0, level: 1, spells: [], statusEffects: {},
+                attackBubbleCounter: 0, lastActive: now,
+            };
+            if (activeCount > 0 && (gameState === 'playing' || gameState === 'countdown')) {
+                isSpectator = true;
+                playerData.isAlive = false;
+                playerData.isSpectator = true;
+            }
 
-                    // Si aucun joueur actif, forcer l'état à 'waiting'
-                    if (activeCount === 0) {
-                        gameState = 'waiting';
-                    }
-
-                    // Si partie en cours et joueurs actifs, rejoindre en tant que spectateur
-                    if (activeCount > 0 && (gameState === 'playing' || gameState === 'countdown')) {
-                        isSpectator = true;
-                        initialPlayerData.isAlive = false;
-                        initialPlayerData.isSpectator = true;
-                    }
-                }
-
-                const playerRef = doc(this.db, "rooms", roomId, "players", localPlayerId);
-                transaction.set(playerRef, initialPlayerData);
-
-                // Mettre à jour le document de la salle avec le vrai compte
-                const realCount = activeCount + 1; // +1 pour soi-même
-                const roomDataUpdate = {
-                    name: `Salle ${roomId.split('_')[1]}`,
-                    playerCount: realCount,
-                    gameState: gameState
-                };
-                transaction.set(roomRef, roomDataUpdate, { merge: true });
+            // Étape 3 : écrire son nœud joueur (grille encodée par case)
+            const { tree, cache } = this.encodeGridTree(initialGrid);
+            this.lastSentGrids.set(localPlayerId, cache);
+            await dbSet(dbRef(this.rtdb, `rooms/${roomId}/players/${localPlayerId}`), {
+                ...playerData,
+                grid: tree,
             });
 
-            // Si spectateur, mettre le jeu en mode spectateur
-            if (isSpectator) {
-                Game.state = 'spectating';
-            }
+            await dbUpdate(dbRef(this.rtdb), {
+                [`rooms/${roomId}/session/gameState`]: gameState,
+                [`roomsMeta/${roomId}/players/${localPlayerId}/name`]: playerName,
+                [`roomsMeta/${roomId}/players/${localPlayerId}/lastActive`]: now,
+            });
+
+            // Nettoyage automatique à la déconnexion (fermeture onglet, crash...)
+            this.registerDisconnectCleanup(localPlayerId);
+
+            if (isSpectator) Game.state = 'spectating';
 
             this.listenForGameChanges();
             this.listenToRoomChat();
@@ -133,72 +168,68 @@ export const FirebaseController = {
             this.listenToAnnouncements();
             Game.gameLoop();
         } catch (e) {
-            // Pas d'alert() : la modale bloque tout le rendu de la page
             console.error("Erreur pour rejoindre la salle: ", e);
-            const quota = String(e?.message || e).includes("Quota");
-            UI.addChatMessage("Système", quota
-                ? "Quota Firebase dépassé pour aujourd'hui — réessayez plus tard."
-                : "Erreur de connexion à la salle. Retour à l'accueil...");
-            if (!quota) setTimeout(() => { window.location.href = 'index.html'; }, 2500);
+            UI.addChatMessage("Système", "Erreur de connexion à la salle. Retour à l'accueil...");
+            setTimeout(() => { window.location.href = 'index.html'; }, 2500);
         }
+    },
+
+    registerDisconnectCleanup(playerId) {
+        onDisconnect(dbRef(this.rtdb, `rooms/${roomId}/players/${playerId}`)).remove();
+        onDisconnect(dbRef(this.rtdb, `roomsMeta/${roomId}/players/${playerId}`)).remove();
+        onDisconnect(dbRef(this.rtdb, `rooms/${roomId}/events/${playerId}`)).remove();
     },
 
     listenForGameChanges() {
         if (this.unsubscribePlayers) this.unsubscribePlayers();
-        const playersCollection = collection(this.db, "rooms", roomId, "players");
-        this.unsubscribePlayers = onSnapshot(playersCollection, (snapshot) => {
+        this.unsubscribePlayers = onValue(dbRef(this.rtdb, `rooms/${roomId}/players`), (snap) => {
+            const val = snap.val() || {};
             const serverIds = new Set();
             const now = Date.now();
-            snapshot.docs.forEach(doc => {
-                const data = doc.data();
-                // Filtre anti-fantôme : inactif > 30s → supprimé.
-                // JAMAIS pour soi-même : sinon on s'éjecte de sa propre salle
-                // pendant la fenêtre entre deux heartbeats.
-                if (now - (data.lastActive || 0) > 30000 && doc.id !== this.auth.currentUser.uid) {
-                    this.deletePlayerDoc(doc.id);
-                    return;
+
+            for (const [id, raw] of Object.entries(val)) {
+                // Anti-fantôme : inactif > 30s → supprimé. Jamais pour soi-même.
+                if (now - (raw.lastActive || 0) > 30000 && id !== this.auth.currentUser.uid) {
+                    this.deletePlayerDoc(id);
+                    continue;
                 }
 
-                serverIds.add(doc.id);
-                if (!Game.players.has(doc.id)) {
-                    const newPlayer = new Player(doc.id, data);
-                    if (doc.id !== this.auth.currentUser.uid) {
+                serverIds.add(id);
+                const data = { ...raw, grid: this.decodeGridTree(raw.grid) };
+                if (!Game.players.has(id)) {
+                    const newPlayer = new Player(id, data);
+                    if (id !== this.auth.currentUser.uid) {
                         newPlayer.createOpponentUI();
                     }
-                    Game.players.set(doc.id, newPlayer);
+                    Game.players.set(id, newPlayer);
                 } else {
-                    Game.players.get(doc.id).update(data);
+                    Game.players.get(id).update(data);
                 }
-            });
+            }
+
             for (const id of Game.players.keys()) if (!serverIds.has(id)) Game.players.delete(id);
             Game.localPlayer = Game.players.get(this.auth.currentUser.uid);
 
-            // Démarrage du heartbeat si pas encore fait
             if (Game.localPlayer && !Game.heartbeatInterval) GameLogic.startHeartbeat();
 
             const alivePlayers = Array.from(Game.players.values()).filter(p => p.isAlive && !p.isSpectator);
             const activePlayers = Array.from(Game.players.values()).filter(p => !p.isSpectator);
 
-            // Fin de partie: soit 1 seul joueur qui meurt, soit multi et reste 1 ou 0
             const gameEnded = Game.state === 'playing' && !Game.gameEndAnnounced && (
-                (activePlayers.length === 1 && alivePlayers.length === 0) || // Solo: joueur mort
-                (activePlayers.length > 1 && alivePlayers.length <= 1) // Multi: 1 ou 0 survivants
+                (activePlayers.length === 1 && alivePlayers.length === 0) ||
+                (activePlayers.length > 1 && alivePlayers.length <= 1)
             );
 
             if (gameEnded) {
                 Game.gameEndAnnounced = true;
-
-                // Annoncer le gagnant
                 const winner = alivePlayers[0];
                 if (winner) {
-                    const teamColors = ['Jaune', 'Rouge', 'Vert', 'Bleu'];
+                    const teamColors = ['Jaune', 'Rouge', 'Vert', 'Bleu', 'Rose'];
                     const teamName = teamColors[winner.team] || 'Inconnue';
                     UI.addChatMessage('🏆 Système', `L'équipe ${teamName} a gagné ! (${winner.name})`);
                 } else {
                     UI.addChatMessage('🏆 Système', 'Partie terminée !');
                 }
-
-                // Reset immédiat
                 this.updateSessionDoc({ gameState: 'waiting' });
             }
             UI.renderOpponents();
@@ -206,17 +237,17 @@ export const FirebaseController = {
             UI.checkVoteStatus();
             UI.resizeAllCanvases();
         });
+
         if (this.unsubscribeGameSession) this.unsubscribeGameSession();
-        const sessionDoc = doc(this.db, "rooms", roomId);
-        this.unsubscribeGameSession = onSnapshot(sessionDoc, (doc) => {
-            const sessionData = doc.data(); if (!sessionData) return;
+        this.unsubscribeGameSession = onValue(dbRef(this.rtdb, `rooms/${roomId}/session`), (snap) => {
+            const sessionData = snap.val();
+            if (!sessionData) return;
             const currentGameState = Game.state;
             if (sessionData.gameState === 'countdown' && currentGameState === 'waiting') {
                 Game.state = 'countdown'; UI.startCountdown();
             } else if (sessionData.gameState === 'playing' && currentGameState !== 'playing') {
                 UI.stopCountdown(); Game.start();
             } else if (sessionData.gameState === 'waiting' && (currentGameState !== 'waiting' || currentGameState === 'spectating')) {
-                // Spectateurs deviennent joueurs actifs
                 if (currentGameState === 'spectating' && Game.localPlayer) {
                     Game.localPlayer.isSpectator = false;
                     Game.localPlayer.isAlive = true;
@@ -224,71 +255,65 @@ export const FirebaseController = {
                 }
                 Game.resetForNewRound();
             }
-
         });
     },
 
-    // Annonces de sorts : une collection dédiée (un doc par sort), sinon les
-    // sorts rapprochés s'écrasent (Firestore ne livre que le dernier état d'un champ)
+    // --- ANNONCES DE SORTS (un nœud par sort : rien ne s'écrase) ---
     listenToAnnouncements() {
         if (this.unsubscribeAnnouncements) this.unsubscribeAnnouncements();
         const joinTs = Date.now();
-        const annRef = collection(this.db, "rooms", roomId, "announcements");
-        this.unsubscribeAnnouncements = onSnapshot(annRef, (snapshot) => {
-            snapshot.docChanges().forEach((change) => {
-                if (change.type !== "added") return;
-                const a = change.doc.data();
-                // Ignorer l'historique d'avant notre arrivée
-                if (!a.ts || a.ts < joinTs) return;
+        this.unsubscribeAnnouncements = onChildAdded(
+            dbRef(this.rtdb, `rooms/${roomId}/announcements`),
+            (snap) => {
+                const a = snap.val();
+                if (!a || !a.ts || a.ts < joinTs) return; // historique pré-arrivée
                 UI.queueSpellAnnouncement(a.casterName, a.spell, a.targetName);
-            });
-        });
+            }
+        );
     },
 
     async announceSpell(casterName, spell, targetName) {
-        const ref = await addDoc(collection(this.db, "rooms", roomId, "announcements"), {
+        const annRef = dbPush(dbRef(this.rtdb, `rooms/${roomId}/announcements`), {
             casterName, spell, targetName, ts: Date.now()
         });
         // Ménage : l'annonce ne sert plus à rien après 30s
-        setTimeout(() => deleteDoc(ref).catch(() => { }), 30000);
+        setTimeout(() => dbRemove(annRef).catch(() => { }), 30000);
     },
 
     // --- ÉVÉNEMENTS JOUEUR (attaques & sorts) ---
     // Chaque joueur est propriétaire de SA grille : les adversaires envoient des
     // événements, la victime les applique localement puis écrit sa propre grille.
-    // (Avant, l'attaquant réécrivait toute la grille de la victime → conflits
-    // d'écriture et plateau qui "change tout seul".)
     async sendEventToPlayer(targetId, payload) {
-        await addDoc(collection(this.db, "rooms", roomId, "players", targetId, "events"), {
+        await dbPush(dbRef(this.rtdb, `rooms/${roomId}/events/${targetId}`), {
             ...payload,
             ts: Date.now()
         });
     },
 
-    listenToMyEvents() {
-        if (this.unsubscribeEvents) this.unsubscribeEvents();
-        const myId = this.auth.currentUser.uid;
-        const eventsRef = collection(this.db, "rooms", roomId, "players", myId, "events");
-        this.unsubscribeEvents = onSnapshot(eventsRef, (snapshot) => {
-            snapshot.docChanges().forEach((change) => {
-                if (change.type !== "added") return;
-                const ev = change.doc.data();
-                // Consommer l'événement immédiatement (une seule application)
-                deleteDoc(change.doc.ref).catch(() => { });
-
-                if (!Game.localPlayer?.isAlive || Game.state !== "playing") return;
-
-                if (ev.type === "spell" && ev.spell) {
-                    GameLogic.applySpellEffect(Game.localPlayer, ev.spell, ev.from || null);
-                } else if (ev.type === "junk" && ev.count > 0) {
-                    GameLogic.receiveJunk(ev.count);
-                }
-            });
+    // Écoute des événements d'un joueur (utilisé pour soi-même ET par les bots)
+    listenToEventsFor(playerId, handler) {
+        const joinTs = Date.now();
+        return onChildAdded(dbRef(this.rtdb, `rooms/${roomId}/events/${playerId}`), (snap) => {
+            const ev = snap.val();
+            dbRemove(snap.ref).catch(() => { }); // consommé : une seule application
+            if (!ev || !ev.ts || ev.ts < joinTs - 15000) return; // vieux restes
+            handler(ev);
         });
     },
 
-    // Chat de salle partagé : tout le monde voit les messages publics,
-    // les MP (/pseudo message) ne sont visibles que par l'expéditeur et le destinataire
+    listenToMyEvents() {
+        if (this.unsubscribeEvents) this.unsubscribeEvents();
+        this.unsubscribeEvents = this.listenToEventsFor(this.auth.currentUser.uid, (ev) => {
+            if (!Game.localPlayer?.isAlive || Game.state !== "playing") return;
+            if (ev.type === "spell" && ev.spell) {
+                GameLogic.applySpellEffect(Game.localPlayer, ev.spell, ev.from || null);
+            } else if (ev.type === "junk" && ev.count > 0) {
+                GameLogic.receiveJunk(ev.count);
+            }
+        });
+    },
+
+    // --- CHAT DE SALLE (reste sur Firestore : faible volume) ---
     listenToRoomChat() {
         if (this.unsubscribeChat) this.unsubscribeChat();
         const chatRef = collection(this.db, "rooms", roomId, "chat");
@@ -298,12 +323,11 @@ export const FirebaseController = {
             const msgs = [];
             snapshot.docs.forEach(d => {
                 const m = d.data();
-                // Public OU je suis l'expéditeur OU je suis le destinataire
                 if (!m.toUid || m.uid === myUid || m.toUid === myUid) msgs.unshift(m);
             });
             UI.remoteChat = msgs;
             UI.renderChat();
-        });
+        }, (err) => console.warn("Chat indisponible:", err?.message));
     },
 
     async sendChatMessage(text, toUid = null, toName = null) {
@@ -319,18 +343,54 @@ export const FirebaseController = {
         await addDoc(collection(this.db, "rooms", roomId, "chat"), msg);
     },
 
-    async updatePlayerDoc(playerId, data) { await setDoc(doc(this.db, "rooms", roomId, "players", playerId), data, { merge: true }); },
-    async updateSessionDoc(data) { await setDoc(doc(this.db, "rooms", roomId), data, { merge: true }); },
+    // --- ÉCRITURES JOUEUR : un seul update multi-chemins, grille en diff par case ---
+    async updatePlayerDoc(playerId, data) {
+        const updates = {};
+        const base = `rooms/${roomId}/players/${playerId}`;
+
+        for (const [k, v] of Object.entries(data)) {
+            if (k === "grid") continue;
+            updates[`${base}/${k}`] = (v === undefined) ? null : v;
+        }
+
+        if (data.grid !== undefined) {
+            // grid arrive en JSON string (héritage) ou en tableau
+            const arr = typeof data.grid === "string" ? JSON.parse(data.grid) : data.grid;
+            const prev = this.lastSentGrids.get(playerId) || {};
+            const next = {};
+            for (let r = 0; r < Config.GRID_ROWS; r++) {
+                for (let c = 0; c < Config.GRID_COLS; c++) {
+                    const key = `${r}/${c}`;
+                    const enc = this.encodeCell(arr?.[r]?.[c]);
+                    next[key] = enc;
+                    if ((prev[key] ?? null) !== enc) {
+                        updates[`${base}/grid/${key}`] = enc; // null = suppression de la case
+                    }
+                }
+            }
+            this.lastSentGrids.set(playerId, next);
+        }
+
+        // Miroir léger pour les compteurs du lobby
+        if (data.name !== undefined) updates[`roomsMeta/${roomId}/players/${playerId}/name`] = data.name;
+        if (data.lastActive !== undefined) updates[`roomsMeta/${roomId}/players/${playerId}/lastActive`] = data.lastActive;
+
+        if (Object.keys(updates).length > 0) {
+            await dbUpdate(dbRef(this.rtdb), updates);
+        }
+    },
+
+    async updateSessionDoc(data) {
+        await dbUpdate(dbRef(this.rtdb, `rooms/${roomId}/session`), data);
+    },
+
     async deletePlayerDoc(playerId) {
-        const roomRef = doc(this.db, "rooms", roomId);
-        const playerRef = doc(this.db, "rooms", roomId, "players", playerId);
+        this.lastSentGrids.delete(playerId);
         try {
-            await runTransaction(this.db, async (transaction) => {
-                const roomDoc = await transaction.get(roomRef);
-                if (!roomDoc.exists()) return;
-                const newPlayerCount = Math.max(0, (roomDoc.data().playerCount || 1) - 1);
-                transaction.delete(playerRef);
-                transaction.update(roomRef, { playerCount: newPlayerCount });
+            await dbUpdate(dbRef(this.rtdb), {
+                [`rooms/${roomId}/players/${playerId}`]: null,
+                [`roomsMeta/${roomId}/players/${playerId}`]: null,
+                [`rooms/${roomId}/events/${playerId}`]: null,
             });
         } catch (e) { console.error("Erreur pour quitter la salle: ", e); }
     }

@@ -38,10 +38,11 @@ export class Player {
     // pas notre état avec l'écho serveur pendant qu'on joue, sinon le plateau
     // "saute" à chaque snapshot (ex: à la montée de niveau). Les attaques
     // adverses arrivent par événements, plus par écriture directe de la grille.
+    // data.grid arrive déjà décodée en tableau (RTDB → decodeGridTree).
     const isLocalPlaying =
       Game.state === "playing" && Game.localPlayer?.id === this.id;
     if (!isLocalPlaying) {
-      this.grid = data.grid ? JSON.parse(data.grid) : GameLogic.createEmptyGrid();
+      this.grid = Array.isArray(data.grid) ? data.grid : GameLogic.createEmptyGrid();
     }
 
     this.score = data.score || 0;

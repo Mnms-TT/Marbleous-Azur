@@ -620,6 +620,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getFirestore, collection, onSnapshot, doc, writeBatch, addDoc, orderBy, query, limit, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getDatabase, ref as dbRef, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { LobbyGame } from "./js/lobbyGame.js";
     import { applyPatchworkBackground } from "./js/patchwork.js";
@@ -638,6 +639,8 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+    // État de jeu (occupation des salles) : Realtime Database
+    const rtdb = getDatabase(app, "https://marbleous-azur-default-rtdb.europe-west1.firebasedatabase.app");
     const auth = getAuth(app);
 
     const INACTIVITY_THRESHOLD = 60000;
@@ -829,56 +832,36 @@
       };
     }
 
+    // Occupation des salles : UN seul listener RTDB sur le miroir léger
+    // roomsMeta (nom + lastActive par joueur, sans les grilles)
     function initializeLobby() {
-      for (let i = 1; i <= MAX_ROOMS; i++) {
-        listenToRoomPlayers(`salle_${i}`);
-      }
-    }
-
-    function listenToRoomPlayers(roomId) {
-      const playersCollection = collection(db, "rooms", roomId, "players");
-
-      if (playerUnsubscribers.has(roomId)) {
-        playerUnsubscribers.get(roomId)();
-      }
-
-      const unsubscribe = onSnapshot(playersCollection, (snapshot) => {
+      onValue(dbRef(rtdb, 'roomsMeta'), (snap) => {
+        const all = snap.val() || {};
         const now = Date.now();
-        let activeCount = 0;
-        const ghostPlayers = [];
 
-        if (ghostPlayers.length > 0 && auth.currentUser) {
-          cleanupGhostPlayers(roomId, ghostPlayers);
-        }
+        for (let i = 1; i <= MAX_ROOMS; i++) {
+          const rid = `salle_${i}`;
+          const playersObj = (all[rid] && all[rid].players) || {};
+          const currentRoomPlayers = new Map();
+          let activeCount = 0;
 
-        const currentRoomPlayers = new Map();
-        snapshot.docs.forEach(playerDoc => {
-          const data = playerDoc.data();
-          if (now - (data.lastActive || 0) < INACTIVITY_THRESHOLD) {
-            activeCount++;
-            currentRoomPlayers.set(playerDoc.id, {
-              name: data.name || 'Joueur',
-              roomId: roomId,
-              lastActive: data.lastActive
-            });
+          for (const [pid, p] of Object.entries(playersObj)) {
+            if (now - (p.lastActive || 0) < INACTIVITY_THRESHOLD) {
+              activeCount++;
+              currentRoomPlayers.set(pid, {
+                name: p.name || 'Joueur',
+                roomId: rid,
+                lastActive: p.lastActive
+              });
+            }
           }
-        });
 
-        roomPlayers.set(roomId, currentRoomPlayers);
-        activePlayersCache.set(roomId, activeCount);
-        updateRoomCard(roomId, activeCount);
+          roomPlayers.set(rid, currentRoomPlayers);
+          activePlayersCache.set(rid, activeCount);
+          updateRoomCard(rid, activeCount);
+        }
         updateOnlineCount();
-      });
-
-      playerUnsubscribers.set(roomId, unsubscribe);
-    }
-
-    async function cleanupGhostPlayers(roomId, ghostPlayerIds) {
-      try {
-        const batch = writeBatch(db);
-        ghostPlayerIds.forEach(id => batch.delete(doc(db, "rooms", roomId, "players", id)));
-        await batch.commit();
-      } catch (e) { console.error(e); }
+      }, (err) => console.warn("roomsMeta indisponible:", err?.message));
     }
 
     function updateRoomCard(roomId, playerCount) {

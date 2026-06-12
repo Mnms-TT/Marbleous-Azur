@@ -214,10 +214,14 @@ export const GameLogic = {
         if (Math.random() < Config.SPELL_SPAWN_CHANCE)
           this.spawnSpellBubble(player);
 
-        // Mise à jour score et attaque
+        // Mise à jour score et attaque — d'abord LOCALEMENT (l'écho serveur
+        // n'écrase plus notre état en jeu : sans ça, le compteur d'attaque
+        // restait à 0 et plus aucune boule ne partait chez les adversaires)
+        player.score += cleared * 10 + Math.pow(avalanche, 2) * 10;
+        player.attackBubbleCounter += cleared;
         await FirebaseController.updatePlayerDoc(player.id, {
-          score: player.score + cleared * 10 + Math.pow(avalanche, 2) * 10,
-          attackBubbleCounter: player.attackBubbleCounter + cleared,
+          score: player.score,
+          attackBubbleCounter: player.attackBubbleCounter,
           grid: JSON.stringify(player.grid),
           spells: player.spells,
         });
@@ -263,8 +267,10 @@ export const GameLogic = {
       }
     }
 
+    // Reset LOCAL d'abord (l'écho serveur ne pilote plus notre état en jeu)
+    player.attackBubbleCounter = player.attackBubbleCounter % 10;
     await FirebaseController.updatePlayerDoc(player.id, {
-      attackBubbleCounter: player.attackBubbleCounter % 10,
+      attackBubbleCounter: player.attackBubbleCounter,
     });
   },
 

@@ -318,9 +318,13 @@ export const LobbyGame = {
             if (b.y > this.canvas.height + 100) {
                 p.fallingBubbles.splice(i, 1);
                 // Sort différé (nettoyage) : ramassé maintenant, en fin de chute
-                if (b.collectOnLand && p.spells.length < Config.MAX_SPELLS) {
-                    p.spells.push(b.collectOnLand);
-                    this.updateSpellsBar();
+                if (b.collectOnLand) {
+                    if (p.spells.length < Config.MAX_SPELLS) {
+                        p.spells.push(b.collectOnLand);
+                        this.updateSpellsBar();
+                    } else {
+                        this.notifyInventoryFull();
+                    }
                 }
             }
         }
@@ -425,6 +429,17 @@ export const LobbyGame = {
         });
 
         this.applySpellEffect(spellName);
+    },
+
+    // Inventaire plein : le sort est perdu — on le dit au joueur
+    notifyInventoryFull() {
+        const p = this.player;
+        if (!p) return;
+        p.spellTickers = p.spellTickers || [];
+        p.spellTickers.push({
+            text: "<Inventaire plein, sort perdu !",
+            x: this.canvas.width + p.spellTickers.length * 160,
+        });
     },
 
     // Une secousse brève du canvas (arrivée de boules)
@@ -1033,9 +1048,13 @@ export const LobbyGame = {
                     const carriesSpell = b.isSpellBubble && b.spell;
                     // Sort récupéré quand la boule tombe sans exploser
                     // (ou à l'atterrissage si delayCollect)
-                    if (carriesSpell && !delayCollect && p.spells.length < Config.MAX_SPELLS) {
-                        p.spells.push(b.spell);
-                        spellCollected = true;
+                    if (carriesSpell && !delayCollect) {
+                        if (p.spells.length < Config.MAX_SPELLS) {
+                            p.spells.push(b.spell);
+                            spellCollected = true;
+                        } else {
+                            this.notifyInventoryFull();
+                        }
                     }
                     const { x, y } = this.getBubbleCoords(r, c);
                     p.fallingBubbles.push({

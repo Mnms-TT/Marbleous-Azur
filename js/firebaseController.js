@@ -234,10 +234,8 @@ export const FirebaseController = {
                 this.recordGameResult(!!(Game.localPlayer?.isAlive && !Game.localPlayer?.isSpectator));
                 this.updateSessionDoc({ gameState: 'waiting' });
             }
-            UI.renderOpponents();
-            UI.updatePlayerStats();
-            UI.checkVoteStatus();
-            UI.resizeAllCanvases();
+            // Regroupé et throttlé : un rafraîchissement UI max toutes les 200ms
+            UI.scheduleRoomRefresh();
         });
 
         if (this.unsubscribeGameSession) this.unsubscribeGameSession();

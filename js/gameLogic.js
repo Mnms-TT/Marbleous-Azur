@@ -458,14 +458,14 @@ export const GameLogic = {
           p.fallingBubbles.splice(i, 1);
           // Sort différé (nettoyage) : il rejoint l'inventaire MAINTENANT,
           // quand la boule a fini sa chute
-          if (
-            p.id === Game.localPlayer?.id &&
-            b.collectOnLand &&
-            p.spells.length < Config.MAX_SPELLS
-          ) {
-            p.spells.push(b.collectOnLand);
-            UI.updateSpellsBar();
-            FirebaseController.updatePlayerDoc(p.id, { spells: p.spells });
+          if (p.id === Game.localPlayer?.id && b.collectOnLand) {
+            if (p.spells.length < Config.MAX_SPELLS) {
+              p.spells.push(b.collectOnLand);
+              UI.updateSpellsBar();
+              FirebaseController.updatePlayerDoc(p.id, { spells: p.spells });
+            } else {
+              this.notifyInventoryFull(p);
+            }
           }
         }
       }
@@ -972,6 +972,18 @@ export const GameLogic = {
     return floating;
   },
 
+  // Inventaire plein : le sort est perdu — on le DIT au joueur (ticker),
+  // sinon il croit à un bug de récupération
+  notifyInventoryFull(player) {
+    if (player.id !== Game.localPlayer?.id) return;
+    const mainCanvas = document.getElementById("gameCanvas");
+    player.spellTickers = player.spellTickers || [];
+    player.spellTickers.push({
+      text: "<Inventaire plein, sort perdu !",
+      x: (mainCanvas ? mainCanvas.width : 300) + player.spellTickers.length * 160,
+    });
+  },
+
   // delayCollect : les sorts des boules décrochées ne sont pas ramassés tout
   // de suite mais à l'atterrissage (utilisé par le nettoyage)
   handleAvalanche(player, grid, animate, delayCollect = false) {
@@ -980,8 +992,11 @@ export const GameLogic = {
       const carriesSpell = b.isSpellBubble && b.spell;
       if (carriesSpell && !delayCollect) {
         player.spells = player.spells || [];
-        if (player.spells.length < Config.MAX_SPELLS)
+        if (player.spells.length < Config.MAX_SPELLS) {
           player.spells.push(b.spell);
+        } else {
+          this.notifyInventoryFull(player);
+        }
       }
       if (animate) {
         const { x, y } = this.getBubbleCoords(b.r, b.c, Game.bubbleRadius);

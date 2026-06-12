@@ -6,6 +6,22 @@ import { Drawing } from "./drawing.js";
 
 export const UI = {
   announcementTimeout: null,
+  roomRefreshPending: false,
+
+  // Anti-lag : les snapshots RTDB arrivent en continu avec plusieurs joueurs ;
+  // reconstruire le DOM des adversaires + resize + barre de sorts à chaque
+  // événement écroule les performances. On regroupe tout (max ~5 fois/s).
+  scheduleRoomRefresh() {
+    if (this.roomRefreshPending) return;
+    this.roomRefreshPending = true;
+    setTimeout(() => {
+      this.roomRefreshPending = false;
+      this.renderOpponents();
+      this.updatePlayerStats();
+      this.checkVoteStatus();
+      this.resizeAllCanvases();
+    }, 200);
+  },
 
   renderOpponents() {
     const grid = document.getElementById("opponents-grid");

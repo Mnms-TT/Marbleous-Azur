@@ -4,15 +4,23 @@ import { Config } from "./config.js";
 import { BubbleRenderer } from "./bubbleRenderer.js";
 
 export const Drawing = {
+  frameCount: 0,
+
   drawAll() {
     if (!Game.localPlayer) return;
     const mainCanvas = document.getElementById("gameCanvas");
     if (!mainCanvas) return;
     this.drawPlayer(Game.localPlayer, mainCanvas.getContext("2d"), true);
-    Game.players.forEach((p) => {
-      if (p.id !== Game.localPlayer.id && p.canvas)
-        this.drawPlayer(p, p.ctx, false);
-    });
+
+    // Anti-lag : les miniatures adverses n'ont pas besoin de la pleine
+    // cadence — une frame sur trois suffit largement
+    this.frameCount++;
+    if (this.frameCount % 3 === 0) {
+      Game.players.forEach((p) => {
+        if (p.id !== Game.localPlayer.id && p.canvas)
+          this.drawPlayer(p, p.ctx, false);
+      });
+    }
   },
 
   drawPlayer(player, ctx, isMain) {

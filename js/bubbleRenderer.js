@@ -238,12 +238,14 @@ export const BubbleRenderer = {
     }
   },
 
-  // Prochaine boule : petite, collée à la base droite du coquillage,
-  // avec le fps juste à côté — comme sur les captures de l'original
+  // Prochaine boule : petite, COLLÉE au bord du coquillage en bas à droite
+  // (centre posé sur le contour, ~15° au-dessus de la base) — comme l'original
   drawCannonSideInfo(ctx, canvas, centerX, pivotY, radius, rad, nextBubble, fps, spellIcons) {
-    const nextRad = rad * 0.65;
-    const nx = Math.min(centerX + radius + nextRad + 3, canvas.width - nextRad - 2);
-    const ny = pivotY - nextRad - 1;
+    const nextRad = rad * 0.6;
+    const dist = radius + nextRad * 0.5; // tangente au contour du coquillage
+    const ang = 0.26; // ~15 degrés au-dessus de la ligne de base
+    const nx = Math.min(centerX + Math.cos(ang) * dist, canvas.width - nextRad - 2);
+    const ny = pivotY - Math.sin(ang) * dist;
 
     if (nextBubble) {
       this.drawBubble(ctx, nextBubble, nextRad, nx, ny, spellIcons);

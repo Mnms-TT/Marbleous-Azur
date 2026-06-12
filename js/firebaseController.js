@@ -230,6 +230,8 @@ export const FirebaseController = {
                 } else {
                     UI.addChatMessage('🏆 Système', 'Partie terminée !');
                 }
+                // Leaderboard : chaque client enregistre SON résultat
+                this.recordGameResult(!!(Game.localPlayer?.isAlive && !Game.localPlayer?.isSpectator));
                 this.updateSessionDoc({ gameState: 'waiting' });
             }
             UI.renderOpponents();
@@ -378,6 +380,24 @@ export const FirebaseController = {
         if (Object.keys(updates).length > 0) {
             await dbUpdate(dbRef(this.rtdb), updates);
         }
+    },
+
+    // Classement global : victoires + meilleur score, chacun écrit sa propre entrée
+    async recordGameResult(won) {
+        try {
+            const uid = this.auth.currentUser?.uid;
+            const p = Game.localPlayer;
+            if (!uid || !p) return;
+            const entryRef = dbRef(this.rtdb, `leaderboard/${uid}`);
+            const snap = await dbGet(entryRef);
+            const cur = snap.val() || {};
+            await dbUpdate(entryRef, {
+                name: p.name,
+                wins: (cur.wins || 0) + (won ? 1 : 0),
+                bestScore: Math.max(cur.bestScore || 0, p.score || 0),
+                ts: Date.now(),
+            });
+        } catch (e) { console.warn("leaderboard:", e?.message); }
     },
 
     async updateSessionDoc(data) {

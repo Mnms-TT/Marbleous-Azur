@@ -448,7 +448,20 @@ export const GameLogic = {
         b.vy += 0.15; // Reduced gravity from 0.5
         b.y += b.vy;
         b.x += b.vx;
-        if (b.y > mainCanvas.height + 100) p.fallingBubbles.splice(i, 1);
+        if (b.y > mainCanvas.height + 100) {
+          p.fallingBubbles.splice(i, 1);
+          // Sort différé (nettoyage) : il rejoint l'inventaire MAINTENANT,
+          // quand la boule a fini sa chute
+          if (
+            p.id === Game.localPlayer?.id &&
+            b.collectOnLand &&
+            p.spells.length < Config.MAX_SPELLS
+          ) {
+            p.spells.push(b.collectOnLand);
+            UI.updateSpellsBar();
+            FirebaseController.updatePlayerDoc(p.id, { spells: p.spells });
+          }
+        }
       }
     });
 
@@ -743,6 +756,14 @@ export const GameLogic = {
           });
           grid[b.r][b.c] = null;
         }
+        // La nuke purge TOUS les sorts du plateau : les boules-sorts
+        // survivantes redeviennent des boules normales
+        for (let r = 0; r < Config.GRID_ROWS; r++)
+          for (let c = 0; c < Config.GRID_COLS; c++)
+            if (grid[r][c]?.isSpellBubble) {
+              grid[r][c].isSpellBubble = false;
+              grid[r][c].spell = null;
+            }
         this.handleAvalanche({ grid }, grid, false);
         gridChanged = true;
         break;
@@ -771,48 +792,43 @@ export const GameLogic = {
       }
 
       case "nettoyage": {
-        // Supprime les boules les plus basses (équivalent à ~1.5 lignes, environ 10 à 14 boules)
-        const bubbles = [];
+        // Enlève les DEUX dernières lignes occupées : on VOIT les boules
+        // tomber, et les sorts ne rejoignent l'inventaire qu'à l'atterrissage
+        // (collectOnLand, ramassé en bas de l'écran dans updateLocalAnimations)
+        const occupiedRows = [];
         for (let r = 0; r < Config.GRID_ROWS; r++) {
-          for (let c = 0; c < Config.GRID_COLS; c++) {
-            if (grid[r][c]) {
-              bubbles.push({ r, c, bubble: grid[r][c] });
-            }
-          }
+          if (grid[r].some(Boolean)) occupiedRows.push(r);
         }
+        const rowsToClear = occupiedRows.slice(-2);
 
-        // Trier par 'r' décroissant (les plus basses d'abord)
-        bubbles.sort((a, b) => b.r - a.r);
-
-        // Prendre environ 10 à 14 boules
-        const toRemove = Math.min(bubbles.length, 10 + Math.floor(Math.random() * 5));
-
-        target.spells = target.spells || [];
         target.fallingBubbles = target.fallingBubbles || [];
         target.effects = target.effects || [];
 
-        for (let i = 0; i < toRemove; i++) {
-          const { r, c, bubble } = bubbles[i];
-
-          if (bubble.isSpellBubble && bubble.spell) {
-            if (target.spells.length < Config.MAX_SPELLS) {
-              target.spells.push(bubble.spell);
-              spellsChanged = true;
-            }
+        let removed = 0;
+        for (const r of rowsToClear) {
+          for (let c = 0; c < Config.GRID_COLS; c++) {
+            const bubble = grid[r][c];
+            if (!bubble) continue;
+            const { x, y } = this.getBubbleCoords(r, c, Game.bubbleRadius);
+            target.effects.push({
+              x, y, type: "pop", radius: Game.bubbleRadius, life: 20,
+            });
+            target.fallingBubbles.push({
+              ...bubble, x, y, vx: 0, vy: 0.5,
+              collectOnLand: bubble.isSpellBubble && bubble.spell ? bubble.spell : null,
+            });
+            grid[r][c] = null;
+            removed++;
           }
-
-          const { x, y } = this.getBubbleCoords(r, c, Game.bubbleRadius);
-          target.effects.push({
-            x, y, type: "pop", radius: Game.bubbleRadius, life: 20,
-          });
-          target.fallingBubbles.push({
-            ...bubble, x, y, vx: 0, vy: 0.5,
-          });
-          grid[r][c] = null;
         }
 
-        if (toRemove > 0) {
-          this.handleAvalanche({ grid, spells: target.spells, fallingBubbles: target.fallingBubbles, effects: target.effects }, grid, true);
+        if (removed > 0) {
+          // L'avalanche qui suit décroche le reste : ses sorts aussi ne se
+          // ramassent qu'en bas (delayCollect)
+          this.handleAvalanche(
+            { grid, spells: target.spells, fallingBubbles: target.fallingBubbles, effects: target.effects },
+            grid, true, true
+          );
           gridChanged = true;
         }
         break;
@@ -950,10 +966,13 @@ export const GameLogic = {
     return floating;
   },
 
-  handleAvalanche(player, grid, animate) {
+  // delayCollect : les sorts des boules décrochées ne sont pas ramassés tout
+  // de suite mais à l'atterrissage (utilisé par le nettoyage)
+  handleAvalanche(player, grid, animate, delayCollect = false) {
     const floating = this.findFloatingBubbles(grid);
     floating.forEach((b) => {
-      if (b.isSpellBubble && b.spell) {
+      const carriesSpell = b.isSpellBubble && b.spell;
+      if (carriesSpell && !delayCollect) {
         player.spells = player.spells || [];
         if (player.spells.length < Config.MAX_SPELLS)
           player.spells.push(b.spell);
@@ -964,10 +983,9 @@ export const GameLogic = {
           ...b,
           x,
           y,
-          x,
-          y,
           vy: 0.5, // Initial slow downward velocity
           vx: 0,   // No more random horizontal drift
+          collectOnLand: delayCollect && carriesSpell ? b.spell : null,
         });
       }
       grid[b.r][b.c] = null;

@@ -163,6 +163,13 @@ export const BotManager = {
                 cells.sort(() => 0.5 - Math.random());
                 const toDestroy = Math.floor(cells.length * Config.nukeDestroyPercent());
                 for (let i = 0; i < toDestroy; i++) grid[cells[i].r][cells[i].c] = null;
+                // La nuke purge aussi les sorts restants du plateau
+                for (let r = 0; r < Config.GRID_ROWS; r++)
+                    for (let c = 0; c < Config.GRID_COLS; c++)
+                        if (grid[r][c]?.isSpellBubble) {
+                            grid[r][c].isSpellBubble = false;
+                            grid[r][c].spell = null;
+                        }
                 this.collectFloating(bot);
                 break;
             }

@@ -317,6 +317,11 @@ export const LobbyGame = {
             b.x += b.vx;
             if (b.y > this.canvas.height + 100) {
                 p.fallingBubbles.splice(i, 1);
+                // Sort différé (nettoyage) : ramassé maintenant, en fin de chute
+                if (b.collectOnLand && p.spells.length < Config.MAX_SPELLS) {
+                    p.spells.push(b.collectOnLand);
+                    this.updateSpellsBar();
+                }
             }
         }
 
@@ -520,6 +525,13 @@ export const LobbyGame = {
                     });
                     grid[b.r][b.c] = null;
                 }
+                // La nuke purge TOUS les sorts du plateau (boules redevenues normales)
+                for (let r = 0; r < Config.GRID_ROWS; r++)
+                    for (let c = 0; c < Config.GRID_COLS; c++)
+                        if (grid[r][c]?.isSpellBubble) {
+                            grid[r][c].isSpellBubble = false;
+                            grid[r][c].spell = null;
+                        }
                 this.handleAvalanche();
                 break;
             }
@@ -542,29 +554,31 @@ export const LobbyGame = {
             }
 
             case "nettoyage": {
-                const bubbles = [];
-                for (let r = 0; r < Config.GRID_ROWS; r++)
-                    for (let c = 0; c < Config.GRID_COLS; c++)
-                        if (grid[r][c]) bubbles.push({ r, c, bubble: grid[r][c] });
+                // Deux dernières lignes occupées : les boules tombent, les
+                // sorts ne rejoignent l'inventaire qu'à l'atterrissage
+                const occupiedRows = [];
+                for (let r = 0; r < Config.GRID_ROWS; r++) {
+                    if (grid[r].some(Boolean)) occupiedRows.push(r);
+                }
+                const rowsToClear = occupiedRows.slice(-2);
 
-                bubbles.sort((a, b) => b.r - a.r);
-                const toRemove = Math.min(bubbles.length, 10 + Math.floor(Math.random() * 5));
-
-                for (let i = 0; i < toRemove; i++) {
-                    const { r, c, bubble } = bubbles[i];
-
-                    if (bubble.isSpellBubble && bubble.spell && p.spells.length < Config.MAX_SPELLS) {
-                        p.spells.push(bubble.spell);
+                let removed = 0;
+                for (const r of rowsToClear) {
+                    for (let c = 0; c < Config.GRID_COLS; c++) {
+                        const bubble = grid[r][c];
+                        if (!bubble) continue;
+                        const { x, y } = this.getBubbleCoords(r, c);
+                        p.effects.push({ x, y, type: "pop", radius: this.bubbleRadius, life: 20 });
+                        p.fallingBubbles.push({
+                            ...bubble, x, y, vx: 0, vy: 0.5,
+                            collectOnLand: bubble.isSpellBubble && bubble.spell ? bubble.spell : null,
+                        });
+                        grid[r][c] = null;
+                        removed++;
                     }
-
-                    const { x, y } = this.getBubbleCoords(r, c);
-                    p.effects.push({ x, y, type: "pop", radius: this.bubbleRadius, life: 20 });
-                    p.fallingBubbles.push({ ...bubble, x, y, vx: 0, vy: 0.5 });
-                    grid[r][c] = null;
                 }
 
-                if (toRemove > 0) this.handleAvalanche();
-                this.updateSpellsBar();
+                if (removed > 0) this.handleAvalanche(true);
                 break;
             }
         }
@@ -985,8 +999,9 @@ export const LobbyGame = {
         return matches;
     },
 
-    // Boules décrochées : tombent, et les boules-sorts sont récupérées (comme en salle)
-    handleAvalanche() {
+    // Boules décrochées : tombent, et les boules-sorts sont récupérées (comme
+    // en salle). delayCollect : sorts ramassés à l'atterrissage (nettoyage).
+    handleAvalanche(delayCollect = false) {
         const p = this.player;
         const connected = new Set();
         const queue = [];
@@ -1015,13 +1030,18 @@ export const LobbyGame = {
             for (let c = 0; c < Config.GRID_COLS; c++) {
                 const b = p.grid[r][c];
                 if (b && !connected.has(`${r},${c}`)) {
+                    const carriesSpell = b.isSpellBubble && b.spell;
                     // Sort récupéré quand la boule tombe sans exploser
-                    if (b.isSpellBubble && b.spell && p.spells.length < Config.MAX_SPELLS) {
+                    // (ou à l'atterrissage si delayCollect)
+                    if (carriesSpell && !delayCollect && p.spells.length < Config.MAX_SPELLS) {
                         p.spells.push(b.spell);
                         spellCollected = true;
                     }
                     const { x, y } = this.getBubbleCoords(r, c);
-                    p.fallingBubbles.push({ ...b, x, y, vx: 0, vy: 0.5 });
+                    p.fallingBubbles.push({
+                        ...b, x, y, vx: 0, vy: 0.5,
+                        collectOnLand: delayCollect && carriesSpell ? b.spell : null,
+                    });
                     p.grid[r][c] = null;
                     fallen++;
                 }

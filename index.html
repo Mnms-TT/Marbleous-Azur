@@ -444,114 +444,34 @@
       cursor: pointer;
     }
 
-    /* Pseudo Entry Overlay - Style Gamer Minimaliste */
-    #pseudo-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: #0a0a0a;
+    /* Boîte pseudo dans l'en-tête des salles */
+    #rooms-header .pseudo-edit {
       display: flex;
       align-items: center;
-      justify-content: center;
-      z-index: 9999;
-    }
-
-    #pseudo-overlay.hidden {
-      display: none;
-    }
-
-    #pseudo-form {
-      position: relative;
-      background: #111111;
-      border: 1px solid #222;
-      border-radius: 8px;
-      padding: 48px 56px;
-      text-align: center;
-    }
-
-    #pseudo-form h1 {
-      font-family: 'Outfit', sans-serif;
-      font-weight: 700;
-      font-size: 32px;
-      letter-spacing: 6px;
-      margin-bottom: 6px;
-      color: #f97316;
-    }
-
-    #pseudo-form .subtitle {
-      color: #666;
+      gap: 6px;
       font-size: 11px;
-      font-weight: 500;
-      letter-spacing: 3px;
-      text-transform: uppercase;
-      margin-bottom: 40px;
+      color: #93c5fd;
     }
 
-    #pseudo-form input {
-      width: 260px;
-      padding: 14px 20px;
-      font-size: 15px;
-      font-family: 'Inter', sans-serif;
-      font-weight: 500;
-      border: 1px solid #333;
-      border-radius: 6px;
-      background: #0a0a0a;
-      color: white;
+    #pseudo-box {
+      width: 110px;
+      background: #1e3a8a;
+      border: 1px solid #3b82f6;
+      border-radius: 4px;
+      color: #fff;
+      font-size: 12px;
+      padding: 3px 8px;
       text-align: center;
-      margin-bottom: 24px;
-      transition: border-color 0.2s ease;
     }
 
-    #pseudo-form input::placeholder {
-      color: #555;
-      font-weight: 400;
-    }
-
-    #pseudo-form input:focus {
+    #pseudo-box:focus {
       outline: none;
       border-color: #f97316;
-    }
-
-    #pseudo-form button {
-      background: #f97316;
-      border: none;
-      color: #000;
-      padding: 14px 48px;
-      font-family: 'Outfit', sans-serif;
-      font-size: 13px;
-      font-weight: 700;
-      letter-spacing: 3px;
-      text-transform: uppercase;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: background 0.2s ease, transform 0.15s ease;
-    }
-
-    #pseudo-form button:hover {
-      background: #fb923c;
-      transform: translateY(-1px);
-    }
-
-    #pseudo-form button:active {
-      transform: scale(0.98);
     }
   </style>
 </head>
 
 <body>
-  <!-- Écran de saisie du pseudo -->
-  <div id="pseudo-overlay">
-    <div id="pseudo-form">
-      <h1>MARBLEOUS</h1>
-      <p class="subtitle">Battle Royale Puzzle</p>
-      <input type="text" id="entry-pseudo" placeholder="Choisis ton pseudo" maxlength="15" autofocus>
-      <br>
-      <button id="btn-enter">JOUER</button>
-    </div>
-  </div>
-
   <div id="game-wrapper">
     <div id="game-container">
       <!-- Zone solo (comme player-zone dans game.html) -->
@@ -582,6 +502,9 @@
       <div id="rooms-zone">
         <div id="rooms-header">
           <span>accueil</span>
+          <span class="pseudo-edit">✏️
+            <input type="text" id="pseudo-box" maxlength="15" title="Changer de pseudo (Entrée pour valider)">
+          </span>
           <span id="online-count">0 en ligne</span>
         </div>
         <div id="rooms-grid"></div>
@@ -652,9 +575,7 @@
     const chatInput = document.getElementById('chat-input');
     const btnSend = document.getElementById('btn-send');
     const onlineCount = document.getElementById('online-count');
-    const pseudoOverlay = document.getElementById('pseudo-overlay');
-    const entryPseudo = document.getElementById('entry-pseudo');
-    const btnEnter = document.getElementById('btn-enter');
+    const pseudoBox = document.getElementById('pseudo-box');
     const practiceOverlay = document.getElementById('practice-overlay');
     const practiceCanvas = document.getElementById('practice-canvas');
     const welcomePseudo = document.getElementById('welcome-pseudo');
@@ -678,66 +599,57 @@
     let historyMode = false;
     let connectionLog = [];
 
-    // Pseudo sauvegardé : entrée directe dans le lobby (la page pseudo ne
-    // s'affiche qu'à la première visite — "retour accueil" tombe sur l'accueil)
-    let autoEnter = false;
+    // Plus d'écran de saisie : pseudo depuis le stockage, sinon généré.
+    // Modifiable à tout moment via la petite boîte de l'en-tête des salles.
     try {
-      const savedPseudo = localStorage.getItem('marbleous_pseudo') || '';
-      entryPseudo.value = savedPseudo;
-      autoEnter = savedPseudo.length >= 2;
+      currentPseudo = (localStorage.getItem('marbleous_pseudo') || '').trim();
     } catch (e) {
       console.warn("Storage access restricted:", e);
     }
-    if (autoEnter) {
-      enterLobby();
+    if (!currentPseudo || currentPseudo.length < 2) {
+      currentPseudo = 'Joueur' + (100 + Math.floor(Math.random() * 900));
+      try { localStorage.setItem('marbleous_pseudo', currentPseudo); } catch (e) { /* ignore */ }
     }
+    if (pseudoBox) pseudoBox.value = currentPseudo;
+    if (welcomePseudo) welcomePseudo.textContent = `Bienvenue, ${currentPseudo} !`;
 
     signInAnonymously(auth).catch(console.error);
 
-    // Gestion de l'entrée avec le pseudo
-    function enterLobby() {
-      try {
-        const pseudo = entryPseudo.value.trim();
-        if (!pseudo) {
-          alert("Veuillez entrer un pseudo !");
-          return;
-        }
-        if (pseudo.length < 2) {
-          alert("Le pseudo doit avoir au moins 2 caractères.");
-          return;
-        }
+    // Entrée directe dans le lobby (registerInLobby ré-essaie tant que l'auth n'est pas prête)
+    connectionTime = Date.now();
+    registerInLobby();
 
-        currentPseudo = pseudo;
-        try {
-          localStorage.setItem('marbleous_pseudo', pseudo);
-          sessionStorage.setItem('marbleous_session', 'active');
-        } catch (storageErr) {
-          console.warn("Could not save to storage:", storageErr);
-        }
-
-        // Afficher le welcome message
-        if (welcomePseudo) {
-          welcomePseudo.textContent = `Bienvenue, ${pseudo} !`;
-        }
-
-        // Masquer l'overlay
-        pseudoOverlay.classList.add('hidden');
-
-        // Mettre à jour le temps de connexion
-        connectionTime = Date.now();
-
-        // S'inscrire dans le lobby
-        registerInLobby();
-      } catch (err) {
-        console.error("Critical error in enterLobby:", err);
-        alert("Erreur lors de l'entrée dans le lobby: " + err.message);
+    // Changement de pseudo via la boîte (Entrée ou perte de focus)
+    function applyPseudoChange() {
+      if (!pseudoBox) return;
+      const v = (pseudoBox.value || '').trim().slice(0, 15);
+      if (v.length < 2 || v === currentPseudo) {
+        pseudoBox.value = currentPseudo;
+        return;
       }
+      currentPseudo = v;
+      pseudoBox.value = currentPseudo;
+      try { localStorage.setItem('marbleous_pseudo', currentPseudo); } catch (e) { /* ignore */ }
+      if (welcomePseudo) welcomePseudo.textContent = `Bienvenue, ${currentPseudo} !`;
+
+      // Mise à jour immédiate : présence lobby + jeu d'échauffement
+      if (myLobbyDocRef && auth.currentUser) {
+        setDoc(myLobbyDocRef, {
+          name: currentPseudo,
+          lastActive: Date.now(),
+          uid: auth.currentUser.uid
+        }, { merge: true }).catch(console.error);
+      }
+      LobbyGame.playerName = currentPseudo;
     }
 
-    btnEnter.onclick = enterLobby;
-    entryPseudo.addEventListener('keypress', e => {
-      if (e.key === 'Enter') enterLobby();
-    });
+    if (pseudoBox) {
+      pseudoBox.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { applyPseudoChange(); pseudoBox.blur(); }
+        e.stopPropagation(); // ne pas tirer dans le jeu d'échauffement en tapant
+      });
+      pseudoBox.addEventListener('blur', applyPseudoChange);
+    }
 
     // Inscription dans le lobby (collection lobbyPlayers)
     async function registerInLobby() {
@@ -1180,21 +1092,17 @@
   </script>
 
   <script>
-    // Fallback detection for module load errors
+    // Détection de secours si le module principal n'a pas chargé
     window.addEventListener('load', () => {
       setTimeout(() => {
         if (!window.lobbyScriptLoaded) {
           console.error("Critical: Lobby script failed to load. Check for 404s or script errors.");
-          const btn = document.getElementById('btn-enter');
-          if (btn) {
-            btn.addEventListener('click', () => {
-              if (!window.lobbyScriptLoaded) {
-                alert("Le script du jeu n'a pas pu se charger correctement. Essayez de vider le cache de votre navigateur (Ctrl+F5 ou Cmd+Shift+R).");
-              }
-            });
+          const chat = document.getElementById('chat-messages');
+          if (chat) {
+            chat.innerHTML = '<div class="chat-msg"><span class="author">Système:</span> <span class="text">Le script du jeu n\'a pas pu se charger. Faites un rechargement forcé (Cmd+Maj+R ou Ctrl+F5).</span></div>';
           }
         }
-      }, 1000);
+      }, 1500);
     });
   </script>
 </body>

@@ -215,18 +215,29 @@ export const FirebaseController = {
             const alivePlayers = Array.from(Game.players.values()).filter(p => p.isAlive && !p.isSpectator);
             const activePlayers = Array.from(Game.players.values()).filter(p => !p.isSpectator);
 
+            // Fin de manche dès qu'il ne reste qu'UNE ÉQUIPE en vie (pas un
+            // seul joueur) — sauf si toute la salle est dans la même équipe
+            // depuis le départ (co-op : on joue jusqu'à la mort)
+            const aliveTeams = new Set(alivePlayers.map(p => p.team ?? 0));
+            const activeTeams = new Set(activePlayers.map(p => p.team ?? 0));
+
             const gameEnded = Game.state === 'playing' && !Game.gameEndAnnounced && (
+                // Solo : fin quand le joueur meurt
                 (activePlayers.length === 1 && alivePlayers.length === 0) ||
-                (activePlayers.length > 1 && alivePlayers.length <= 1)
+                // Multi : plus personne en vie, OU une seule équipe survivante
+                (activePlayers.length > 1 && (
+                    alivePlayers.length === 0 ||
+                    (aliveTeams.size <= 1 && activeTeams.size > 1)
+                ))
             );
 
             if (gameEnded) {
                 Game.gameEndAnnounced = true;
-                const winner = alivePlayers[0];
-                if (winner) {
+                if (alivePlayers.length > 0) {
                     const teamColors = ['Jaune', 'Rouge', 'Vert', 'Bleu', 'Rose'];
-                    const teamName = teamColors[winner.team] || 'Inconnue';
-                    UI.addChatMessage('🏆 Système', `L'équipe ${teamName} a gagné ! (${winner.name})`);
+                    const teamName = teamColors[alivePlayers[0].team] || 'Inconnue';
+                    const names = alivePlayers.map(p => p.name).join(', ');
+                    UI.addChatMessage('🏆 Système', `L'équipe ${teamName} a gagné ! (${names})`);
                 } else {
                     UI.addChatMessage('🏆 Système', 'Partie terminée !');
                 }

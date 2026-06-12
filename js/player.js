@@ -34,25 +34,30 @@ export class Player {
   update(data) {
     this.name = data.name || `Joueur_${this.id.substring(0, 4)}`;
 
-    // Notre grille est gérée LOCALEMENT (on en est propriétaire) : on n'écrase
-    // pas notre état avec l'écho serveur pendant qu'on joue, sinon le plateau
-    // "saute" à chaque snapshot (ex: à la montée de niveau). Les attaques
-    // adverses arrivent par événements, plus par écriture directe de la grille.
+    // PENDANT QU'ON JOUE, notre état de jeu est géré LOCALEMENT (on en est
+    // propriétaire) : grille, sorts, score, effets... ne doivent JAMAIS être
+    // écrasés par l'écho serveur, souvent en retard d'une écriture. Sinon :
+    // plateau qui saute, sorts ramassés qui disparaissent de l'inventaire,
+    // clics de sort qui ne partent pas (inventaire transitoirement vide).
+    // Les snapshots arrivent en continu (bots, adversaires) → l'écho est permanent.
     // data.grid arrive déjà décodée en tableau (RTDB → decodeGridTree).
     const isLocalPlaying =
       Game.state === "playing" && Game.localPlayer?.id === this.id;
+
     if (!isLocalPlaying) {
       this.grid = Array.isArray(data.grid) ? data.grid : GameLogic.createEmptyGrid();
+      this.score = data.score || 0;
+      this.isAlive = data.isAlive !== undefined ? data.isAlive : true;
+      this.spells = data.spells || [];
+      this.statusEffects = data.statusEffects || {};
+      this.attackBubbleCounter = data.attackBubbleCounter || 0;
+      this.level = data.level || 1;
     }
 
-    this.score = data.score || 0;
-    this.isAlive = data.isAlive !== undefined ? data.isAlive : true;
-    this.spells = data.spells || [];
-    this.statusEffects = data.statusEffects || {};
-    this.attackBubbleCounter = data.attackBubbleCounter || 0;
+    // Champs sans enjeu de course (pas mutés localement en cours de partie)
     this.team = data.team ?? 0;
-    this.level = data.level || 1;
     this.isReady = data.isReady || false;
+    this.isSpectator = data.isSpectator || false;
   }
 
   resetForNewGame(grid) {

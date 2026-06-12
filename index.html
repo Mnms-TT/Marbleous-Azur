@@ -930,8 +930,6 @@
     }
 
     // Chat global
-    // DM target (set when clicking a player)
-    let dmTarget = null;
 
     function listenToChat() {
       const chatRef = collection(db, "globalChat");
@@ -1027,12 +1025,6 @@
         }
       }
 
-      // Si DM target est défini (clic sur joueur)
-      if (dmTarget && !toUid) {
-        toUid = dmTarget.id;
-        toName = dmTarget.name;
-      }
-
       try {
         const msgData = {
           author, text,
@@ -1047,44 +1039,22 @@
 
         await addDoc(collection(db, "globalChat"), msgData);
         chatInput.value = '';
-        dmTarget = null; // Reset DM target
-        updateDMIndicator();
       } catch (e) { console.error(e); }
     }
 
-    // Sélectionner un joueur pour DM
+    // Clic sur un joueur : pré-remplit la commande MP "/Pseudo " dans le chat
     window.openDM = function (playerId, playerName) {
       if (!playerName) {
         const p = allOnlinePlayers.get(playerId);
         playerName = p ? p.name : 'Joueur';
       }
-      dmTarget = { id: playerId, name: playerName };
-      chatInput.placeholder = `Message privé à ${playerName}... (Entrée pour envoyer)`;
+      chatInput.value = `/${playerName} `;
       chatInput.focus();
-      updateDMIndicator();
     };
-
-    function updateDMIndicator() {
-      if (dmTarget) {
-        chatInput.style.borderColor = '#a855f7';
-        chatInput.placeholder = `Message privé à ${dmTarget.name}...`;
-      } else {
-        chatInput.style.borderColor = '#3b82f6';
-        chatInput.placeholder = 'Écrire un message... (/pseudo pour DM)';
-      }
-    }
 
     btnSend.onclick = sendMessage;
     chatInput.addEventListener('keypress', e => {
       if (e.key === 'Enter') sendMessage();
-    });
-
-    // Annuler DM avec Escape
-    chatInput.addEventListener('keydown', e => {
-      if (e.key === 'Escape') {
-        dmTarget = null;
-        updateDMIndicator();
-      }
     });
     // Signal that script loaded correctly
     window.lobbyScriptLoaded = true;

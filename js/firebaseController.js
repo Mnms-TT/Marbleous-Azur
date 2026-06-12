@@ -381,7 +381,9 @@ export const FirebaseController = {
     },
 
     async updateSessionDoc(data) {
-        await dbUpdate(dbRef(this.rtdb, `rooms/${roomId}/session`), data);
+        // ts : garantit un événement onValue même si gameState reprend la même
+        // valeur (sinon réécrire "countdown" sur "countdown" ne déclenche rien)
+        await dbUpdate(dbRef(this.rtdb, `rooms/${roomId}/session`), { ...data, ts: Date.now() });
     },
 
     async deletePlayerDoc(playerId) {

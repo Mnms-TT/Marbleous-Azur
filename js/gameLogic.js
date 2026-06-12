@@ -204,9 +204,11 @@ export const GameLogic = {
           player.grid[b.r][b.c] = null;
         });
 
-        // Gestion de l'avalanche (boules qui tombent)
+        // Gestion de l'avalanche (boules qui tombent + sorts récupérés)
         const avalanche = this.handleAvalanche(player, player.grid, true);
         cleared += avalanche;
+        // Sorts éventuellement ramassés pendant l'avalanche → barre à jour
+        UI.updateSpellsBar();
 
         // Apparition potentielle d'un sort dans la grille restante
         if (Math.random() < Config.SPELL_SPAWN_CHANCE)
@@ -567,6 +569,8 @@ export const GameLogic = {
       return;
     const spellName = Game.localPlayer.spells[spellIndex];
     Game.localPlayer.spells.splice(spellIndex, 1);
+    // Barre de sorts rafraîchie immédiatement (l'écho ne pilote plus l'UI en jeu)
+    UI.updateSpellsBar();
 
     await FirebaseController.updatePlayerDoc(Game.localPlayer.id, {
       spells: Game.localPlayer.spells,
@@ -814,9 +818,17 @@ export const GameLogic = {
       }
     }
 
+    // Application LOCALE immédiate des effets (l'écho serveur ne pilote plus
+    // notre état en jeu — avant, les effets n'arrivaient qu'au retour réseau)
+    target.statusEffects = effects;
+
     const updateData = { statusEffects: effects };
     if (gridChanged) updateData.grid = JSON.stringify(grid);
-    if (spellsChanged) updateData.spells = target.spells;
+    if (spellsChanged) {
+      updateData.spells = target.spells;
+      // Inventaire modifié (sort volé/récupéré) → barre à jour immédiatement
+      if (target.id === Game.localPlayer.id) UI.updateSpellsBar();
+    }
     await FirebaseController.updatePlayerDoc(target.id, updateData);
     if (target.id === Game.localPlayer.id && gridChanged) {
       Game.localPlayer.grid = grid;
@@ -1001,8 +1013,11 @@ export const GameLogic = {
     }
   },
   async forceGameOver(player) {
-    if (player.isAlive)
+    if (player.isAlive) {
+      // État local immédiat : l'écho serveur n'écrase plus notre état en jeu
+      player.isAlive = false;
       await FirebaseController.updatePlayerDoc(player.id, { isAlive: false });
+    }
   },
 
   startHeartbeat() {

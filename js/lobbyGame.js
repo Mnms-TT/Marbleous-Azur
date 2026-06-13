@@ -610,9 +610,9 @@ export const LobbyGame = {
         const p = this.player;
         if (!p?.isAlive) return;
 
-        const coef = Config.BASE_REDISTRIBUTION_COEF +
-            (p.level - 1) * Config.REDISTRIBUTION_COEF_PER_LEVEL;
-        const count = Math.max(1, Math.floor(coef * 10));
+        // Échauffement : l'ordinateur envoie ~1 unité, gentil aux premiers niveaux
+        const count = Config.attackSize(p.level, 1);
+        if (count <= 0) return;
 
         const validSlots = [];
         for (let r = 0; r < Config.GRID_ROWS; r++) {

@@ -244,27 +244,25 @@ export const GameLogic = {
     if (!player?.isAlive || player.attackBubbleCounter < 10) return;
 
     const attackUnits = Math.floor(player.attackBubbleCounter / 10);
+    const attackSize = Config.attackSize(player.level || 1, attackUnits);
 
-    // Coefficient de redistribution basé sur le niveau
-    const level = player.level || 1;
-    const coef = Config.BASE_REDISTRIBUTION_COEF + (level - 1) * Config.REDISTRIBUTION_COEF_PER_LEVEL;
-    const attackSize = Math.max(1, Math.floor(attackUnits * coef * 10));
+    // Niveau 1-2 trop bas pour produire une attaque : on garde le compteur
+    // (les boules éclatées s'accumulent au lieu d'être gaspillées)
+    if (attackSize <= 0) return;
 
-    if (attackSize > 0) {
-      // Cibler UNIQUEMENT les ennemis (équipe différente)
-      const enemies = Array.from(Game.players.values()).filter(
-        (p) => p.id !== player.id && p.isAlive && p.team !== player.team
-      );
+    // Cibler UNIQUEMENT les ennemis (équipe différente)
+    const enemies = Array.from(Game.players.values()).filter(
+      (p) => p.id !== player.id && p.isAlive && p.team !== player.team
+    );
 
-      for (const enemy of enemies) {
-        // Événement : la machine de la victime anime l'arrivée par la gauche
-        // et applique elle-même (différé si elle tremble)
-        FirebaseController.sendEventToPlayer(enemy.id, {
-          type: "junk",
-          count: attackSize,
-          from: player.name,
-        });
-      }
+    for (const enemy of enemies) {
+      // Événement : la machine de la victime anime l'arrivée par la gauche
+      // et applique elle-même (différé si elle tremble)
+      FirebaseController.sendEventToPlayer(enemy.id, {
+        type: "junk",
+        count: attackSize,
+        from: player.name,
+      });
     }
 
     // Reset LOCAL d'abord (l'écho serveur ne pilote plus notre état en jeu)

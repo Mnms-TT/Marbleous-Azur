@@ -386,8 +386,9 @@ export const BotManager = {
 
     botAttack(bot) {
         const units = Math.floor(bot.attackCounter / 10);
-        const coef = Config.BASE_REDISTRIBUTION_COEF + (bot.level - 1) * Config.REDISTRIBUTION_COEF_PER_LEVEL;
-        const size = Math.max(1, Math.floor(units * coef * 10));
+        const size = Config.attackSize(bot.level, units);
+        // Niveau trop bas : on garde le compteur (pas de gaspillage)
+        if (size <= 0) return;
         bot.attackCounter = bot.attackCounter % 10;
 
         Game.players.forEach(p => {

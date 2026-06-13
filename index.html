@@ -844,8 +844,9 @@
 
       onValue(dbRef(rtdb, 'leaderboard'), (snap) => {
         const entries = Object.values(snap.val() || {});
+        // Tri : meilleur SCORE d'abord, puis nombre de victoires
         entries.sort((a, b) =>
-          (b.wins || 0) - (a.wins || 0) || (b.bestScore || 0) - (a.bestScore || 0)
+          (b.bestScore || 0) - (a.bestScore || 0) || (b.wins || 0) - (a.wins || 0)
         );
         const top = entries.slice(0, 10);
 
@@ -858,8 +859,8 @@
           <div class="lb-row">
             <span class="lb-rank">${i + 1}</span>
             <span class="lb-name">${esc(e.name || 'Joueur')}</span>
-            <span class="lb-wins">${e.wins || 0}🏆</span>
-            <span class="lb-score">${e.bestScore || 0}</span>
+            <span class="lb-wins">${e.bestScore || 0}</span>
+            <span class="lb-score">${e.wins || 0}🏆</span>
           </div>`).join('');
       }, (err) => console.warn("leaderboard indisponible:", err?.message));
     }

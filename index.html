@@ -236,9 +236,22 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
+      padding: 4px 3px 2px;
       cursor: pointer;
+      overflow: hidden;
       transition: transform 0.15s, border-color 0.15s;
+    }
+
+    .room-card .room-roster {
+      width: 100%;
+      margin-top: 3px;
+      font-size: 9px;
+      font-weight: 600;
+      text-align: center;
+      overflow: hidden;
+      flex: 1;
+      min-height: 0;
     }
 
     .room-card:hover {
@@ -888,6 +901,7 @@
           const currentRoomPlayers = new Map();
           let activeCount = 0;
 
+          const roster = [];
           for (const [pid, p] of Object.entries(playersObj)) {
             if (now - (p.lastActive || 0) < INACTIVITY_THRESHOLD) {
               activeCount++;
@@ -896,18 +910,22 @@
                 roomId: rid,
                 lastActive: p.lastActive
               });
+              roster.push({ name: p.name || 'Joueur', team: p.team ?? null });
             }
           }
 
           roomPlayers.set(rid, currentRoomPlayers);
           activePlayersCache.set(rid, activeCount);
-          updateRoomCard(rid, activeCount);
+          updateRoomCard(rid, activeCount, roster);
         }
         updateOnlineCount();
       }, (err) => console.warn("roomsMeta indisponible:", err?.message));
     }
 
-    function updateRoomCard(roomId, playerCount) {
+    // Couleurs d'équipe (mêmes que Config.TEAM_COLORS)
+    const TEAM_COLORS = ["#FBBF24", "#EF4444", "#22C55E", "#3B82F6", "#EC4899"];
+
+    function updateRoomCard(roomId, playerCount, roster = []) {
       let card = document.getElementById(`room-${roomId}`);
       const roomNumber = roomId.split('_')[1];
 
@@ -921,9 +939,18 @@
       const isFull = playerCount >= MAX_PLAYERS_PER_ROOM;
       const hasPlayers = playerCount > 0;
       card.className = `room-card ${isFull ? 'full' : ''} ${hasPlayers ? 'active' : ''}`;
+
+      const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      // Liste des joueurs présents, colorés selon leur équipe (jusqu'à 10)
+      const names = roster.slice(0, 10).map(r => {
+        const c = (r.team !== null && r.team !== undefined) ? (TEAM_COLORS[r.team] || '#e2e8f0') : '#e2e8f0';
+        return `<span style="color:${c};display:block;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(r.name)}</span>`;
+      }).join('');
+
       card.innerHTML = `
         <h4>Salle ${roomNumber}</h4>
         <div class="count">${playerCount}/${MAX_PLAYERS_PER_ROOM}</div>
+        <div class="room-roster">${names}</div>
       `;
       card.onclick = isFull ? null : () => joinRoom(roomId);
     }

@@ -57,19 +57,27 @@ export const InputHandler = {
       oppGrid.addEventListener("click", (e) => {
         e.stopPropagation();
         const p = Game.localPlayer;
-        if (!p || Game.state !== "playing" || !p.isAlive) return;
+        if (!p) return;
 
         // On cherche si on a cliqué sur une vue adversaire (pas l'annonce)
         const view = e.target.closest(".opponent-view");
-        if (view && view.dataset.playerId && view.id !== "spell-announcement") {
-          const targetId = view.dataset.playerId;
-          const targetPlayer = Game.players.get(targetId);
+        if (!view || !view.dataset.playerId || view.id === "spell-announcement") return;
 
-          // LIFO: utiliser le DERNIER sort (index = length - 1)
-          if (p.spells && p.spells.length > 0 && targetPlayer) {
-            const lastSpellIndex = p.spells.length - 1;
-            GameLogic.castSpecificSpell(targetPlayer, lastSpellIndex);
-            console.log(`Sort lancé sur ${targetPlayer.name}`);
+        const targetPlayer = Game.players.get(view.dataset.playerId);
+        if (!targetPlayer) return;
+
+        // En jeu, vivant, avec un sort en main → on LANCE le sort (LIFO)
+        const peutLancer =
+          Game.state === "playing" && p.isAlive && p.spells && p.spells.length > 0;
+
+        if (peutLancer) {
+          GameLogic.castSpecificSpell(targetPlayer, p.spells.length - 1);
+        } else {
+          // Sinon (pas de sort, partie finie, mort...) → pré-remplir un MP
+          const input = document.getElementById("chat-input");
+          if (input) {
+            input.value = `/${targetPlayer.name} `;
+            input.focus();
           }
         }
       });

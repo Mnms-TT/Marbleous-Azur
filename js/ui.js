@@ -554,15 +554,21 @@ export const UI = {
         return `<div class="msg"><span style="color:#fbbf24;font-weight:bold">${this.escapeHtml(m.author)}:</span> ${this.escapeHtml(m.text)}</div>`;
       }
       const isDM = !!m.toUid;
-      // Spectateur : pseudo en gris (pas de couleur d'équipe)
+
+      // Message privé : TOUT en rose (pseudo + préfixe + texte)
+      if (isDM) {
+        const prefix = `[MP${m.toName ? ' à ' + this.escapeHtml(m.toName) : ''}] `;
+        return `<div class="msg" style="color:#ec4899;font-style:italic;">` +
+          `<span style="font-weight:bold">${this.escapeHtml(m.author)}:</span> ${prefix}${this.escapeHtml(m.text)}</div>`;
+      }
+
+      // Message public : pseudo coloré selon l'équipe (gris si spectateur)
       const color = m.spectator
         ? "#9ca3af"
         : (m.team !== null && m.team !== undefined)
           ? (Config.TEAM_COLORS[m.team] || "#93c5fd")
           : "#93c5fd";
-      const prefix = isDM ? `<span style="color:#c084fc">[MP${m.toName ? ' à ' + this.escapeHtml(m.toName) : ''}]</span> ` : '';
-      const style = isDM ? 'color:#a855f7;font-style:italic' : '';
-      return `<div class="msg" style="${style}"><span style="color:${color};font-weight:bold">${this.escapeHtml(m.author)}:</span> ${prefix}${this.escapeHtml(m.text)}</div>`;
+      return `<div class="msg"><span style="color:${color};font-weight:bold">${this.escapeHtml(m.author)}:</span> ${this.escapeHtml(m.text)}</div>`;
     }).join('');
 
     chat.scrollTop = chat.scrollHeight;

@@ -158,6 +158,7 @@ export const FirebaseController = {
             await dbUpdate(dbRef(this.rtdb), {
                 [`rooms/${roomId}/session/gameState`]: gameState,
                 [`roomsMeta/${roomId}/players/${localPlayerId}/name`]: playerName,
+                [`roomsMeta/${roomId}/players/${localPlayerId}/team`]: randomTeam,
                 [`roomsMeta/${roomId}/players/${localPlayerId}/lastActive`]: now,
             });
 
@@ -521,8 +522,9 @@ export const FirebaseController = {
             this.lastSentGrids.set(playerId, next);
         }
 
-        // Miroir léger pour les compteurs du lobby
+        // Miroir léger pour le lobby (nom + équipe + activité, sans la grille)
         if (data.name !== undefined) updates[`roomsMeta/${roomId}/players/${playerId}/name`] = data.name;
+        if (data.team !== undefined) updates[`roomsMeta/${roomId}/players/${playerId}/team`] = data.team;
         if (data.lastActive !== undefined) updates[`roomsMeta/${roomId}/players/${playerId}/lastActive`] = data.lastActive;
 
         if (Object.keys(updates).length > 0) {

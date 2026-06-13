@@ -27,14 +27,28 @@ export const UI = {
     const grid = document.getElementById("opponents-grid");
     if (!grid) return;
 
-    // Préserver le slot d'annonces : renderOpponents est rappelé à chaque
-    // snapshot Firestore et détruisait l'animation d'annonce en cours
-    const existingAnn = document.getElementById("spell-announcement");
-    grid.innerHTML = "";
-
     const opponents = Array.from(Game.players.values()).filter(
       (p) => p.id !== FirebaseController.auth?.currentUser?.uid
     );
+
+    // On ne reconstruit le DOM QUE si la composition des adversaires a changé.
+    // Reconstruire à chaque snapshot (5×/s) volait les clics : si une
+    // reconstruction tombait entre le mousedown et le mouseup, le navigateur
+    // annulait le clic → le sort ne partait pas. Les scores/grilles sont
+    // dessinés sur les canvas à chaque frame, le DOM n'a pas à bouger.
+    const sig = opponents.map((p) => p.id).join(",");
+    if (sig === this._lastOppSig && document.getElementById("spell-announcement")) {
+      const countDisplay = document.getElementById("player-count-display");
+      if (countDisplay) {
+        countDisplay.textContent = `${Game.players.size} joueur${Game.players.size > 1 ? "s" : ""}`;
+      }
+      return;
+    }
+    this._lastOppSig = sig;
+
+    // Préserver le slot d'annonces : il porte l'animation/le vote en cours
+    const existingAnn = document.getElementById("spell-announcement");
+    grid.innerHTML = "";
 
     // 5×2 grid = 10 slots: 9 opponent + 1 announcement (at position 6)
     let oppIndex = 0;

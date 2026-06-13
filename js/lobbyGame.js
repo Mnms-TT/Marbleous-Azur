@@ -282,19 +282,21 @@ export const LobbyGame = {
             // Collision plafond
             let collided = b.y - this.bubbleRadius < 0;
 
-            // Collision grille
+            // Collision grille — uniquement le voisinage (±2 cases), résultat
+            // identique mais sans balayer les 96 cases à chaque pas (haut fps)
             if (!collided) {
-                for (let r = 0; r < Config.GRID_ROWS; r++) {
-                    for (let c = 0; c < Config.GRID_COLS; c++) {
+                const rad = this.bubbleRadius;
+                const thrSq = (rad * 1.8) * (rad * 1.8);
+                const r0 = Math.round((b.y - rad) / (rad * 1.732));
+                for (let r = Math.max(0, r0 - 2); r <= Math.min(Config.GRID_ROWS - 1, r0 + 2) && !collided; r++) {
+                    const c0 = Math.round((b.x - rad - (r % 2 ? rad : 0)) / (rad * 2));
+                    for (let c = Math.max(0, c0 - 2); c <= Math.min(Config.GRID_COLS - 1, c0 + 2); c++) {
                         if (p.grid[r][c]) {
                             const coords = this.getBubbleCoords(r, c);
-                            if (Math.hypot(b.x - coords.x, b.y - coords.y) < this.bubbleRadius * 1.8) {
-                                collided = true;
-                                break;
-                            }
+                            const dx = b.x - coords.x, dy = b.y - coords.y;
+                            if (dx * dx + dy * dy < thrSq) { collided = true; break; }
                         }
                     }
-                    if (collided) break;
                 }
             }
 

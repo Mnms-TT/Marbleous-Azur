@@ -415,22 +415,25 @@ export const GameLogic = {
       // Rebond Mur Haut (Plafond)
       let collided = b.y - Game.bubbleRadius < 0;
 
-      // Collision avec grille
-      if (!collided)
-        for (let r = 0; r < Config.GRID_ROWS; r++) {
-          for (let c = 0; c < Config.GRID_COLS; c++)
-            if (Game.localPlayer.grid[r][c]) {
-              const coords = this.getBubbleCoords(r, c, Game.bubbleRadius);
-              if (
-                Math.hypot(b.x - coords.x, b.y - coords.y) <
-                Game.bubbleRadius * 1.8
-              ) {
-                collided = true;
-                break;
-              }
+      // Collision avec grille — on ne teste QUE le voisinage de la boule
+      // (±2 cases) au lieu des 96 : crucial à haut fps, résultat identique.
+      // Distance au carré (pas de sqrt) pour le même résultat, plus vite.
+      if (!collided) {
+        const rad = Game.bubbleRadius;
+        const thrSq = (rad * 1.8) * (rad * 1.8);
+        const grid = Game.localPlayer.grid;
+        const r0 = Math.round((b.y - rad) / (rad * 1.732));
+        for (let r = Math.max(0, r0 - 2); r <= Math.min(Config.GRID_ROWS - 1, r0 + 2) && !collided; r++) {
+          const c0 = Math.round((b.x - rad - (r % 2 ? rad : 0)) / (rad * 2));
+          for (let c = Math.max(0, c0 - 2); c <= Math.min(Config.GRID_COLS - 1, c0 + 2); c++) {
+            if (grid[r][c]) {
+              const coords = this.getBubbleCoords(r, c, rad);
+              const dx = b.x - coords.x, dy = b.y - coords.y;
+              if (dx * dx + dy * dy < thrSq) { collided = true; break; }
             }
-          if (collided) break;
+          }
         }
+      }
 
       if (collided) {
         this.snapBubble(Game.localPlayer, b);

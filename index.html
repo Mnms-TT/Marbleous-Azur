@@ -246,9 +246,11 @@
     .room-card .room-roster {
       width: 100%;
       margin-top: 3px;
-      font-size: 9px;
-      font-weight: 600;
-      text-align: center;
+      padding: 0 4px;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.1;
+      text-align: left;
       overflow: hidden;
       flex: 1;
       min-height: 0;
@@ -944,7 +946,7 @@
       // Liste des joueurs présents, colorés selon leur équipe (jusqu'à 10)
       const names = roster.slice(0, 10).map(r => {
         const c = (r.team !== null && r.team !== undefined) ? (TEAM_COLORS[r.team] || '#e2e8f0') : '#e2e8f0';
-        return `<span style="color:${c};display:block;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(r.name)}</span>`;
+        return `<span style="color:${c};display:block;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(r.name)}</span>`;
       }).join('');
 
       card.innerHTML = `

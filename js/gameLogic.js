@@ -1053,6 +1053,10 @@ export const GameLogic = {
     if (player.isAlive) {
       // État local immédiat : l'écho serveur n'écrase plus notre état en jeu
       player.isAlive = false;
+      // Log de la mort (chaque joueur logue la sienne → pas de doublon)
+      if (player.id === Game.localPlayer?.id) {
+        FirebaseController.logEvent('mort', { name: player.name, score: player.score });
+      }
       await FirebaseController.updatePlayerDoc(player.id, { isAlive: false });
     }
   },

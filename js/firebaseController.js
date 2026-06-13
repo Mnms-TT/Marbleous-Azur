@@ -187,9 +187,14 @@ export const FirebaseController = {
             const serverIds = new Set();
             const now = Date.now();
 
+            // Anti-fantôme : on NE supprime PAS de joueur pendant une partie en
+            // cours (le onDisconnect du serveur gère les vraies déconnexions).
+            // Sinon un joueur vivant dont une écriture lague pouvait être effacé
+            // → il disparaissait des "vivants" et l'autre était déclaré vainqueur.
+            const allowGhostEvict = Game.state === "waiting" || Game.state === "spectating";
+
             for (const [id, raw] of Object.entries(val)) {
-                // Anti-fantôme : inactif > 30s → supprimé. Jamais pour soi-même.
-                if (now - (raw.lastActive || 0) > 30000 && id !== this.auth.currentUser.uid) {
+                if (allowGhostEvict && now - (raw.lastActive || 0) > 30000 && id !== this.auth.currentUser.uid) {
                     this.deletePlayerDoc(id);
                     continue;
                 }
@@ -248,6 +253,12 @@ export const FirebaseController = {
                 Game.state = 'countdown'; UI.startCountdown();
             } else if (sessionData.gameState === 'playing' && currentGameState !== 'playing') {
                 UI.stopCountdown(); Game.start();
+                // Log du début de partie (hôte) : qui participe, quelles équipes
+                const teamColors = ['Jaune', 'Rouge', 'Vert', 'Bleu', 'Rose'];
+                const roster = Array.from(Game.players.values())
+                    .filter(p => !p.isSpectator)
+                    .map(p => ({ name: p.name, equipe: teamColors[p.team ?? 0] || p.team, bot: p.id.startsWith('bot_') }));
+                this.logEvent('debut', { roster }, true);
             } else if (sessionData.gameState === 'waiting' && (currentGameState !== 'waiting' || currentGameState === 'spectating')) {
                 if (currentGameState === 'spectating' && Game.localPlayer) {
                     Game.localPlayer.isSpectator = false;
@@ -306,39 +317,88 @@ export const FirebaseController = {
         if (!ended) { this.pendingEnd = null; return; }
         if (this.pendingEnd) return; // confirmation déjà en cours
 
-        this.pendingEnd = setTimeout(() => {
+        this.pendingEnd = setTimeout(async () => {
             this.pendingEnd = null;
             if (Game.state !== 'playing' || Game.gameEndAnnounced) return;
 
-            // Re-vérifier : la condition tient-elle toujours ?
-            const a = Array.from(Game.players.values()).filter(p => p.isAlive && !p.isSpectator);
-            const act = Array.from(Game.players.values()).filter(p => !p.isSpectator);
-            const aTeams = new Set(a.map(p => p.team ?? 0));
-            const actTeams = new Set(act.map(p => p.team ?? 0));
-            const stillEnded =
-                (act.length === 1 && a.length === 0) ||
-                (act.length > 1 && (a.length === 0 || (aTeams.size <= 1 && actTeams.size > 1)));
-            if (!stillEnded) return;
+            // Re-vérifier sur une lecture FRAÎCHE du serveur (pas la mémoire
+            // locale potentiellement périmée) — c'est la source d'autorité.
+            let roster = [];
+            try {
+                const snap = await dbGet(dbRef(this.rtdb, `rooms/${roomId}/players`));
+                const fresh = snap.val() || {};
+                const myId = this.auth.currentUser.uid;
+                const nowMs = Date.now();
+                for (const [id, raw] of Object.entries(fresh)) {
+                    // Pour MOI, l'état de vie local fait foi (on en est propriétaire)
+                    const isMe = id === myId;
+                    roster.push({
+                        id,
+                        name: raw.name || 'Joueur',
+                        team: raw.team ?? 0,
+                        alive: isMe ? !!Game.localPlayer?.isAlive : !!raw.isAlive,
+                        spectator: !!raw.isSpectator,
+                        bot: id.startsWith('bot_'),
+                        idleMs: nowMs - (raw.lastActive || 0),
+                    });
+                }
+            } catch (e) {
+                roster = Array.from(Game.players.values()).map(p => ({
+                    id: p.id, name: p.name, team: p.team ?? 0, alive: !!p.isAlive,
+                    spectator: !!p.isSpectator, bot: p.id.startsWith('bot_'), idleMs: 0,
+                }));
+            }
+
+            const a = roster.filter(p => p.alive && !p.spectator);
+            const act = roster.filter(p => !p.spectator);
+            const aTeams = new Set(a.map(p => p.team));
+            const actTeams = new Set(act.map(p => p.team));
+            let reason = null;
+            if (act.length === 1 && a.length === 0) reason = 'solo-mort';
+            else if (act.length > 1 && a.length === 0) reason = 'tous-morts';
+            else if (act.length > 1 && aTeams.size <= 1 && actTeams.size > 1) reason = 'une-equipe-restante';
+
+            if (!reason) {
+                // Faux positif évité : on log pour comprendre
+                this.logEvent('fin-annulee', { roster }, true);
+                return;
+            }
 
             Game.gameEndAnnounced = true;
+
+            const teamColors = ['Jaune', 'Rouge', 'Vert', 'Bleu', 'Rose'];
+            const winnerTeam = a.length > 0 ? (teamColors[a[0].team] || 'Inconnue') : null;
+            const winners = a.map(p => p.name);
+
+            // Log complet de la fin de partie (hôte) : roster + raison + vainqueur
+            this.logEvent('fin', { reason, winnerTeam, winners, roster }, true);
 
             // Annonce du vainqueur dans le chat partagé — par l'hôte uniquement
             const hostId = Array.from(Game.players.keys()).filter(id => !id.startsWith('bot_')).sort()[0];
             if (this.auth.currentUser?.uid === hostId) {
-                const teamColors = ['Jaune', 'Rouge', 'Vert', 'Bleu', 'Rose'];
-                let msg;
-                if (a.length > 0) {
-                    const teamName = teamColors[a[0].team] || 'Inconnue';
-                    msg = `🏆 L'équipe ${teamName} a gagné ! (${a.map(p => p.name).join(', ')})`;
-                } else {
-                    msg = '🏆 Partie terminée, aucun survivant !';
-                }
+                const msg = winnerTeam
+                    ? `🏆 L'équipe ${winnerTeam} a gagné ! (${winners.join(', ')})`
+                    : '🏆 Partie terminée, aucun survivant !';
                 this.sendChatMessage(msg).catch(() => { });
             }
 
             this.recordGameResult(!!(Game.localPlayer?.isAlive && !Game.localPlayer?.isSpectator));
             this.updateSessionDoc({ gameState: 'waiting' });
         }, 700);
+    },
+
+    // Journal de partie : poussé dans gameLogs/{roomId} (consultable a posteriori)
+    // + console. hostOnly : un seul écrivain pour éviter les doublons.
+    async logEvent(event, data = {}, hostOnly = false) {
+        try {
+            if (hostOnly) {
+                const hostId = Array.from(Game.players.keys()).filter(id => !id.startsWith('bot_')).sort()[0];
+                if (this.auth.currentUser?.uid !== hostId) return;
+            }
+            const entry = { ts: Date.now(), event, by: Game.localPlayer?.name || '?', ...data };
+            console.log('[PARTIE]', event, entry);
+            await dbPush(dbRef(this.rtdb, `gameLogs/${roomId}`), entry);
+        } catch (e) { /* ignore */ }
     },
 
     // --- ÉVÉNEMENTS JOUEUR (attaques & sorts) ---

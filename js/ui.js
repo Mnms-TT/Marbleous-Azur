@@ -27,8 +27,14 @@ export const UI = {
     const grid = document.getElementById("opponents-grid");
     if (!grid) return;
 
+    // Miniatures : uniquement les JOUEURS (pas les spectateurs), sauf soi.
+    // Pour un spectateur, on exclut aussi le 1er joueur (affiché sur l'écran
+    // principal) → on voit bien les 10 joueurs (9 ici + 1 à gauche).
+    const myUid = FirebaseController.auth?.currentUser?.uid;
+    const spectating = Game.state === "spectating" && Game.localPlayer?.isSpectator;
+    const mainP = spectating ? Game.firstActivePlayer() : null;
     const opponents = Array.from(Game.players.values()).filter(
-      (p) => p.id !== FirebaseController.auth?.currentUser?.uid
+      (p) => !p.isSpectator && p.id !== myUid && p.id !== mainP?.id
     );
 
     // On ne reconstruit le DOM QUE si la composition des adversaires a changé.
@@ -548,9 +554,12 @@ export const UI = {
         return `<div class="msg"><span style="color:#fbbf24;font-weight:bold">${this.escapeHtml(m.author)}:</span> ${this.escapeHtml(m.text)}</div>`;
       }
       const isDM = !!m.toUid;
-      const color = (m.team !== null && m.team !== undefined)
-        ? (Config.TEAM_COLORS[m.team] || "#93c5fd")
-        : "#93c5fd";
+      // Spectateur : pseudo en gris (pas de couleur d'équipe)
+      const color = m.spectator
+        ? "#9ca3af"
+        : (m.team !== null && m.team !== undefined)
+          ? (Config.TEAM_COLORS[m.team] || "#93c5fd")
+          : "#93c5fd";
       const prefix = isDM ? `<span style="color:#c084fc">[MP${m.toName ? ' à ' + this.escapeHtml(m.toName) : ''}]</span> ` : '';
       const style = isDM ? 'color:#a855f7;font-style:italic' : '';
       return `<div class="msg" style="${style}"><span style="color:${color};font-weight:bold">${this.escapeHtml(m.author)}:</span> ${prefix}${this.escapeHtml(m.text)}</div>`;

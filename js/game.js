@@ -114,6 +114,14 @@ export const Game = {
     UI.checkVoteStatus();
   },
 
+  // Premier joueur (non spectateur), ordre stable — pour le spectateur, c'est
+  // ce joueur qui occupe l'écran principal (sinon il ne verrait que 9 plateaux)
+  firstActivePlayer() {
+    return Array.from(this.players.values())
+      .filter((p) => !p.isSpectator)
+      .sort((a, b) => (a.id < b.id ? -1 : 1))[0] || null;
+  },
+
   gameLoop(timestamp = 0) {
     // Pas de simulation fixe : la vitesse du jeu = targetFPS (réglable via /fps 30-300).
     // Comme dans le jeu original, tout est calé sur les frames : plus de fps = jeu plus rapide.

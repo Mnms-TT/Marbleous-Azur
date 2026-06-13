@@ -29,6 +29,7 @@ export const BubbleRenderer = {
 
   drawBubble(ctx, b, rad, x, y, spellIcons = null) {
     if (!b || !b.color) return;
+    if (!rad || rad < 1) return; // garde : pas de rayon nul/négatif (canvas non dimensionné)
 
     // === Sphère principale avec dégradé 3D ===
     const grad = ctx.createRadialGradient(

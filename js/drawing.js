@@ -10,14 +10,40 @@ export const Drawing = {
     if (!Game.localPlayer) return;
     const mainCanvas = document.getElementById("gameCanvas");
     if (!mainCanvas) return;
-    this.drawPlayer(Game.localPlayer, mainCanvas.getContext("2d"), true);
+    const ctx = mainCanvas.getContext("2d");
+
+    // Spectateur : son écran principal (gauche) est libre → on y affiche un
+    // VRAI joueur (le premier), pour pouvoir voir les 10 joueurs au total
+    // (9 miniatures à droite + ce 10ᵉ sur l'écran principal).
+    const spectating = Game.state === "spectating" && Game.localPlayer.isSpectator;
+    const mainP = spectating ? Game.firstActivePlayer() : Game.localPlayer;
+
+    if (spectating && mainP && Game.bubbleRadius >= 1) {
+      ctx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
+      this.drawGameState(ctx, mainCanvas, mainP, Game.bubbleRadius, true);
+      // Bandeau "spectateur"
+      ctx.save();
+      ctx.fillStyle = "rgba(55,65,81,0.85)";
+      ctx.fillRect(0, 0, mainCanvas.width, 18);
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 11px Arial, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(`👁️ Spectateur — vous regardez`, mainCanvas.width / 2, 9);
+      ctx.restore();
+    } else if (spectating) {
+      // Aucun joueur à afficher : overlay simple
+      this.drawPlayer(Game.localPlayer, ctx, true);
+    } else {
+      this.drawPlayer(Game.localPlayer, ctx, true);
+    }
 
     // Anti-lag : les miniatures adverses n'ont pas besoin de la pleine
     // cadence — une frame sur trois suffit largement
     this.frameCount++;
     if (this.frameCount % 3 === 0) {
       Game.players.forEach((p) => {
-        if (p.id !== Game.localPlayer.id && p.canvas)
+        if (p.id !== Game.localPlayer.id && p.id !== mainP?.id && p.canvas)
           this.drawPlayer(p, p.ctx, false);
       });
     }
@@ -39,9 +65,9 @@ export const Drawing = {
     } else if (Game.state === "playing") {
       this.drawGameState(ctx, canvas, player, rad, isMain);
     } else if (Game.state === "spectating") {
-      // Spectateur : afficher l'animation lobby + message
-      this.drawLobbyState(ctx, canvas, player, isMain);
-      this.drawSpectatorOverlay(ctx, canvas);
+      // Spectateur : on AFFICHE le plateau du joueur (pour le regarder jouer)
+      // au lieu d'un overlay qui masquait tout
+      this.drawGameState(ctx, canvas, player, rad, isMain);
     } else {
       this.drawLobbyState(ctx, canvas, player, isMain);
     }

@@ -480,10 +480,12 @@ export const FirebaseController = {
 
     async sendChatMessage(text, toUid = null, toName = null) {
         if (!text || !this.auth.currentUser) return;
+        const spectator = !!Game.localPlayer?.isSpectator;
         const msg = {
             author: Game.localPlayer?.name || 'Joueur',
             uid: this.auth.currentUser.uid,
-            team: Game.localPlayer?.team ?? null,
+            team: spectator ? null : (Game.localPlayer?.team ?? null),
+            spectator, // pseudo en gris dans le chat
             text,
             ts: Date.now()
         };

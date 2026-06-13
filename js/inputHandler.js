@@ -112,6 +112,8 @@ export const InputHandler = {
             if (!isNaN(val)) {
               Game.currentRotationSpeed =
                 Config.LAUNCHER_ROTATION_SPEED * (val / 5);
+              // Sauvegardé : conservé d'une salle à l'autre
+              try { localStorage.setItem("marbleous_canon", String(val)); } catch (e) { /* ignore */ }
               UI.addChatMessage("Système", `Vitesse canon: ${val}`);
             }
           }
@@ -126,6 +128,8 @@ export const InputHandler = {
             const val = parseInt(parts[1]);
             if (!isNaN(val) && val >= 30 && val <= 300) {
               Game.targetFPS = val;
+              // Sauvegardé : conservé d'une salle à l'autre
+              try { localStorage.setItem("marbleous_fps", String(val)); } catch (e) { /* ignore */ }
               UI.addChatMessage("Système", `FPS réglés à ${val}`);
             } else {
               UI.addChatMessage("Système", "FPS doit être entre 30 et 300");

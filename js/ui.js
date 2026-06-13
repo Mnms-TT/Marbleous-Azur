@@ -46,7 +46,7 @@ export const UI = {
         } else {
           const ann = document.createElement("div");
           ann.id = "spell-announcement";
-          ann.innerHTML = `<span>Annonces</span>`;
+          ann.innerHTML = "";
           grid.appendChild(ann);
         }
       } else {
@@ -176,7 +176,7 @@ export const UI = {
     const slot = document.getElementById("spell-announcement");
     if (slot)
       slot.innerHTML =
-        "<span class='text-white font-bold text-xs'>Annonces</span>";
+        "";
   },
 
   showAnnouncement(message, duration = 3000) {
@@ -190,7 +190,7 @@ export const UI = {
     // Revenir à l'affichage normal après la durée
     setTimeout(() => {
       if (Game.state === "playing") {
-        slot.innerHTML = "<span class='text-white font-bold text-xs'>Annonces</span>";
+        slot.innerHTML = "";
       } else {
         this.checkVoteStatus();
       }
@@ -342,7 +342,7 @@ export const UI = {
       // Retour à l'affichage normal
       if (slot) {
         if (Game.state === "playing") {
-          slot.innerHTML = "<span class='text-white font-bold text-xs'>Annonces</span>";
+          slot.innerHTML = "";
         } else {
           this.checkVoteStatus();
         }

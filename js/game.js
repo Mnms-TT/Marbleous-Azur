@@ -23,10 +23,23 @@ export const Game = {
   gameEndAnnounced: false,
 
   init() {
+    this.loadSavedSettings();
     this.initLobbyAnimation();
     UI.preloadSpellIcons();
     FirebaseController.init();
     InputHandler.init();
+  },
+
+  // Réglages /fps et /canon conservés d'une salle à l'autre (localStorage)
+  loadSavedSettings() {
+    try {
+      const fps = parseInt(localStorage.getItem("marbleous_fps"));
+      if (!isNaN(fps) && fps >= 30 && fps <= 300) this.targetFPS = fps;
+      const canon = parseFloat(localStorage.getItem("marbleous_canon"));
+      if (!isNaN(canon) && canon > 0) {
+        this.currentRotationSpeed = Config.LAUNCHER_ROTATION_SPEED * (canon / 5);
+      }
+    } catch (e) { /* stockage restreint */ }
   },
 
   initLobbyAnimation() {

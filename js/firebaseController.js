@@ -109,21 +109,24 @@ export const FirebaseController = {
             const playersSnap = await dbGet(dbRef(this.rtdb, `rooms/${roomId}/players`));
             const players = playersSnap.val() || {};
             const now = Date.now();
+            // Seuls les JOUEURS comptent dans le plafond de 10 : les spectateurs
+            // sont illimités (pause / observateurs en plus des 10 joueurs)
             let activeCount = 0;
 
             for (const [id, data] of Object.entries(players)) {
                 if (id === localPlayerId) continue; // re-join
                 if (now - (data.lastActive || 0) < 30000) {
-                    activeCount++;
+                    if (!data.isSpectator) activeCount++;
                 } else {
                     this.deletePlayerDoc(id); // fantôme
                 }
             }
 
+            // Salle pleine de joueurs → on entre en SPECTATEUR au lieu de refouler
+            let forceSpectator = false;
             if (activeCount >= 10) {
-                UI.addChatMessage("Système", "La salle est pleine ! Retour à l'accueil...");
-                setTimeout(() => { window.location.href = 'index.html'; }, 2000);
-                return;
+                forceSpectator = true;
+                UI.addChatMessage("Système", "Salle pleine (10 joueurs) — vous entrez en spectateur.");
             }
 
             // Étape 2 : état de session
@@ -137,7 +140,8 @@ export const FirebaseController = {
                 team: randomTeam, score: 0, level: 1, spells: [], statusEffects: {},
                 attackBubbleCounter: 0, lastActive: now,
             };
-            if (activeCount > 0 && (gameState === 'playing' || gameState === 'countdown')) {
+            // Spectateur si : partie en cours, OU salle déjà pleine de 10 joueurs
+            if (forceSpectator || (activeCount > 0 && (gameState === 'playing' || gameState === 'countdown'))) {
                 isSpectator = true;
                 playerData.isAlive = false;
                 playerData.isSpectator = true;
@@ -161,6 +165,9 @@ export const FirebaseController = {
             this.registerDisconnectCleanup(localPlayerId);
 
             if (isSpectator) Game.state = 'spectating';
+            // Spectateur "salle pleine" : reste spectateur jusqu'à clic Rejoindre.
+            // Spectateur "entré en cours de partie" : rejoue à la manche suivante.
+            Game.pausedSpectator = forceSpectator;
 
             this.listenForGameChanges();
             this.listenToRoomChat();
@@ -260,12 +267,35 @@ export const FirebaseController = {
                     .map(p => ({ name: p.name, equipe: teamColors[p.team ?? 0] || p.team, bot: p.id.startsWith('bot_') }));
                 this.logEvent('debut', { roster }, true);
             } else if (sessionData.gameState === 'waiting' && (currentGameState !== 'waiting' || currentGameState === 'spectating')) {
-                if (currentGameState === 'spectating' && Game.localPlayer) {
+                // Spectateur "entré en cours de partie" → redevient joueur à la
+                // manche suivante. Spectateur "pause"/"salle pleine" → reste
+                // spectateur tant qu'il ne clique pas "Revenir en jeu".
+                if (currentGameState === 'spectating' && Game.localPlayer && !Game.pausedSpectator) {
                     Game.localPlayer.isSpectator = false;
                     Game.localPlayer.isAlive = true;
                     this.updatePlayerDoc(Game.localPlayer.id, { isSpectator: false, isAlive: true, isReady: false });
                 }
-                Game.resetForNewRound();
+                if (Game.pausedSpectator) {
+                    Game.state = 'spectating';
+                    UI.checkVoteStatus();
+                } else {
+                    Game.resetForNewRound();
+                }
+            }
+
+            // Message du vainqueur : affiché par TOUS, lu depuis la session.
+            // Au premier snapshot on mémorise sans réafficher l'historique.
+            const lw = sessionData.lastWinner;
+            if (lw && lw.ts) {
+                if (this.lastWinnerTsSeen === undefined) {
+                    this.lastWinnerTsSeen = lw.ts;
+                } else if (lw.ts > this.lastWinnerTsSeen) {
+                    this.lastWinnerTsSeen = lw.ts;
+                    const msg = lw.team
+                        ? `🏆 L'équipe ${lw.team} a gagné ! (${(lw.names || []).join(', ')})`
+                        : '🏆 Partie terminée, aucun survivant !';
+                    UI.addChatMessage('🏆 Système', msg);
+                }
             }
         });
     },
@@ -373,17 +403,14 @@ export const FirebaseController = {
             // Log complet de la fin de partie (hôte) : roster + raison + vainqueur
             this.logEvent('fin', { reason, winnerTeam, winners, roster }, true);
 
-            // Annonce du vainqueur dans le chat partagé — par l'hôte uniquement
-            const hostId = Array.from(Game.players.keys()).filter(id => !id.startsWith('bot_')).sort()[0];
-            if (this.auth.currentUser?.uid === hostId) {
-                const msg = winnerTeam
-                    ? `🏆 L'équipe ${winnerTeam} a gagné ! (${winners.join(', ')})`
-                    : '🏆 Partie terminée, aucun survivant !';
-                this.sendChatMessage(msg).catch(() => { });
-            }
-
             this.recordGameResult(!!(Game.localPlayer?.isAlive && !Game.localPlayer?.isSpectator));
-            this.updateSessionDoc({ gameState: 'waiting' });
+
+            // Vainqueur écrit DANS la session : chaque client l'affiche en lisant
+            // la session (plus de dépendance à l'hôte/au chat → message garanti)
+            this.updateSessionDoc({
+                gameState: 'waiting',
+                lastWinner: { team: winnerTeam, names: winners, ts: Date.now() },
+            });
         }, 700);
     },
 

@@ -17,6 +17,7 @@ export const Game = {
   shakeIntensity: 0,
   countdownInterval: null,
   lobbyMarbles: [],
+  pausedSpectator: false, // spectateur "pause"/"salle pleine" (ne rejoue pas auto)
   currentRotationSpeed: Config.LAUNCHER_ROTATION_SPEED,
   targetFPS: Config.DEFAULT_GAME_FPS,
   lastFrameTime: 0,

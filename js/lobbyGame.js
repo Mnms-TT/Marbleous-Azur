@@ -267,13 +267,13 @@ export const LobbyGame = {
             b.vx = b.vx || 0;
             b.vy = b.vy || 0;
 
-            // Plateau renversé : la "gravité" suit l'inclinaison — le tir
-            // est dévié en courbe au lieu de filer droit (comme en salle)
+            // Plateau renversé : gravité inclinée, courbe latérale nette
+            // (comme en salle), peu de dérive vers le bas
             if (p.statusEffects.plateauRenverse) {
                 const rot = ((p.statusEffects.plateauRenverse.angle || 0) * Math.PI) / 180;
-                const g = this.bubbleRadius * 0.045;
+                const g = this.bubbleRadius * 0.06;
                 b.vx += Math.sin(rot) * g;
-                b.vy += (1 - Math.cos(rot)) * g;
+                b.vy += (1 - Math.cos(rot)) * g * 0.4;
             }
 
             b.x += b.vx;
@@ -302,6 +302,15 @@ export const LobbyGame = {
 
             if (collided) {
                 this.snapBubble(b);
+                return;
+            }
+
+            // Filet de sécurité : boule tirée sortie par le bas (jamais nettoyée
+            // sinon) → on la jette et on recharge, sinon plus aucun tir possible
+            b.shotFrames = (b.shotFrames || 0) + 1;
+            if (b.y - this.bubbleRadius > this.canvas.height || b.shotFrames > 1200) {
+                p.shotBubble = null;
+                this.loadBubbles();
                 return;
             }
 

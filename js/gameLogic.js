@@ -400,13 +400,14 @@ export const GameLogic = {
       b.vx = b.vx || 0;
       b.vy = b.vy || 0;
 
-      // Plateau renversé : la "gravité" suit l'inclinaison du plateau —
-      // le tir est dévié en courbe au lieu de filer droit
+      // Plateau renversé : la "gravité" suit l'inclinaison du plateau — le tir
+      // décrit une vraie courbe latérale (déviation plus nette qu'avant), sans
+      // trop tirer vers le bas (ce qui envoyait les boules hors de l'écran)
       if (Game.localPlayer.statusEffects.plateauRenverse) {
         const rot = (Game.localPlayer.statusEffects.plateauRenverse.angle || 0) * Math.PI / 180;
-        const g = Game.bubbleRadius * 0.045;
+        const g = Game.bubbleRadius * 0.06;
         b.vx += Math.sin(rot) * g;
-        b.vy += (1 - Math.cos(rot)) * g; // léger tassement vertical de la gravité inclinée
+        b.vy += (1 - Math.cos(rot)) * g * 0.4;
       }
 
       b.x += b.vx;
@@ -437,6 +438,17 @@ export const GameLogic = {
 
       if (collided) {
         this.snapBubble(Game.localPlayer, b);
+        return;
+      }
+
+      // FILET DE SÉCURITÉ : une boule tirée qui sort par le bas (ex: courbée
+      // vers le bas par le plateau renversé) n'était jamais nettoyée → elle
+      // restait "en vol" pour toujours et bloquait tout nouveau tir, alors que
+      // le canon tournait encore. On la jette et on recharge.
+      b.shotFrames = (b.shotFrames || 0) + 1;
+      if (b.y - Game.bubbleRadius > mainCanvas.height || b.shotFrames > 1200) {
+        Game.localPlayer.shotBubble = null;
+        this.loadBubbles(Game.localPlayer);
         return;
       }
 

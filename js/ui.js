@@ -95,14 +95,20 @@ export const UI = {
 
   checkVoteStatus() {
     if (Game.state !== "waiting" || !Game.localPlayer) return;
-    const ready = Array.from(Game.players.values()).filter(
-      (p) => p.isReady
-    ).length;
-    const total = Game.players.size;
+    const slot = document.getElementById("spell-announcement");
+
+    // Spectateur : il ne compte pas dans le vote, on lui propose de revenir
+    if (Game.localPlayer.isSpectator) {
+      this.renderSpectatorPanel();
+      return;
+    }
+
+    // Seuls les JOUEURS (non spectateurs) comptent dans le vote
+    const players = Array.from(Game.players.values()).filter((p) => !p.isSpectator);
+    const ready = players.filter((p) => p.isReady).length;
+    const total = players.length;
     // Majorité simple : plus de la moitié suffit (3 joueurs → 2 prêts, 5 → 3)
     const required = total <= 1 ? 1 : Math.floor(total / 2) + 1;
-
-    const slot = document.getElementById("spell-announcement");
 
     if (!Game.localPlayer.isReady) {
       this.renderTeamSelectionInAnnouncementBox();
@@ -111,15 +117,46 @@ export const UI = {
         slot.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;width:100%;background:#15803d;"><span style="color:white;font-weight:bold;font-size:12px;">PRÊT ${ready}/${total}</span></div>`;
     }
 
-    // L'hôte est le premier joueur HUMAIN (un bot ne peut pas piloter la session)
-    const humanIds = Array.from(Game.players.keys()).filter(id => !id.startsWith("bot_"));
-    if (
-      total > 0 &&
-      ready >= required &&
-      Game.localPlayer.id === humanIds[0]
-    ) {
+    // L'hôte est le premier joueur HUMAIN non spectateur
+    const hostId = Array.from(Game.players.values())
+      .filter((p) => !p.id.startsWith("bot_") && !p.isSpectator)
+      .map((p) => p.id)[0];
+    if (total > 0 && ready >= required && Game.localPlayer.id === hostId) {
       FirebaseController.updateSessionDoc({ gameState: "countdown" });
     }
+  },
+
+  // Panneau affiché quand on est spectateur : bouton pour revenir en jeu
+  renderSpectatorPanel() {
+    const slot = document.getElementById("spell-announcement");
+    if (!slot) return;
+    slot.innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
+                  width:100%;height:100%;background:#374151;gap:6px;text-align:center;">
+        <span style="color:#fff;font-size:11px;font-weight:bold;">👁️ Spectateur</span>
+        <button onclick="window.handleRejoinFromSpectator()"
+          style="background:#22c55e;border:2px solid #4ade80;color:#fff;font-size:11px;
+                 font-weight:bold;padding:4px 10px;border-radius:5px;cursor:pointer;">
+          Revenir en jeu
+        </button>
+      </div>`;
+
+    window.handleRejoinFromSpectator = () => {
+      // Refuser si la salle est déjà pleine de 10 joueurs actifs
+      const activePlayers = Array.from(Game.players.values())
+        .filter((p) => !p.isSpectator).length;
+      if (activePlayers >= 10) {
+        UI.addChatMessage("Système", "Salle pleine (10 joueurs), impossible de revenir pour l'instant.");
+        return;
+      }
+      Game.localPlayer.isSpectator = false;
+      Game.localPlayer.isAlive = true;
+      Game.pausedSpectator = false;
+      Game.state = "waiting";
+      FirebaseController.updatePlayerDoc(FirebaseController.auth.currentUser.uid, {
+        isSpectator: false, isAlive: true, isReady: false, lastActive: Date.now(),
+      });
+    };
   },
 
   renderTeamSelectionInAnnouncementBox() {
@@ -133,24 +170,26 @@ export const UI = {
       .map((c, i) => ({ color: c, index: i, name: teamNames[i] }))
       .filter(t => t.index !== currentTeam);
 
-    // 2×2 grid layout — one ball per quadrant (like reference)
+    // 2×2 grid des équipes + bouton gris central "Spectateur" (mise en pause)
     slot.innerHTML = `
     <div style="display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr;
                 width:100%; height:100%; background:#FFB864; position:relative;">
         ${otherTeams.slice(0, 4).map(t => `
           <div style="display:flex; align-items:center; justify-content:center;">
-            <button 
-              style="width:40px; height:40px; border-radius:50%; background:${t.color}; 
-                     border:2px solid rgba(0,0,0,0.3); 
+            <button
+              style="width:40px; height:40px; border-radius:50%; background:${t.color};
+                     border:2px solid rgba(0,0,0,0.3);
                      cursor:pointer; box-shadow:inset 0 -3px 5px rgba(0,0,0,0.3);"
               onclick="window.handleTeamChange(${t.index})"
               title="Équipe ${t.name}"
             ></button>
           </div>
         `).join("")}
-        <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-                    font-size:9px; color:#333; font-weight:bold; text-align:center;
-                    pointer-events:none; line-height:1.2; text-shadow:0 0 3px #FFB864, 0 0 6px #FFB864;">Choix de<br>l'équipe</div>
+        <button onclick="window.handleSpectate()" title="Devenir spectateur (pause)"
+          style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+                 width:34px; height:34px; border-radius:50%; background:#9ca3af;
+                 border:2px solid #fff; cursor:pointer; box-shadow:inset 0 -3px 5px rgba(0,0,0,0.3);
+                 display:flex; align-items:center; justify-content:center; font-size:13px;">👁️</button>
     </div>`;
 
     window.handleTeamChange = (i) =>
@@ -158,6 +197,20 @@ export const UI = {
         FirebaseController.auth.currentUser.uid,
         { team: i, lastActive: Date.now() }
       );
+
+    // Bouton gris : passer spectateur → libère une place de joueur
+    window.handleSpectate = () => {
+      Game.localPlayer.isSpectator = true;
+      Game.localPlayer.isAlive = false;
+      Game.localPlayer.isReady = false;
+      Game.pausedSpectator = true;
+      Game.state = "spectating";
+      FirebaseController.updatePlayerDoc(FirebaseController.auth.currentUser.uid, {
+        isSpectator: true, isAlive: false, isReady: false, lastActive: Date.now(),
+      });
+      UI.addChatMessage("Système", "Vous êtes spectateur. Cliquez sur « Revenir en jeu » pour rejouer.");
+      UI.renderSpectatorPanel();
+    };
   },
 
   startCountdown() {

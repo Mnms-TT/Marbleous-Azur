@@ -212,39 +212,29 @@ export const FirebaseController = {
 
             if (Game.localPlayer && !Game.heartbeatInterval) GameLogic.startHeartbeat();
 
-            const alivePlayers = Array.from(Game.players.values()).filter(p => p.isAlive && !p.isSpectator);
-            const activePlayers = Array.from(Game.players.values()).filter(p => !p.isSpectator);
-
-            // Fin de manche dès qu'il ne reste qu'UNE ÉQUIPE en vie (pas un
-            // seul joueur) — sauf si toute la salle est dans la même équipe
-            // depuis le départ (co-op : on joue jusqu'à la mort)
-            const aliveTeams = new Set(alivePlayers.map(p => p.team ?? 0));
-            const activeTeams = new Set(activePlayers.map(p => p.team ?? 0));
-
-            const gameEnded = Game.state === 'playing' && !Game.gameEndAnnounced && (
-                // Solo : fin quand le joueur meurt
-                (activePlayers.length === 1 && alivePlayers.length === 0) ||
-                // Multi : plus personne en vie, OU une seule équipe survivante
-                (activePlayers.length > 1 && (
-                    alivePlayers.length === 0 ||
-                    (aliveTeams.size <= 1 && activeTeams.size > 1)
-                ))
-            );
-
-            if (gameEnded) {
-                Game.gameEndAnnounced = true;
-                if (alivePlayers.length > 0) {
-                    const teamColors = ['Jaune', 'Rouge', 'Vert', 'Bleu', 'Rose'];
-                    const teamName = teamColors[alivePlayers[0].team] || 'Inconnue';
-                    const names = alivePlayers.map(p => p.name).join(', ');
-                    UI.addChatMessage('🏆 Système', `L'équipe ${teamName} a gagné ! (${names})`);
-                } else {
-                    UI.addChatMessage('🏆 Système', 'Partie terminée !');
-                }
-                // Leaderboard : chaque client enregistre SON résultat
-                this.recordGameResult(!!(Game.localPlayer?.isAlive && !Game.localPlayer?.isSpectator));
-                this.updateSessionDoc({ gameState: 'waiting' });
+            // Annonces entrée/sortie de salle (avec pseudo). On saute le premier
+            // snapshot pour ne pas annoncer tous ceux déjà présents à l'arrivée.
+            const myId = this.auth.currentUser.uid;
+            const liveNames = new Map();
+            for (const [id, raw] of Object.entries(val)) {
+                if (now - (raw.lastActive || 0) <= 30000) liveNames.set(id, raw.name || 'Joueur');
             }
+            if (this.knownPlayers) {
+                for (const [id, name] of liveNames) {
+                    if (id !== myId && !this.knownPlayers.has(id)) {
+                        UI.addChatMessage('Système', `${name} a rejoint la salle.`);
+                    }
+                }
+                for (const [id, name] of this.knownPlayers) {
+                    if (id !== myId && !liveNames.has(id)) {
+                        UI.addChatMessage('Système', `${name} a quitté la salle.`);
+                    }
+                }
+            }
+            this.knownPlayers = liveNames;
+
+            this.evaluateRoundEnd();
+
             // Regroupé et throttlé : un rafraîchissement UI max toutes les 200ms
             UI.scheduleRoomRefresh();
         });
@@ -289,6 +279,66 @@ export const FirebaseController = {
         });
         // Ménage : l'annonce ne sert plus à rien après 30s
         setTimeout(() => dbRemove(annRef).catch(() => { }), 30000);
+    },
+
+    // Fin de manche : confirmée seulement si elle TIENT ~700ms (évite les faux
+    // positifs dus aux synchros transitoires — un joueur vivant brièvement
+    // absent/mort dans un snapshot). C'est l'HÔTE qui annonce le vainqueur à
+    // tous via le chat partagé, pour un message unique et cohérent.
+    evaluateRoundEnd() {
+        if (Game.state !== 'playing' || Game.gameEndAnnounced) {
+            this.pendingEnd = null;
+            return;
+        }
+
+        const alive = Array.from(Game.players.values()).filter(p => p.isAlive && !p.isSpectator);
+        const active = Array.from(Game.players.values()).filter(p => !p.isSpectator);
+        const aliveTeams = new Set(alive.map(p => p.team ?? 0));
+        const activeTeams = new Set(active.map(p => p.team ?? 0));
+
+        const ended =
+            (active.length === 1 && alive.length === 0) ||                  // solo
+            (active.length > 1 && (
+                alive.length === 0 ||                                       // tout le monde mort
+                (aliveTeams.size <= 1 && activeTeams.size > 1)              // une seule équipe survivante
+            ));
+
+        if (!ended) { this.pendingEnd = null; return; }
+        if (this.pendingEnd) return; // confirmation déjà en cours
+
+        this.pendingEnd = setTimeout(() => {
+            this.pendingEnd = null;
+            if (Game.state !== 'playing' || Game.gameEndAnnounced) return;
+
+            // Re-vérifier : la condition tient-elle toujours ?
+            const a = Array.from(Game.players.values()).filter(p => p.isAlive && !p.isSpectator);
+            const act = Array.from(Game.players.values()).filter(p => !p.isSpectator);
+            const aTeams = new Set(a.map(p => p.team ?? 0));
+            const actTeams = new Set(act.map(p => p.team ?? 0));
+            const stillEnded =
+                (act.length === 1 && a.length === 0) ||
+                (act.length > 1 && (a.length === 0 || (aTeams.size <= 1 && actTeams.size > 1)));
+            if (!stillEnded) return;
+
+            Game.gameEndAnnounced = true;
+
+            // Annonce du vainqueur dans le chat partagé — par l'hôte uniquement
+            const hostId = Array.from(Game.players.keys()).filter(id => !id.startsWith('bot_')).sort()[0];
+            if (this.auth.currentUser?.uid === hostId) {
+                const teamColors = ['Jaune', 'Rouge', 'Vert', 'Bleu', 'Rose'];
+                let msg;
+                if (a.length > 0) {
+                    const teamName = teamColors[a[0].team] || 'Inconnue';
+                    msg = `🏆 L'équipe ${teamName} a gagné ! (${a.map(p => p.name).join(', ')})`;
+                } else {
+                    msg = '🏆 Partie terminée, aucun survivant !';
+                }
+                this.sendChatMessage(msg).catch(() => { });
+            }
+
+            this.recordGameResult(!!(Game.localPlayer?.isAlive && !Game.localPlayer?.isSpectator));
+            this.updateSessionDoc({ gameState: 'waiting' });
+        }, 700);
     },
 
     // --- ÉVÉNEMENTS JOUEUR (attaques & sorts) ---

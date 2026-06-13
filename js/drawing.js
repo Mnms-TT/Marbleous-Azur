@@ -267,9 +267,12 @@ export const Drawing = {
     }
 
     // --- CADRE BLANC ARRONDI + tube/cercle avec la boule COULEUR D'ÉQUIPE ---
-    BubbleRenderer.drawPlayfieldFrame(ctx, canvas, deadLineY);
+    // La ligne blanche marque le HAUT de la rangée de game over (là où on
+    // perd) au lieu de son centre — sinon elle paraît trop basse.
+    const lineY = deadLineY - rad * 0.866;
+    BubbleRenderer.drawPlayfieldFrame(ctx, canvas, lineY);
     BubbleRenderer.drawTeamBubbleHolder(
-      ctx, rad, deadLineY, layout.pivotY,
+      ctx, rad, lineY, layout.pivotY,
       Config.TEAM_COLORS[player.team || 0]
     );
 
@@ -308,7 +311,7 @@ export const Drawing = {
       ctx.shadowColor = "rgba(0,0,0,0.8)";
       ctx.shadowBlur = 3;
       player.spellTickers.forEach((t) => {
-        ctx.fillText(t.text, t.x, deadLineY - 6);
+        ctx.fillText(t.text, t.x, lineY - 6);
       });
       ctx.restore();
     }

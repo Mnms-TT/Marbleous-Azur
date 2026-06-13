@@ -511,15 +511,19 @@ export const LobbyGame = {
             }
 
             case "boulesSupplementaires": {
-                // Décale tout vers le bas, nouvelle ligne partielle en haut
-                for (let r = Config.GRID_ROWS - 1; r > 0; r--) {
-                    for (let c = 0; c < Config.GRID_COLS; c++) {
-                        grid[r][c] = grid[r - 1][c];
-                        if (grid[r][c]) grid[r][c].r = r;
-                    }
-                }
-                for (let c = 0; c < Config.GRID_COLS; c++) {
-                    grid[0][c] = Math.random() < 0.7 ? this.createBubble(0, c) : null;
+                // Remplit les cases libres accrochables (haut d'abord), sans
+                // décaler le plateau : pas de game over s'il reste de la place
+                const freeSlots = [];
+                for (let r = 0; r < Config.GRID_ROWS; r++)
+                    for (let c = 0; c < Config.GRID_COLS; c++)
+                        if (!grid[r][c] &&
+                            (r === 0 || this.getNeighborCoords(r, c).some(n => grid[n.r]?.[n.c])))
+                            freeSlots.push({ r, c });
+                freeSlots.sort((a, b) => a.r - b.r);
+                const toAdd = Math.min(freeSlots.length, 8 + Math.floor(Math.random() * 5));
+                for (let i = 0; i < toAdd; i++) {
+                    const s = freeSlots[i];
+                    grid[s.r][s.c] = this.createBubble(s.r, s.c);
                 }
                 break;
             }
@@ -704,9 +708,11 @@ export const LobbyGame = {
         }
 
         // Cadre blanc arrondi + tube/cercle avec la boule "équipe" (grise en solo)
-        BubbleRenderer.drawPlayfieldFrame(ctx, canvas, deadLineY);
+        // Ligne blanche remontée au haut de la rangée de game over (comme en salle)
+        const lineY = deadLineY - rad * 0.866;
+        BubbleRenderer.drawPlayfieldFrame(ctx, canvas, lineY);
         BubbleRenderer.drawTeamBubbleHolder(
-            ctx, rad, deadLineY, layout.pivotY, "#b6b4b9"
+            ctx, rad, lineY, layout.pivotY, "#b6b4b9"
         );
 
         // Grille
@@ -741,7 +747,7 @@ export const LobbyGame = {
             ctx.fillStyle = "#ffffff";
             ctx.shadowColor = "rgba(0,0,0,0.8)";
             ctx.shadowBlur = 3;
-            p.spellTickers.forEach(t => ctx.fillText(t.text, t.x, deadLineY - 6));
+            p.spellTickers.forEach(t => ctx.fillText(t.text, t.x, lineY - 6));
             ctx.restore();
         }
 
@@ -1096,6 +1102,10 @@ export const LobbyGame = {
         for (let c = 0; c < Config.GRID_COLS; c++) {
             if (this.player.grid[Config.GAME_OVER_ROW]?.[c]) {
                 this.player.isAlive = false;
+                // Hook : remonter le score au leaderboard de l'accueil
+                if (typeof this.onGameOver === "function") {
+                    try { this.onGameOver(this.player.score); } catch (e) { /* ignore */ }
+                }
                 return;
             }
         }

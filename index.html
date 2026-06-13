@@ -175,9 +175,12 @@
     }
 
     .spell-slot {
-      width: 38px;
+      /* Rétrécit si étroit pour que les 7 slots tiennent toujours */
+      flex: 1 1 0;
+      min-width: 0;
+      max-width: 38px;
+      aspect-ratio: 1 / 1;
       height: 38px;
-      min-width: 38px;
       background: transparent;
       border: 2px solid transparent;
       border-radius: 4px;
@@ -641,7 +644,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getFirestore, collection, onSnapshot, doc, writeBatch, addDoc, orderBy, query, limit, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-    import { getDatabase, ref as dbRef, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    import { getDatabase, ref as dbRef, onValue, get as dbGet, update as dbUpdate } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { LobbyGame } from "./js/lobbyGame.js";
     import { applyPatchworkBackground } from "./js/patchwork.js";
@@ -1049,6 +1052,22 @@
     if (practiceOverlay && practiceCanvas) {
       // Initialiser le module de jeu solo
       LobbyGame.init(practiceCanvas);
+
+      // Le score d'échauffement alimente le leaderboard (meilleur score, mode accueil)
+      LobbyGame.onGameOver = async (score) => {
+        if (!auth.currentUser || !score) return;
+        try {
+          const entryRef = dbRef(rtdb, `leaderboard/${auth.currentUser.uid}`);
+          const snap = await dbGet(entryRef);
+          const cur = snap.val() || {};
+          await dbUpdate(entryRef, {
+            name: currentPseudo,
+            wins: cur.wins || 0,
+            bestScore: Math.max(cur.bestScore || 0, score),
+            ts: Date.now(),
+          });
+        } catch (e) { console.warn("leaderboard accueil:", e?.message); }
+      };
 
       practiceOverlay.onclick = () => {
         practiceOverlay.classList.add('hidden');

@@ -716,24 +716,20 @@ export const GameLogic = {
 
 
       case "boulesSupplementaires": {
-        // Ajoute 1-2 rangées de bulles EN HAUT (pousse le plateau vers le bas)
-        // C'est l'inverse du sort nuke
+        // Remplit les cases LIBRES accrochables (en haut d'abord), sans décaler
+        // le plateau : on ne fait pas perdre tant qu'il reste de la place.
+        const freeSlots = [];
+        for (let r = 0; r < Config.GRID_ROWS; r++)
+          for (let c = 0; c < Config.GRID_COLS; c++)
+            if (!grid[r][c] &&
+                (r === 0 || this.getNeighborCoords(r, c).some(n => grid[n.r]?.[n.c])))
+              freeSlots.push({ r, c });
+        freeSlots.sort((a, b) => a.r - b.r); // remplir vers le haut en priorité
 
-        // D'abord décaler toutes les lignes vers le BAS
-        for (let r = Config.GRID_ROWS - 1; r > 0; r--) {
-          for (let c = 0; c < Config.GRID_COLS; c++) {
-            grid[r][c] = grid[r - 1][c];
-            if (grid[r][c]) grid[r][c].r = r;
-          }
-        }
-
-        // Ajouter une nouvelle ligne EN HAUT (row 0) avec des bulles partielles (70%)
-        for (let c = 0; c < Config.GRID_COLS; c++) {
-          if (Math.random() < 0.7) {
-            grid[0][c] = this.createBubble(0, c);
-          } else {
-            grid[0][c] = null;
-          }
+        const toAdd = Math.min(freeSlots.length, 8 + Math.floor(Math.random() * 5)); // ~8-12
+        for (let i = 0; i < toAdd; i++) {
+          const s = freeSlots[i];
+          grid[s.r][s.c] = this.createBubble(s.r, s.c);
         }
 
         gridChanged = true;

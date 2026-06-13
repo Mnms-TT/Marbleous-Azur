@@ -179,9 +179,13 @@
     }
 
     .spell-slot {
-      width: 38px;
+      /* Rétrécit si l'écran est étroit pour que les 7 slots tiennent
+         toujours — le dernier (sort actif) doit rester visible */
+      flex: 1 1 0;
+      min-width: 0;
+      max-width: 38px;
+      aspect-ratio: 1 / 1;
       height: 38px;
-      min-width: 38px;
       background: transparent;
       border: 2px solid transparent;
       border-radius: 4px;

@@ -190,13 +190,19 @@ export const BotManager = {
                 break;
             }
             case "boulesSupplementaires": {
-                for (let r = Config.GRID_ROWS - 1; r > 0; r--)
-                    for (let c = 0; c < Config.GRID_COLS; c++) {
-                        grid[r][c] = grid[r - 1][c];
-                        if (grid[r][c]) grid[r][c].r = r;
-                    }
-                for (let c = 0; c < Config.GRID_COLS; c++)
-                    grid[0][c] = Math.random() < 0.7 ? GameLogic.createBubble(0, c) : null;
+                // Remplit les cases libres accrochables (haut d'abord), sans décaler
+                const freeSlots = [];
+                for (let r = 0; r < Config.GRID_ROWS; r++)
+                    for (let c = 0; c < Config.GRID_COLS; c++)
+                        if (!grid[r][c] &&
+                            (r === 0 || GameLogic.getNeighborCoords(r, c).some(n => grid[n.r]?.[n.c])))
+                            freeSlots.push({ r, c });
+                freeSlots.sort((a, b) => a.r - b.r);
+                const toAdd = Math.min(freeSlots.length, 8 + Math.floor(Math.random() * 5));
+                for (let i = 0; i < toAdd; i++) {
+                    const s = freeSlots[i];
+                    grid[s.r][s.c] = GameLogic.createBubble(s.r, s.c);
+                }
                 break;
             }
             case "variationCouleur":

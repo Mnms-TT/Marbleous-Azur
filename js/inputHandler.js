@@ -40,12 +40,10 @@ export const InputHandler = {
             lastActive: Date.now(),
           });
         }
-        // Si en jeu : Clic = Lancer le sort sur soi-même (LIFO)
+        // Si en jeu : Clic = Lancer le sort sur soi-même (FIFO : le plus ancien)
         else if (Game.state === "playing" && p.isAlive) {
           if (p.spells && p.spells.length > 0) {
-            const lastSpellIndex = p.spells.length - 1;
-            GameLogic.castSpecificSpell(p, lastSpellIndex);
-            console.log(`Sort lancé sur soi-même (LIFO index: ${lastSpellIndex})`);
+            GameLogic.castSpecificSpell(p, 0);
           }
         }
       });
@@ -66,12 +64,12 @@ export const InputHandler = {
         const targetPlayer = Game.players.get(view.dataset.playerId);
         if (!targetPlayer) return;
 
-        // En jeu, vivant, avec un sort en main → on LANCE le sort (LIFO)
+        // En jeu, vivant, avec un sort en main → on LANCE le sort (FIFO : le plus ancien)
         const peutLancer =
           Game.state === "playing" && p.isAlive && p.spells && p.spells.length > 0;
 
         if (peutLancer) {
-          GameLogic.castSpecificSpell(targetPlayer, p.spells.length - 1);
+          GameLogic.castSpecificSpell(targetPlayer, 0);
         } else {
           // Sinon (pas de sort, partie finie, mort...) → pré-remplir un MP
           const input = document.getElementById("chat-input");
@@ -111,6 +109,9 @@ export const InputHandler = {
   handleChat(e) {
     if (e.key === "Enter") {
       const input = e.target;
+      // On rend le focus au jeu après l'envoi : les flèches/Espace remarchent
+      // sans avoir à recliquer (ce qui lançait un sort par mégarde).
+      setTimeout(() => input.blur(), 0);
       const msg = input.value.trim();
       if (msg && Game.localPlayer) {
         if (msg.startsWith("/canon ")) {

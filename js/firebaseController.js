@@ -535,13 +535,21 @@ export const FirebaseController = {
         }
     },
 
-    // Classement global : victoires + meilleur score, chacun écrit sa propre entrée
+    // Pseudo → clé RTDB valide (minuscules, sans caractères interdits . # $ / [ ])
+    leaderboardKey(name) {
+        const k = String(name || "").trim().toLowerCase().replace(/[.#$/\[\]]/g, "_");
+        return k.length ? k : null;
+    },
+
+    // Classement global : UNE ligne par joueur (clé = pseudo normalisé, pas
+    // l'uid qui change à chaque session anonyme → évite les doublons)
     async recordGameResult(won) {
         try {
-            const uid = this.auth.currentUser?.uid;
             const p = Game.localPlayer;
-            if (!uid || !p) return;
-            const entryRef = dbRef(this.rtdb, `leaderboard/${uid}`);
+            if (!p) return;
+            const key = FirebaseController.leaderboardKey(p.name);
+            if (!key) return;
+            const entryRef = dbRef(this.rtdb, `leaderboard/${key}`);
             const snap = await dbGet(entryRef);
             const cur = snap.val() || {};
             await dbUpdate(entryRef, {

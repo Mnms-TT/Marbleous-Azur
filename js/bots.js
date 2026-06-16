@@ -174,17 +174,20 @@ export const BotManager = {
                 break;
             }
             case "nettoyage": {
+                // 9 boules les plus basses, contiguës depuis un côté aléatoire
+                const fromLeft = Math.random() < 0.5;
                 const cells = [];
-                for (let r = 0; r < Config.GRID_ROWS; r++)
-                    for (let c = 0; c < Config.GRID_COLS; c++)
+                for (let r = Config.GRID_ROWS - 1; r >= 0 && cells.length < 9; r--) {
+                    for (let i = 0; i < Config.GRID_COLS && cells.length < 9; i++) {
+                        const c = fromLeft ? i : Config.GRID_COLS - 1 - i;
                         if (grid[r][c]) cells.push({ r, c });
-                cells.sort((a, b) => b.r - a.r);
-                const toRemove = Math.min(cells.length, 11 + Math.floor(Math.random() * 5));
-                for (let i = 0; i < toRemove; i++) {
-                    const cell = grid[cells[i].r][cells[i].c];
+                    }
+                }
+                for (const { r, c } of cells) {
+                    const cell = grid[r][c];
                     if (cell?.isSpellBubble && cell.spell && bot.spells.length < Config.MAX_SPELLS)
                         bot.spells.push(cell.spell);
-                    grid[cells[i].r][cells[i].c] = null;
+                    grid[r][c] = null;
                 }
                 this.collectFloating(bot);
                 break;
@@ -198,7 +201,7 @@ export const BotManager = {
                             (r === 0 || GameLogic.getNeighborCoords(r, c).some(n => grid[n.r]?.[n.c])))
                             freeSlots.push({ r, c });
                 freeSlots.sort((a, b) => a.r - b.r);
-                const toAdd = Math.min(freeSlots.length, 8 + Math.floor(Math.random() * 5));
+                const toAdd = Math.min(freeSlots.length, 5 + Math.floor(Math.random() * 4));
                 for (let i = 0; i < toAdd; i++) {
                     const s = freeSlots[i];
                     grid[s.r][s.c] = GameLogic.createBubble(s.r, s.c);
@@ -369,7 +372,7 @@ export const BotManager = {
     },
 
     botCastSpell(bot) {
-        const spellName = bot.spells.pop();
+        const spellName = bot.spells.shift(); // FIFO : le plus ancien
         if (!spellName) return;
 
         const info = Config.SPELLS[spellName];

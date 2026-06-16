@@ -327,24 +327,24 @@ export const UI = {
       slot.style.border = "";
       slot.style.boxShadow = "";
 
-      // Les sorts remplissent de droite à gauche. Avec 7 slots, slot 6 (i=6) est tout à droite.
-      // C'est le LIFO : le sort qu'on lancera est spells[spells.length - 1] (le dernier ajouté).
-      // On veut que le sort à lancer apparaisse tout à droite (i=numSlots - 1).
-      const spellIndex = spells.length - numSlots + i;
+      // FIFO : le sort lancé est le PLUS ANCIEN (spells[0]). Les sorts
+      // remplissent de GAUCHE à droite ; le slot tout à gauche (i=0) est le
+      // prochain sort lancé.
+      const spellIndex = i;
 
-      // Le slot tout à droite (i = 6 pour 7 slots) est TOUJOURS le slot actif avec la bordure
-      if (i === numSlots - 1) {
+      // Le slot tout à gauche est TOUJOURS le slot actif avec la bordure
+      if (i === 0) {
         slot.style.border = "2px solid white";
         slot.style.borderRadius = "4px";
       }
 
-      if (spellIndex >= 0 && spellIndex < spells.length) {
+      if (spellIndex < spells.length) {
         const spellName = spells[spellIndex];
         const spellInfo = Config.SPELLS[spellName];
         if (spellInfo) {
           slot.classList.add("has-spell");
 
-          if (spellIndex === spells.length - 1) {
+          if (spellIndex === 0) {
             slot.classList.add("active-spell");
           }
 

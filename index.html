@@ -858,7 +858,21 @@
       const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
       onValue(dbRef(rtdb, 'leaderboard'), (snap) => {
-        const entries = Object.values(snap.val() || {});
+        const raw = Object.values(snap.val() || {});
+        // UNE ligne par joueur : fusion par pseudo (meilleur score + total
+        // victoires) pour absorber les anciennes entrées dupliquées par uid
+        const byName = new Map();
+        for (const e of raw) {
+          const k = String(e.name || 'Joueur').trim().toLowerCase();
+          const cur = byName.get(k);
+          if (!cur) {
+            byName.set(k, { name: e.name || 'Joueur', bestScore: e.bestScore || 0, wins: e.wins || 0 });
+          } else {
+            cur.bestScore = Math.max(cur.bestScore, e.bestScore || 0);
+            cur.wins = Math.max(cur.wins, e.wins || 0);
+          }
+        }
+        const entries = Array.from(byName.values());
         // Tri : meilleur SCORE d'abord, puis nombre de victoires
         entries.sort((a, b) =>
           (b.bestScore || 0) - (a.bestScore || 0) || (b.wins || 0) - (a.wins || 0)
@@ -1083,11 +1097,14 @@
       // Initialiser le module de jeu solo
       LobbyGame.init(practiceCanvas);
 
-      // Le score d'échauffement alimente le leaderboard (meilleur score, mode accueil)
+      // Le score d'échauffement alimente le leaderboard (UNE ligne par joueur :
+      // clé = pseudo normalisé, comme en salle)
       LobbyGame.onGameOver = async (score) => {
         if (!auth.currentUser || !score) return;
         try {
-          const entryRef = dbRef(rtdb, `leaderboard/${auth.currentUser.uid}`);
+          const key = String(currentPseudo || '').trim().toLowerCase().replace(/[.#$/\[\]]/g, '_');
+          if (!key) return;
+          const entryRef = dbRef(rtdb, `leaderboard/${key}`);
           const snap = await dbGet(entryRef);
           const cur = snap.val() || {};
           await dbUpdate(entryRef, {

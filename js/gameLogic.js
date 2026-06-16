@@ -630,6 +630,20 @@ export const GameLogic = {
     }
   },
 
+  // Sort noir (nettoyage) : les `count` boules LES PLUS BASSES, contiguës
+  // depuis un côté aléatoire (gauche OU droite) — pas dispersées sur la ligne.
+  nettoyageCells(grid, count = 9) {
+    const fromLeft = Math.random() < 0.5;
+    const result = [];
+    for (let r = Config.GRID_ROWS - 1; r >= 0 && result.length < count; r--) {
+      for (let i = 0; i < Config.GRID_COLS && result.length < count; i++) {
+        const c = fromLeft ? i : Config.GRID_COLS - 1 - i;
+        if (grid[r][c]) result.push({ r, c });
+      }
+    }
+    return result;
+  },
+
   // Angle d'inclinaison du sort rouge : 60% du temps LÉGER (3-12°),
   // sinon plus marqué (12-35°). Signe aléatoire (gauche/droite).
   randomTiltAngle() {
@@ -748,7 +762,7 @@ export const GameLogic = {
               freeSlots.push({ r, c });
         freeSlots.sort((a, b) => a.r - b.r); // remplir vers le haut en priorité
 
-        const toAdd = Math.min(freeSlots.length, 8 + Math.floor(Math.random() * 5)); // ~8-12
+        const toAdd = Math.min(freeSlots.length, 5 + Math.floor(Math.random() * 4)); // ~5-8 (nerf)
         for (let i = 0; i < toAdd; i++) {
           const s = freeSlots[i];
           grid[s.r][s.c] = this.createBubble(s.r, s.c);
@@ -816,23 +830,16 @@ export const GameLogic = {
       }
 
       case "nettoyage": {
-        // Enlève les ~13 boules LES PLUS BASSES (≈ 1,5 ligne), plafonné à 2
-        // lignes pleines (16). On VOIT les boules tomber ; les sorts ne
-        // rejoignent l'inventaire qu'à l'atterrissage (collectOnLand).
-        const cells = [];
-        for (let r = 0; r < Config.GRID_ROWS; r++)
-          for (let c = 0; c < Config.GRID_COLS; c++)
-            if (grid[r][c]) cells.push({ r, c });
-        // Les plus basses d'abord (r décroissant)
-        cells.sort((a, b) => b.r - a.r);
-        const toRemove = Math.min(cells.length, 11 + Math.floor(Math.random() * 5)); // 11-15, max 16
+        // Enlève les 9 boules LES PLUS BASSES, contiguës depuis un côté
+        // aléatoire. On VOIT les boules tomber ; les sorts ne rejoignent
+        // l'inventaire qu'à l'atterrissage (collectOnLand).
+        const cells = this.nettoyageCells(grid, 9);
 
         target.fallingBubbles = target.fallingBubbles || [];
         target.effects = target.effects || [];
 
         let removed = 0;
-        for (let i = 0; i < toRemove; i++) {
-          const { r, c } = cells[i];
+        for (const { r, c } of cells) {
           const bubble = grid[r][c];
           if (!bubble) continue;
           const { x, y } = this.getBubbleCoords(r, c, Game.bubbleRadius);

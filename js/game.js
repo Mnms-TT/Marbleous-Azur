@@ -18,6 +18,7 @@ export const Game = {
   countdownInterval: null,
   lobbyMarbles: [],
   pausedSpectator: false, // spectateur "pause"/"salle pleine" (ne rejoue pas auto)
+  awaitingRound: false, // arrivé pendant une partie en cours → attend la suivante
   currentRotationSpeed: Config.LAUNCHER_ROTATION_SPEED,
   targetFPS: Config.DEFAULT_GAME_FPS,
   lastFrameTime: 0,
@@ -84,6 +85,7 @@ export const Game = {
   resetForNewRound() {
     this.state = "waiting";
     this.gameEndAnnounced = false;
+    this.awaitingRound = false; // l'attente est finie : on rejoue cette manche
     this.gameIntervals.forEach(clearInterval);
     this.gameIntervals = [];
 

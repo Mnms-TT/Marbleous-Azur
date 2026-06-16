@@ -112,15 +112,22 @@ export const FirebaseController = {
             // Seuls les JOUEURS comptent dans le plafond de 10 : les spectateurs
             // sont illimités (pause / observateurs en plus des 10 joueurs)
             let activeCount = 0;
+            const usedTeams = new Set();
 
             for (const [id, data] of Object.entries(players)) {
                 if (id === localPlayerId) continue; // re-join
                 if (now - (data.lastActive || 0) < 30000) {
-                    if (!data.isSpectator) activeCount++;
+                    if (!data.isSpectator) { activeCount++; usedTeams.add(data.team ?? 0); }
                 } else {
                     this.deletePlayerDoc(id); // fantôme
                 }
             }
+
+            // Couleur d'équipe NON UTILISÉE de préférence (sinon aléatoire)
+            const freeTeams = [0, 1, 2, 3, 4].filter(t => !usedTeams.has(t));
+            const chosenTeam = freeTeams.length
+                ? freeTeams[Math.floor(Math.random() * freeTeams.length)]
+                : randomTeam;
 
             // Salle pleine de joueurs → on entre en SPECTATEUR au lieu de refouler
             let forceSpectator = false;
@@ -137,17 +144,23 @@ export const FirebaseController = {
             let isSpectator = false;
             const playerData = {
                 name: playerName, isAlive: true, isReady: false, isSpectator: false,
-                team: randomTeam, score: 0, level: 1, spells: [], statusEffects: {},
+                team: chosenTeam, score: 0, level: 1, spells: [], statusEffects: {},
                 attackBubbleCounter: 0, lastActive: now,
             };
-            // Spectateur UNIQUEMENT si la salle est pleine (10 joueurs). S'il
-            // reste de la place, on entre comme JOUEUR avec une couleur
-            // aléatoire (même si une partie est en cours : on rejoint la
-            // manche et on jouera pleinement dès la suivante).
+            // Salle pleine → spectateur.
+            const gameInProgress = activeCount > 0 && (gameState === 'playing' || gameState === 'countdown');
             if (forceSpectator) {
                 isSpectator = true;
                 playerData.isAlive = false;
                 playerData.isSpectator = true;
+            } else if (gameInProgress) {
+                // Une partie est DÉJÀ commencée : on n'y entre pas. On prend une
+                // couleur libre et on attend la prochaine manche en "game over"
+                // (isAlive=false, mais pas spectateur → on a une couleur).
+                playerData.isAlive = false;
+                Game.awaitingRound = true;
+            } else {
+                Game.awaitingRound = false;
             }
 
             // Étape 3 : écrire son nœud joueur (grille encodée par case)
@@ -161,7 +174,7 @@ export const FirebaseController = {
             await dbUpdate(dbRef(this.rtdb), {
                 [`rooms/${roomId}/session/gameState`]: gameState,
                 [`roomsMeta/${roomId}/players/${localPlayerId}/name`]: playerName,
-                [`roomsMeta/${roomId}/players/${localPlayerId}/team`]: randomTeam,
+                [`roomsMeta/${roomId}/players/${localPlayerId}/team`]: chosenTeam,
                 [`roomsMeta/${roomId}/players/${localPlayerId}/lastActive`]: now,
             });
 

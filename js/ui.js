@@ -327,18 +327,18 @@ export const UI = {
       slot.style.border = "";
       slot.style.boxShadow = "";
 
-      // FIFO : le sort lancé est le PLUS ANCIEN (spells[0]). Les sorts
-      // remplissent de GAUCHE à droite ; le slot tout à gauche (i=0) est le
-      // prochain sort lancé.
-      const spellIndex = i;
+      // FIFO mais aligné à DROITE : le sort actif (le plus ancien, spells[0])
+      // reste tout à droite ; les sorts plus récents s'empilent vers la gauche,
+      // de plus en plus loin.
+      const spellIndex = (numSlots - 1) - i;
 
-      // Le slot tout à gauche est TOUJOURS le slot actif avec la bordure
-      if (i === 0) {
+      // Le slot tout à droite est TOUJOURS le slot actif avec la bordure
+      if (i === numSlots - 1) {
         slot.style.border = "2px solid white";
         slot.style.borderRadius = "4px";
       }
 
-      if (spellIndex < spells.length) {
+      if (spellIndex >= 0 && spellIndex < spells.length) {
         const spellName = spells[spellIndex];
         const spellInfo = Config.SPELLS[spellName];
         if (spellInfo) {

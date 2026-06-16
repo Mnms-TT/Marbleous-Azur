@@ -816,15 +816,15 @@ export const LobbyGame = {
             slot.style.border = "";
             slot.style.boxShadow = "";
 
-            // FIFO : actif = plus ancien (spells[0]), tout à gauche
-            const spellIndex = i;
+            // FIFO aligné à DROITE : actif (spells[0]) à droite, récents à gauche
+            const spellIndex = (numSlots - 1) - i;
 
-            if (i === 0) {
+            if (i === numSlots - 1) {
                 slot.style.border = "2px solid white";
                 slot.style.borderRadius = "4px";
             }
 
-            if (spellIndex < spells.length) {
+            if (spellIndex >= 0 && spellIndex < spells.length) {
                 const spellName = spells[spellIndex];
                 const spellInfo = Config.SPELLS[spellName];
                 if (spellInfo) {

@@ -1170,6 +1170,10 @@
       let text = chatInput.value.trim();
       if (!text || !auth.currentUser) return;
 
+      // Rendre le focus au jeu d'échauffement après l'envoi : flèches/Espace
+      // remarchent sans recliquer (le clavier est ignoré quand le champ a le focus)
+      setTimeout(() => chatInput.blur(), 0);
+
       // Commandes locales pour l'échauffement : /fps X et /canon X (comme en salle)
       if (text.toLowerCase().startsWith('/fps ')) {
         const val = parseInt(text.split(' ')[1]);

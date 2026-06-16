@@ -346,7 +346,15 @@ export const Drawing = {
     const teamColor = Config.TEAM_COLORS[player.team || 0];
     BubbleRenderer.drawPlayerLabel(ctx, canvas, player.name || "Joueur", player.score || 0, teamColor);
 
-    if (!player.isAlive) this.drawOverlayText(ctx, canvas, "PERDU", "red");
+    if (!player.isAlive) {
+      // Joueur arrivé pendant une partie en cours : il attend la prochaine
+      // manche (pas "PERDU") — il a une couleur mais ne joue pas ce round.
+      if (isMain && Game.awaitingRound) {
+        this.drawOverlayText(ctx, canvas, "⏳ Prochaine manche", "#fbbf24");
+      } else {
+        this.drawOverlayText(ctx, canvas, "PERDU", "red");
+      }
+    }
     if (player.hasWon) this.drawOverlayText(ctx, canvas, "GAGNÉ", "#22c55e");
 
     // Overlays for opponent mini-boards

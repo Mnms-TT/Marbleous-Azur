@@ -179,7 +179,7 @@ export const BotManager = {
                     for (let c = 0; c < Config.GRID_COLS; c++)
                         if (grid[r][c]) cells.push({ r, c });
                 cells.sort((a, b) => b.r - a.r);
-                const toRemove = Math.min(cells.length, 10 + Math.floor(Math.random() * 5));
+                const toRemove = Math.min(cells.length, 11 + Math.floor(Math.random() * 5));
                 for (let i = 0; i < toRemove; i++) {
                     const cell = grid[cells[i].r][cells[i].c];
                     if (cell?.isSpellBubble && cell.spell && bot.spells.length < Config.MAX_SPELLS)
@@ -235,27 +235,41 @@ export const BotManager = {
         }
     },
 
+    // Repart d'une manche fraîche : vivant, grille neuve, pas prêt
+    resetBotForNewRound(bot, now = Date.now()) {
+        bot.grid = GameLogic.createInitialGrid();
+        bot.score = 0;
+        bot.level = 1;
+        bot.spells = [];
+        bot.attackCounter = 0;
+        bot.alive = true;
+        bot.isReady = false;
+        bot.readyAt = now + 1500 + Math.random() * 4000;
+        bot.levelTimer = now;
+    },
+
     // --- TICK PRINCIPAL ---
     tick(bot) {
         const now = Date.now();
         const wasReady = bot.isReady;
         const wasAlive = bot.alive;
 
-        // Changement de manche : reset comme les humains
+        // Changement de manche : reset comme les humains (affichage lobby)
         if (Game.state === "waiting" && bot.lastSeenState !== "waiting") {
-            bot.grid = GameLogic.createInitialGrid();
-            bot.score = 0;
-            bot.level = 1;
-            bot.spells = [];
-            bot.attackCounter = 0;
-            bot.alive = true;
-            bot.isReady = false;
-            bot.readyAt = now + 1500 + Math.random() * 4000;
+            this.resetBotForNewRound(bot, now);
+        }
+        // SÉCURITÉ anti-boucle : quand une manche DÉMARRE, le bot doit être
+        // vivant et frais — même si l'état "waiting" a été manqué (cycle
+        // rapide). Sinon un bot mort démarrait la manche déjà perdu, la manche
+        // finissait aussitôt, et ça bouclait à l'infini.
+        if (Game.state === "playing" && bot.lastSeenState !== "playing") {
+            this.resetBotForNewRound(bot, now);
+            bot.isReady = true; // déjà en jeu
         }
         bot.lastSeenState = Game.state;
 
-        // Se mettre prêt en salle d'attente
-        if (Game.state === "waiting" && !bot.isReady && now > bot.readyAt) {
+        // Se mettre prêt en salle d'attente — UNIQUEMENT si vivant
+        if (Game.state === "waiting" && bot.alive && !bot.isReady && now > bot.readyAt) {
             bot.isReady = true;
             if (Math.random() < 0.4) this.say(bot, pick(PHRASES.ready));
         }

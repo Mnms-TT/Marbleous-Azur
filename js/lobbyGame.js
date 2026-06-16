@@ -476,8 +476,9 @@ export const LobbyGame = {
 
         switch (spell) {
             case "plateauRenverse": {
-                // Angle aléatoire, 35 degrés au maximum (comme en salle)
-                const rotationAngle = (8 + Math.random() * 27) * (Math.random() < 0.5 ? -1 : 1);
+                // Souvent léger, parfois fort (comme en salle)
+                const mag = Math.random() < 0.6 ? 3 + Math.random() * 9 : 12 + Math.random() * 23;
+                const rotationAngle = mag * (Math.random() < 0.5 ? -1 : 1);
                 p.statusEffects.plateauRenverse = {
                     endTime: Date.now() + DURATION,
                     angle: rotationAngle,
@@ -584,28 +585,28 @@ export const LobbyGame = {
             }
 
             case "nettoyage": {
-                // Deux dernières lignes occupées : les boules tombent, les
-                // sorts ne rejoignent l'inventaire qu'à l'atterrissage
-                const occupiedRows = [];
-                for (let r = 0; r < Config.GRID_ROWS; r++) {
-                    if (grid[r].some(Boolean)) occupiedRows.push(r);
-                }
-                const rowsToClear = occupiedRows.slice(-2);
+                // ~13 boules les plus basses (max 2 lignes), elles tombent ;
+                // sorts ramassés à l'atterrissage seulement
+                const cells = [];
+                for (let r = 0; r < Config.GRID_ROWS; r++)
+                    for (let c = 0; c < Config.GRID_COLS; c++)
+                        if (grid[r][c]) cells.push({ r, c });
+                cells.sort((a, b) => b.r - a.r);
+                const toRemove = Math.min(cells.length, 11 + Math.floor(Math.random() * 5));
 
                 let removed = 0;
-                for (const r of rowsToClear) {
-                    for (let c = 0; c < Config.GRID_COLS; c++) {
-                        const bubble = grid[r][c];
-                        if (!bubble) continue;
-                        const { x, y } = this.getBubbleCoords(r, c);
-                        p.effects.push({ x, y, type: "pop", radius: this.bubbleRadius, life: 20 });
-                        p.fallingBubbles.push({
-                            ...bubble, x, y, vx: 0, vy: 0.5,
-                            collectOnLand: bubble.isSpellBubble && bubble.spell ? bubble.spell : null,
-                        });
-                        grid[r][c] = null;
-                        removed++;
-                    }
+                for (let i = 0; i < toRemove; i++) {
+                    const { r, c } = cells[i];
+                    const bubble = grid[r][c];
+                    if (!bubble) continue;
+                    const { x, y } = this.getBubbleCoords(r, c);
+                    p.effects.push({ x, y, type: "pop", radius: this.bubbleRadius, life: 20 });
+                    p.fallingBubbles.push({
+                        ...bubble, x, y, vx: 0, vy: 0.5,
+                        collectOnLand: bubble.isSpellBubble && bubble.spell ? bubble.spell : null,
+                    });
+                    grid[r][c] = null;
+                    removed++;
                 }
 
                 if (removed > 0) this.handleAvalanche(true);

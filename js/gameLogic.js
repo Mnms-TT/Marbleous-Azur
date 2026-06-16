@@ -630,6 +630,15 @@ export const GameLogic = {
     }
   },
 
+  // Angle d'inclinaison du sort rouge : 60% du temps LÉGER (3-12°),
+  // sinon plus marqué (12-35°). Signe aléatoire (gauche/droite).
+  randomTiltAngle() {
+    const mag = Math.random() < 0.6
+      ? 3 + Math.random() * 9
+      : 12 + Math.random() * 23;
+    return mag * (Math.random() < 0.5 ? -1 : 1);
+  },
+
   async applySpellEffect(target, spell, casterName = null) {
     if (!target?.isAlive || !spell) return;
 
@@ -668,8 +677,8 @@ export const GameLogic = {
     switch (spell) {
       // SORTS OFFENSIFS
       case "plateauRenverse":
-        // Rotation du plateau : angle aléatoire, 35 degrés au maximum
-        const rotationAngle = (8 + Math.random() * 27) * (Math.random() < 0.5 ? -1 : 1);
+        // Rotation du plateau : souvent légère, parfois forte (max ~35°)
+        const rotationAngle = this.randomTiltAngle();
         effects.plateauRenverse = {
           endTime: Date.now() + DURATION,
           angle: rotationAngle, // Angle en degrés
@@ -807,34 +816,35 @@ export const GameLogic = {
       }
 
       case "nettoyage": {
-        // Enlève les DEUX dernières lignes occupées : on VOIT les boules
-        // tomber, et les sorts ne rejoignent l'inventaire qu'à l'atterrissage
-        // (collectOnLand, ramassé en bas de l'écran dans updateLocalAnimations)
-        const occupiedRows = [];
-        for (let r = 0; r < Config.GRID_ROWS; r++) {
-          if (grid[r].some(Boolean)) occupiedRows.push(r);
-        }
-        const rowsToClear = occupiedRows.slice(-2);
+        // Enlève les ~13 boules LES PLUS BASSES (≈ 1,5 ligne), plafonné à 2
+        // lignes pleines (16). On VOIT les boules tomber ; les sorts ne
+        // rejoignent l'inventaire qu'à l'atterrissage (collectOnLand).
+        const cells = [];
+        for (let r = 0; r < Config.GRID_ROWS; r++)
+          for (let c = 0; c < Config.GRID_COLS; c++)
+            if (grid[r][c]) cells.push({ r, c });
+        // Les plus basses d'abord (r décroissant)
+        cells.sort((a, b) => b.r - a.r);
+        const toRemove = Math.min(cells.length, 11 + Math.floor(Math.random() * 5)); // 11-15, max 16
 
         target.fallingBubbles = target.fallingBubbles || [];
         target.effects = target.effects || [];
 
         let removed = 0;
-        for (const r of rowsToClear) {
-          for (let c = 0; c < Config.GRID_COLS; c++) {
-            const bubble = grid[r][c];
-            if (!bubble) continue;
-            const { x, y } = this.getBubbleCoords(r, c, Game.bubbleRadius);
-            target.effects.push({
-              x, y, type: "pop", radius: Game.bubbleRadius, life: 20,
-            });
-            target.fallingBubbles.push({
-              ...bubble, x, y, vx: 0, vy: 0.5,
-              collectOnLand: bubble.isSpellBubble && bubble.spell ? bubble.spell : null,
-            });
-            grid[r][c] = null;
-            removed++;
-          }
+        for (let i = 0; i < toRemove; i++) {
+          const { r, c } = cells[i];
+          const bubble = grid[r][c];
+          if (!bubble) continue;
+          const { x, y } = this.getBubbleCoords(r, c, Game.bubbleRadius);
+          target.effects.push({
+            x, y, type: "pop", radius: Game.bubbleRadius, life: 20,
+          });
+          target.fallingBubbles.push({
+            ...bubble, x, y, vx: 0, vy: 0.5,
+            collectOnLand: bubble.isSpellBubble && bubble.spell ? bubble.spell : null,
+          });
+          grid[r][c] = null;
+          removed++;
         }
 
         if (removed > 0) {

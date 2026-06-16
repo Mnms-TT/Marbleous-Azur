@@ -140,8 +140,11 @@ export const FirebaseController = {
                 team: randomTeam, score: 0, level: 1, spells: [], statusEffects: {},
                 attackBubbleCounter: 0, lastActive: now,
             };
-            // Spectateur si : partie en cours, OU salle déjà pleine de 10 joueurs
-            if (forceSpectator || (activeCount > 0 && (gameState === 'playing' || gameState === 'countdown'))) {
+            // Spectateur UNIQUEMENT si la salle est pleine (10 joueurs). S'il
+            // reste de la place, on entre comme JOUEUR avec une couleur
+            // aléatoire (même si une partie est en cours : on rejoint la
+            // manche et on jouera pleinement dès la suivante).
+            if (forceSpectator) {
                 isSpectator = true;
                 playerData.isAlive = false;
                 playerData.isSpectator = true;

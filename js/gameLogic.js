@@ -278,8 +278,13 @@ export const GameLogic = {
     const p = Game.localPlayer;
     if (!p?.isAlive) return;
     if (p.shakeProtectionUntil && Date.now() < p.shakeProtectionUntil) return;
+    this.spawnIncomingBubbles(p, count);
+  },
 
-    // Cases libres accrochables, en haut d'abord (comme avant)
+  // Fait ENTRER `count` boules par la gauche (en vol, en file), vers les cases
+  // libres accrochables (en haut d'abord). Utilisé par les attaques ET le sort
+  // bleu (boules supplémentaires) → les boules ne "popent" jamais par magie.
+  spawnIncomingBubbles(p, count) {
     const validSlots = [];
     for (let r = 0; r < Config.GRID_ROWS; r++) {
       for (let c = 0; c < Config.GRID_COLS; c++) {
@@ -752,23 +757,13 @@ export const GameLogic = {
 
 
       case "boulesSupplementaires": {
-        // Remplit les cases LIBRES accrochables (en haut d'abord), sans décaler
-        // le plateau : on ne fait pas perdre tant qu'il reste de la place.
-        const freeSlots = [];
-        for (let r = 0; r < Config.GRID_ROWS; r++)
-          for (let c = 0; c < Config.GRID_COLS; c++)
-            if (!grid[r][c] &&
-                (r === 0 || this.getNeighborCoords(r, c).some(n => grid[n.r]?.[n.c])))
-              freeSlots.push({ r, c });
-        freeSlots.sort((a, b) => a.r - b.r); // remplir vers le haut en priorité
-
-        const toAdd = Math.min(freeSlots.length, 5 + Math.floor(Math.random() * 4)); // ~5-8 (nerf)
-        for (let i = 0; i < toAdd; i++) {
-          const s = freeSlots[i];
-          grid[s.r][s.c] = this.createBubble(s.r, s.c);
+        // 12 boules qui ARRIVENT par la gauche (en vol), vers les cases libres
+        // accrochables (en haut d'abord) — elles ne popent pas par magie.
+        // On n'écrit pas la grille ici : l'atterrissage (updateLocalAnimations)
+        // la posera et la persistera.
+        if (target.id === Game.localPlayer?.id) {
+          this.spawnIncomingBubbles(Game.localPlayer, 12);
         }
-
-        gridChanged = true;
         break;
       }
 

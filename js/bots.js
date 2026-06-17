@@ -201,7 +201,7 @@ export const BotManager = {
                             (r === 0 || GameLogic.getNeighborCoords(r, c).some(n => grid[n.r]?.[n.c])))
                             freeSlots.push({ r, c });
                 freeSlots.sort((a, b) => a.r - b.r);
-                const toAdd = Math.min(freeSlots.length, 5 + Math.floor(Math.random() * 4));
+                const toAdd = Math.min(freeSlots.length, 12);
                 for (let i = 0; i < toAdd; i++) {
                     const s = freeSlots[i];
                     grid[s.r][s.c] = GameLogic.createBubble(s.r, s.c);

@@ -523,20 +523,8 @@ export const LobbyGame = {
             }
 
             case "boulesSupplementaires": {
-                // Remplit les cases libres accrochables (haut d'abord), sans
-                // décaler le plateau : pas de game over s'il reste de la place
-                const freeSlots = [];
-                for (let r = 0; r < Config.GRID_ROWS; r++)
-                    for (let c = 0; c < Config.GRID_COLS; c++)
-                        if (!grid[r][c] &&
-                            (r === 0 || this.getNeighborCoords(r, c).some(n => grid[n.r]?.[n.c])))
-                            freeSlots.push({ r, c });
-                freeSlots.sort((a, b) => a.r - b.r);
-                const toAdd = Math.min(freeSlots.length, 5 + Math.floor(Math.random() * 4));
-                for (let i = 0; i < toAdd; i++) {
-                    const s = freeSlots[i];
-                    grid[s.r][s.c] = this.createBubble(s.r, s.c);
-                }
+                // 12 boules qui ARRIVENT par la gauche (en vol), pas par magie
+                this.spawnIncomingBubbles(12);
                 break;
             }
 
@@ -625,7 +613,13 @@ export const LobbyGame = {
         // Échauffement : l'ordinateur envoie ~1 unité, gentil aux premiers niveaux
         const count = Config.attackSize(p.level, 1);
         if (count <= 0) return;
+        this.spawnIncomingBubbles(count);
+    },
 
+    // Fait ENTRER `count` boules par la gauche vers les cases libres (haut
+    // d'abord) — attaques de l'ordinateur ET sort bleu (boules supplémentaires)
+    spawnIncomingBubbles(count) {
+        const p = this.player;
         const validSlots = [];
         for (let r = 0; r < Config.GRID_ROWS; r++) {
             for (let c = 0; c < Config.GRID_COLS; c++) {
@@ -636,9 +630,6 @@ export const LobbyGame = {
                 }
             }
         }
-
-        // Remplir en haut d'abord, comme en salle — les boules arrivent en volant
-        // par le bord gauche (file indienne) au lieu d'apparaître de nulle part
         validSlots.sort((a, b) => a.r - b.r);
         const toAdd = Math.min(validSlots.length, count);
         for (let i = 0; i < toAdd; i++) {

@@ -668,23 +668,26 @@ export const GameLogic = {
       target.recentSpellTimes = (target.recentSpellTimes || []).filter(t => now - t < 4000);
       target.recentSpellTimes.push(now);
       const count = target.recentSpellTimes.length;
-      // Plusieurs sorts rapprochés : secousse nettement plus forte et plus longue
-      const duration = Math.min(1000 + 1000 * count, 6500);
-      const intensity = Math.min(1 + count * 2, 10);
+      // Plusieurs sorts rapprochés : secousse plus forte et plus longue
+      const duration = Math.min(1200 + 1100 * count, 7000);
+      const intensity = Math.min(2 + count * 2.5, 12);
       UI.triggerShake(intensity, duration);
-      // Protection : pas de boules adverses pendant le tremblement
-      target.shakeProtectionUntil = now + duration;
 
-      // Message blanc défilant (droite → gauche) au-dessus de la ligne de mort :
-      // qui t'a envoyé quoi
+      // Message blanc défilant (droite → gauche) au-dessus de la ligne de mort
       const spellInfo = Config.SPELLS[spell];
       const label = `<${spellInfo ? spellInfo.name : spell}${casterName ? " par " + casterName : ""}`;
       target.spellTickers = target.spellTickers || [];
       const mainCanvas = document.getElementById("gameCanvas");
-      target.spellTickers.push({
-        text: label,
-        x: (mainCanvas ? mainCanvas.width : 300) + target.spellTickers.length * 160,
-      });
+      const w = mainCanvas ? mainCanvas.width : 300;
+      const startX = w + target.spellTickers.length * 160;
+      target.spellTickers.push({ text: label, x: startX });
+
+      // Protection (pas de boules adverses) : dure AU MOINS le temps que le
+      // message traverse tout l'écran. Le ticker recule de 1,5 px par pas de
+      // simulation, à targetFPS pas/seconde, et disparaît à x < -400.
+      const fps = Game.targetFPS || Config.DEFAULT_GAME_FPS;
+      const tickerMs = ((startX + 400) / 1.5 / fps) * 1000;
+      target.shakeProtectionUntil = now + Math.min(Math.max(duration, tickerMs), 12000);
     }
 
     const DURATION = 10000;

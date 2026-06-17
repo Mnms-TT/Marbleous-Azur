@@ -485,8 +485,8 @@ export const UI = {
     const canvas = document.getElementById("gameCanvas");
     if (!canvas) return;
 
-    // Amplitude dynamique basée sur l'intensité (1-10)
-    const amplitude = Math.min(intensity * 3.5, 32); // Max 32px
+    // Amplitude dynamique basée sur l'intensité (secousse un peu plus forte)
+    const amplitude = Math.min(intensity * 4.2, 40); // Max 40px
 
     // Créer une animation CSS dynamique
     const keyframeName = `shake_${Date.now()}`;

@@ -120,18 +120,22 @@ export const Config = {
   MAX_SPELLS: 7, // Limite d'inventaire de sorts
   GAME_OVER_ROW: 11, // Ligne limite avant Game Over
 
-  // Coefficient de redistribution des bulles - augmente avec le niveau.
-  // Départ très doux (niveaux 1-2 peuvent renvoyer peu, voire 0 boule),
-  // puis la rampe reste raide pour que les parties ne s'éternisent pas.
-  BASE_REDISTRIBUTION_COEF: 0.04, // Coefficient initial
-  REDISTRIBUTION_COEF_PER_LEVEL: 0.08, // +0.08 par niveau
+  // Coefficient de redistribution par niveau (1→5). Au-delà du niveau 5,
+  // on prolonge la rampe (+0,11 par niveau) pour que les parties finissent.
+  LEVEL_COEFS: [0.03, 0.08, 0.15, 0.22, 0.33],
+
+  levelCoef(level) {
+    const idx = Math.max(1, level) - 1;
+    if (idx < this.LEVEL_COEFS.length) return this.LEVEL_COEFS[idx];
+    const last = this.LEVEL_COEFS.length - 1;
+    return this.LEVEL_COEFS[last] + (idx - last) * 0.11;
+  },
 
   // Taille d'une attaque selon le niveau et le nombre d'unités (10 boules
   // éclatées = 1 unité). Aux niveaux 1-2 le minimum n'est PAS forcé à 1 :
   // un joueur peu agressif n'envoie rien au début (montée en douceur).
   attackSize(level, units = 1) {
-    const coef = this.BASE_REDISTRIBUTION_COEF + (level - 1) * this.REDISTRIBUTION_COEF_PER_LEVEL;
-    const raw = Math.floor(units * coef * 10);
+    const raw = Math.floor(units * this.levelCoef(level) * 10);
     return level <= 2 ? raw : Math.max(1, raw);
   },
 };

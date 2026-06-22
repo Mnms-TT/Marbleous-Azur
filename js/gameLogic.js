@@ -214,10 +214,13 @@ export const GameLogic = {
         if (Math.random() < Config.SPELL_SPAWN_CHANCE)
           this.spawnSpellBubble(player);
 
-        // Mise à jour score et attaque — d'abord LOCALEMENT (l'écho serveur
-        // n'écrase plus notre état en jeu : sans ça, le compteur d'attaque
-        // restait à 0 et plus aucune boule ne partait chez les adversaires)
-        player.score += cleared * 10 + Math.pow(avalanche, 2) * 10;
+        // Score : base = boules éclatées (avalanche comprise) × 10, multipliée
+        // par le NIVEAU AU CARRÉ (le niveau pèse énormément). Survivre haut +
+        // claquer beaucoup de boules = très gros score.
+        const lvl = player.level || 1;
+        player.score += cleared * 10 * lvl * lvl;
+        // Mise à jour attaque d'abord LOCALEMENT (l'écho serveur n'écrase plus
+        // notre état en jeu, sinon le compteur d'attaque restait à 0)
         player.attackBubbleCounter += cleared;
         await FirebaseController.updatePlayerDoc(player.id, {
           score: player.score,

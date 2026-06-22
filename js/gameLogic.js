@@ -215,10 +215,10 @@ export const GameLogic = {
           this.spawnSpellBubble(player);
 
         // Score : base = boules éclatées (avalanche comprise) × 10, multipliée
-        // par le NIVEAU AU CARRÉ (le niveau pèse énormément). Survivre haut +
-        // claquer beaucoup de boules = très gros score.
+        // par le NIVEAU^1.5 (le niveau pèse beaucoup, sans exploser comme le
+        // carré). Survivre haut + claquer beaucoup de boules = gros score.
         const lvl = player.level || 1;
-        player.score += cleared * 10 * lvl * lvl;
+        player.score += Math.round(cleared * 10 * Math.pow(lvl, 1.5));
         // Mise à jour attaque d'abord LOCALEMENT (l'écho serveur n'écrase plus
         // notre état en jeu, sinon le compteur d'attaque restait à 0)
         player.attackBubbleCounter += cleared;

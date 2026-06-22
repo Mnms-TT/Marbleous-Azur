@@ -412,9 +412,9 @@ export const LobbyGame = {
                     this.spawnSpellBubble();
                 }
 
-                // Score = boules éclatées (avalanche comprise) × 10 × niveau²
+                // Score = boules éclatées (avalanche comprise) × 10 × niveau^1.5
                 const lvl = p.level || 1;
-                p.score += cleared * 10 * lvl * lvl;
+                p.score += Math.round(cleared * 10 * Math.pow(lvl, 1.5));
             }
         }
 

@@ -2,6 +2,62 @@
 
 ---
 
+## Patch 0.3 — 17 juin 2026
+
+### 🌍 ACCUEIL & LOBBY
+
+- **Plus d'écran de saisie du pseudo** : tu arrives directement dans le lobby. Une petite boîte ✏️ dans l'en-tête des salles permet de changer de pseudo à tout moment.
+- **On voit qui est dans chaque salle** : les cartes de salle listent les joueurs présents, chacun coloré selon sa couleur d'équipe.
+- **Classement** : une seule ligne par joueur, trié par meilleur score puis par victoires. Le score de l'échauffement compte aussi. *(Le classement a été remis à zéro avec cette mise à jour.)*
+- Les réglages **/fps** et **/canon** sont sauvegardés et conservés quand tu changes de salle.
+- À l'échauffement, **parler dans le chat ne bloque plus le jeu** : après l'envoi, les flèches/Espace remarchent sans recliquer.
+
+### 🎮 GAMEPLAY & DIFFICULTÉ
+
+- **Nouveau calcul du score** : `boules éclatées × 10 × niveau^1,5`. La base vient du nombre de boules claquées (avalanche comprise), et le **niveau pèse fortement** (puissance 1,5). Un même combo de 10 boules vaut 100 pts au niveau 1, ~1 118 au niveau 5, ~3 162 au niveau 10.
+- **Coefficients d'attaque par niveau** : niveau 1 = 0,03 · 2 = 0,08 · 3 = 0,15 · 4 = 0,22 · 5 = 0,33 (puis +0,11/niveau). Les premiers niveaux sont très doux, ça monte progressivement.
+- **La manche s'arrête dès qu'il ne reste qu'UNE équipe** en vie (plus besoin d'un seul survivant). Détection robuste (confirmée sur lecture fraîche du serveur).
+- **On ne peut plus arriver dans une partie en cours** : on reçoit une **couleur inutilisée** et on attend la prochaine manche en mode « ⏳ Prochaine manche ». Si la salle est pleine de 10 joueurs, on entre en spectateur.
+- La **ligne de mort** a été remontée au bord de la rangée fatale.
+
+### ⚔️ SORTS
+
+- **File FIFO** : le sort lancé est désormais le **plus ancien** ramassé. Dans la barre, le sort actif (le prochain lancé) reste **à droite** et les nouveaux s'empilent vers la gauche.
+- **Sort rouge** (plateau renversé) : inclinaison **souvent légère** (parfois forte, max 35°), le tir décrit une vraie courbe.
+- **Sort noir** (nettoyage) : enlève les **9 boules les plus basses**, contiguës depuis un côté aléatoire ; on les voit **tomber** et les sorts portés ne rejoignent l'inventaire qu'à l'atterrissage.
+- **Sort bleu** (boules supplémentaires) : envoie **12 boules qui arrivent en volant par la gauche** (plus d'apparition par magie), vers les cases libres les plus hautes.
+- **Nuke** : jamais ~100 % (25–75 %), et elle **transforme tous les sorts du plateau en boules normales**.
+- **Tremblement plus fort** à la réception d'un sort, et la **protection « pas de boules »** dure maintenant au moins le temps que le message traverse l'écran.
+- **Message du vainqueur garanti pour tous** (diffusé par la session, plus de cas manquant).
+
+### 💬 COMMUNICATION
+
+- **Cliquer sur un joueur** (sans sort en main, partie finie…) pré-remplit **`/Pseudo`** dans le chat pour lui envoyer un message privé.
+- Les **messages privés s'affichent entièrement en rose**.
+- Le pseudo d'un **spectateur** apparaît en **gris** dans le chat.
+- Lignes **« X a rejoint / quitté la salle »**.
+
+### 👁️ SPECTATEUR
+
+- Un **bouton gris (œil)** au centre de la sélection d'équipe permet de se mettre **spectateur (pause)** — ça libère une place de joueur.
+- Un spectateur **voit les 10 joueurs** (un sur l'écran principal, 9 en miniatures) et peut **revenir en jeu** quand il veut.
+
+### 🐛 CORRECTIONS MAJEURES
+
+- **Plus de boucle infinie de manches** avec les bots (un bot mort pouvait relancer la partie en boucle).
+- **Lancer un sort sur un adversaire fonctionne** de façon fiable (la reconstruction de l'interface volait parfois le clic).
+- **Les attaques repartent** (le compteur d'attaque ne restait plus bloqué à 0).
+- **Plus de boule de tir bloquée hors écran** qui empêchait de tirer (canon qui tournait dans le vide).
+- On ne peut plus être **éjecté de sa propre salle** comme « fantôme » en pleine partie.
+- Ton inventaire de sorts, tes effets et ton score ne sont plus écrasés par le réseau pendant que tu joues (effets de sorts **instantanés**).
+- **Moins de lag à plusieurs** (rafraîchissements regroupés, miniatures à cadence réduite, collision de tir optimisée à haut fps).
+
+### ⚙️ TECHNIQUE
+
+- **Journal de chaque partie** (qui joue, morts, vainqueur, raison de fin) pour diagnostiquer les soucis.
+
+---
+
 ## Patch 0.2 — 12 juin 2026
 
 ### 🌍 GÉNÉRAL

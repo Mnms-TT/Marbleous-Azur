@@ -386,24 +386,34 @@ export const UI = {
   currentAnnounceTimer: null,
   currentAnnounceAnim: null,
 
+  // Délai d'enchaînement entre deux annonces (quand il y a une file).
+  // Dépend des fps (jeu plus rapide → enchaînement plus serré) mais jamais
+  // instantané : on garde toujours le temps de VOIR chaque bandeau.
+  announceChainMs() {
+    const fps = Game.targetFPS || Config.DEFAULT_GAME_FPS || 140;
+    return Math.round(Math.min(1400, Math.max(700, 120000 / fps)));
+  },
+
   queueSpellAnnouncement(casterName, spellKey, targetName) {
-    if (this.spellAnnounceQueue.length >= 5) this.spellAnnounceQueue.shift();
+    if (this.spellAnnounceQueue.length >= 8) this.spellAnnounceQueue.shift();
     this.spellAnnounceQueue.push({ casterName, spellKey, targetName });
     if (!this.spellAnnouncePlaying) {
       this.playNextSpellAnnouncement();
     } else {
-      // Un nouveau sort arrive : l'annonce en cours est expédiée (0,3s max)
-      // pour rester à jour — seule la dernière de la file durera 2,5s
-      this.fastForwardCurrentAnnouncement();
+      // Un nouveau sort attend : l'annonce en cours passe à la cadence
+      // d'enchaînement (visible, pas instantanée) pour ne pas bloquer la file.
+      this.chainCurrentAnnouncement();
     }
   },
 
-  fastForwardCurrentAnnouncement() {
+  chainCurrentAnnouncement() {
     if (this.currentAnnounceTimer) clearTimeout(this.currentAnnounceTimer);
+    const chain = this.announceChainMs();
     if (this.currentAnnounceAnim) {
-      try { this.currentAnnounceAnim.playbackRate = 9; } catch (e) { /* ignore */ }
+      // Accélère l'animation pour qu'elle se termine pile dans le délai
+      try { this.currentAnnounceAnim.playbackRate = Math.max(1, 2500 / chain); } catch (e) { /* ignore */ }
     }
-    this.currentAnnounceTimer = setTimeout(() => this.playNextSpellAnnouncement(), 300);
+    this.currentAnnounceTimer = setTimeout(() => this.playNextSpellAnnouncement(), chain);
   },
 
   playNextSpellAnnouncement() {
@@ -453,9 +463,10 @@ export const UI = {
     holder.appendChild(canvas);
 
     // Descente en 4 étapes glissées (haut → milieu-haut → milieu-bas → bas).
-    // 2,5s pour la dernière annonce ; 0,3s en accéléré s'il en reste derrière,
-    // pour que l'affichage reste à jour.
-    const DUREE = this.spellAnnounceQueue.length > 0 ? 300 : 2500;
+    // 2,5s pour la dernière annonce ; cadence d'enchaînement (visible, liée aux
+    // fps) tant qu'il en reste derrière → les sorts défilent un par un, dans
+    // l'ordre, sans être instantanés.
+    const DUREE = this.spellAnnounceQueue.length > 0 ? this.announceChainMs() : 2500;
     const slotH = slot.clientHeight || 120;
     const pTop = 18;
     const pBottom = Math.max(24, slotH - size - 18);

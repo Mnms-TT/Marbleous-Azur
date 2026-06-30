@@ -617,25 +617,28 @@ export const GameLogic = {
       spells: Game.localPlayer.spells,
     });
 
-    // Annonce pour TOUT LE MONDE (un doc par sort : rien ne s'écrase)
+    // Annonce pour TOUT LE MONDE (un doc par sort). L'EFFET d'un sort reçu
+    // d'un adversaire est appliqué par SA machine au moment où le bandeau
+    // d'annonce démarre (cf. UI.playNextSpellAnnouncement) → les sorts
+    // s'enchaînent un par un, laissant le temps de réagir.
     FirebaseController.announceSpell(
-      Game.localPlayer.name,
+      Game.localPlayer.name, Game.localPlayer.id,
       spellName,
-      targetPlayer.name
+      targetPlayer.name, targetPlayer.id
     );
 
     if (targetPlayer.id === Game.localPlayer.id) {
-      // Sort sur soi-même : application directe
+      // Sort sur soi-même : application directe (on a choisi de le lancer)
       await this.applySpellEffect(Game.localPlayer, spellName, Game.localPlayer.name);
-    } else {
-      // Sort sur un adversaire : événement — c'est SA machine qui l'applique
-      // (chacun est propriétaire de sa grille, pas de conflit d'écriture)
+    } else if (targetPlayer.id.startsWith("bot_")) {
+      // Cible = un BOT : les bots ne regardent pas les bandeaux, on envoie
+      // l'événement → l'hôte du bot applique l'effet.
       await FirebaseController.sendEventToPlayer(targetPlayer.id, {
-        type: "spell",
-        spell: spellName,
-        from: Game.localPlayer.name,
+        type: "spell", spell: spellName, from: Game.localPlayer.name,
       });
     }
+    // Cible = un HUMAIN : rien à envoyer — sa machine applique l'effet à
+    // l'apparition du bandeau (annonce reçue par tous).
   },
 
   // Sort gris (toutes même couleur) : recolore `paths` grappes CONNECTÉES de la

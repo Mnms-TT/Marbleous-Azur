@@ -390,15 +390,18 @@ export const BotManager = {
             target = enemies[Math.floor(Math.random() * enemies.length)];
         }
 
-        FirebaseController.announceSpell(bot.name, spellName, target.name);
+        // Annonce pour tous (l'effet sur un humain s'applique au début du
+        // bandeau, côté victime). Le bot applique lui-même les sorts sur soi.
+        FirebaseController.announceSpell(bot.name, bot.id, spellName, target.name, target.id);
 
         if (target.id === bot.id) {
             this.applySpellToBot(bot, spellName);
-        } else {
-            FirebaseController.sendEventToPlayer(target.id, {
-                type: "spell", spell: spellName, from: bot.name,
-            });
+        } else if (this.bots.has(target.id)) {
+            // Cible = un autre bot : on applique directement (les bots ne
+            // "voient" pas les bandeaux)
+            this.applySpellToBot(this.bots.get(target.id), spellName);
         }
+        // Cible = un humain : rien à envoyer, sa machine applique au bandeau.
         if (Math.random() < 0.3) this.say(bot, pick(PHRASES.spellCast));
     },
 

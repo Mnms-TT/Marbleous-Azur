@@ -67,6 +67,7 @@ export const Game = {
   start() {
     this.state = "playing";
     this.gameEndAnnounced = false;
+    UI.clearSpellAnnouncements();
     this.gameIntervals.forEach(clearInterval);
     this.gameIntervals = [];
     this.localPlayer = this.players.get(

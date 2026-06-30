@@ -326,14 +326,14 @@ export const FirebaseController = {
             (snap) => {
                 const a = snap.val();
                 if (!a || !a.ts || a.ts < joinTs) return; // historique pré-arrivée
-                UI.queueSpellAnnouncement(a.casterName, a.spell, a.targetName);
+                UI.queueSpellAnnouncement(a.casterName, a.spell, a.targetName, a.casterId, a.targetId);
             }
         );
     },
 
-    async announceSpell(casterName, spell, targetName) {
+    async announceSpell(casterName, casterId, spell, targetName, targetId) {
         const annRef = dbPush(dbRef(this.rtdb, `rooms/${roomId}/announcements`), {
-            casterName, spell, targetName, ts: Date.now()
+            casterName, casterId, spell, targetName, targetId, ts: Date.now()
         });
         // Ménage : l'annonce ne sert plus à rien après 30s
         setTimeout(() => dbRemove(annRef).catch(() => { }), 30000);
@@ -470,9 +470,10 @@ export const FirebaseController = {
         if (this.unsubscribeEvents) this.unsubscribeEvents();
         this.unsubscribeEvents = this.listenToEventsFor(this.auth.currentUser.uid, (ev) => {
             if (!Game.localPlayer?.isAlive || Game.state !== "playing") return;
-            if (ev.type === "spell" && ev.spell) {
-                GameLogic.applySpellEffect(Game.localPlayer, ev.spell, ev.from || null);
-            } else if (ev.type === "junk" && ev.count > 0) {
+            // Les SORTS ne passent plus par événement : ils sont appliqués à
+            // l'apparition de leur bandeau (UI.playNextSpellAnnouncement). Ici
+            // on ne traite plus que les boules d'attaque (junk).
+            if (ev.type === "junk" && ev.count > 0) {
                 GameLogic.receiveJunk(ev.count);
             }
         });

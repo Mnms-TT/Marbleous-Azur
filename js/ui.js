@@ -386,34 +386,26 @@ export const UI = {
   currentAnnounceTimer: null,
   currentAnnounceAnim: null,
 
-  // Délai d'enchaînement entre deux annonces (quand il y a une file).
-  // Dépend des fps (jeu plus rapide → enchaînement plus serré) mais jamais
-  // instantané : on garde toujours le temps de VOIR chaque bandeau.
-  announceChainMs() {
-    const fps = Game.targetFPS || Config.DEFAULT_GAME_FPS || 140;
-    return Math.round(Math.min(1400, Math.max(700, 120000 / fps)));
+  // Durée d'un bandeau d'annonce. C'est AUSSI le délai de réaction : chaque
+  // sort s'applique au DÉBUT de son bandeau, donc plus la file est longue,
+  // plus tu as de temps pour réagir avant que le dernier ne te touche.
+  ANNOUNCE_MS: 2300,
+
+  // Vide la file d'annonces (changement de manche) : aucun effet en retard
+  clearSpellAnnouncements() {
+    this.spellAnnounceQueue = [];
+    this.spellAnnouncePlaying = false;
+    if (this.currentAnnounceTimer) { clearTimeout(this.currentAnnounceTimer); this.currentAnnounceTimer = null; }
+    const slot = document.getElementById("spell-announcement");
+    if (slot && Game.state === "playing") slot.innerHTML = "";
   },
 
-  queueSpellAnnouncement(casterName, spellKey, targetName) {
+  queueSpellAnnouncement(casterName, spellKey, targetName, casterId = null, targetId = null) {
     if (this.spellAnnounceQueue.length >= 8) this.spellAnnounceQueue.shift();
-    this.spellAnnounceQueue.push({ casterName, spellKey, targetName });
-    if (!this.spellAnnouncePlaying) {
-      this.playNextSpellAnnouncement();
-    } else {
-      // Un nouveau sort attend : l'annonce en cours passe à la cadence
-      // d'enchaînement (visible, pas instantanée) pour ne pas bloquer la file.
-      this.chainCurrentAnnouncement();
-    }
-  },
-
-  chainCurrentAnnouncement() {
-    if (this.currentAnnounceTimer) clearTimeout(this.currentAnnounceTimer);
-    const chain = this.announceChainMs();
-    if (this.currentAnnounceAnim) {
-      // Accélère l'animation pour qu'elle se termine pile dans le délai
-      try { this.currentAnnounceAnim.playbackRate = Math.max(1, 2500 / chain); } catch (e) { /* ignore */ }
-    }
-    this.currentAnnounceTimer = setTimeout(() => this.playNextSpellAnnouncement(), chain);
+    this.spellAnnounceQueue.push({ casterName, spellKey, targetName, casterId, targetId });
+    // On ne précipite RIEN : chaque bandeau joue sa durée pleine, l'un après
+    // l'autre, dans l'ordre. L'effet se déclenche au début de chaque bandeau.
+    if (!this.spellAnnouncePlaying) this.playNextSpellAnnouncement();
   },
 
   playNextSpellAnnouncement() {
@@ -434,6 +426,20 @@ export const UI = {
     }
 
     this.spellAnnouncePlaying = true;
+
+    // L'EFFET du sort se déclenche au DÉBUT de son bandeau — uniquement s'il me
+    // vise ET qu'il vient d'un AUTRE joueur (les sorts sur soi sont déjà
+    // appliqués au lancement). C'est ce qui laisse le temps de réagir.
+    if (
+      next.targetId &&
+      Game.localPlayer &&
+      next.targetId === Game.localPlayer.id &&
+      next.casterId !== Game.localPlayer.id &&
+      Game.localPlayer.isAlive &&
+      Game.state === "playing"
+    ) {
+      GameLogic.applySpellEffect(Game.localPlayer, next.spellKey, next.casterName);
+    }
 
     slot.innerHTML = `
       <div style="position:relative;width:100%;height:100%;background:rgba(0,0,0,0.85);overflow:hidden;">
@@ -462,11 +468,10 @@ export const UI = {
     );
     holder.appendChild(canvas);
 
-    // Descente en 4 étapes glissées (haut → milieu-haut → milieu-bas → bas).
-    // 2,5s pour la dernière annonce ; cadence d'enchaînement (visible, liée aux
-    // fps) tant qu'il en reste derrière → les sorts défilent un par un, dans
-    // l'ordre, sans être instantanés.
-    const DUREE = this.spellAnnounceQueue.length > 0 ? this.announceChainMs() : 2500;
+    // Chaque bandeau joue sa durée pleine (pas d'accélération) : les sorts
+    // s'enchaînent un par un, dans l'ordre, et leur effet tombe au début de
+    // chacun → fenêtre de réaction entre deux sorts.
+    const DUREE = this.ANNOUNCE_MS;
     const slotH = slot.clientHeight || 120;
     const pTop = 18;
     const pBottom = Math.max(24, slotH - size - 18);

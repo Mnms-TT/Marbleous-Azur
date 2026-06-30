@@ -560,19 +560,10 @@ export const LobbyGame = {
             }
 
             case "toutesMemeCouleur": {
-                const bubbles = [];
-                for (let r = 0; r < Config.GRID_ROWS; r++)
-                    for (let c = 0; c < Config.GRID_COLS; c++)
-                        if (grid[r][c] && !grid[r][c].isSpellBubble) bubbles.push(grid[r][c]);
-                if (bubbles.length > 0) {
-                    const newColor =
-                        Config.BUBBLE_COLORS[Math.floor(Math.random() * Config.BUBBLE_COLORS.length)];
-                    const toChange = Math.floor(bubbles.length * (0.3 + Math.random() * 0.3));
-                    bubbles.sort(() => 0.5 - Math.random());
-                    for (let i = 0; i < toChange; i++) {
-                        bubbles[i].color = newColor;
-                    }
-                }
+                // 1-2 grappes connectées d'une même couleur, du haut jusqu'en bas
+                const newColor =
+                    Config.BUBBLE_COLORS[Math.floor(Math.random() * Config.BUBBLE_COLORS.length)];
+                this.recolorConnectedColumns(grid, newColor, 1 + Math.floor(Math.random() * 2));
                 break;
             }
 
@@ -954,6 +945,43 @@ export const LobbyGame = {
         return dirs.filter(n =>
             n.r >= 0 && n.r < Config.GRID_ROWS && n.c >= 0 && n.c < Config.GRID_COLS
         );
+    },
+
+    // Sort gris : recolore des grappes connectées (haut → bas) sans gap
+    recolorConnectedColumns(grid, color, paths = 2) {
+        const COLS = Config.GRID_COLS, ROWS = Config.GRID_ROWS;
+        const occupiedCols = (r) => {
+            const out = [];
+            for (let c = 0; c < COLS; c++) if (grid[r][c]) out.push(c);
+            return out;
+        };
+        let topRow = -1;
+        for (let r = 0; r < ROWS; r++) { if (occupiedCols(r).length) { topRow = r; break; } }
+        if (topRow < 0) return;
+
+        const recolored = new Set();
+        for (let pth = 0; pth < paths; pth++) {
+            const startCols = occupiedCols(topRow).filter(c => !recolored.has(`${topRow},${c}`));
+            if (!startCols.length) break;
+            let cur = { r: topRow, c: startCols[Math.floor(Math.random() * startCols.length)] };
+            let guard = 0;
+            while (cur && guard++ < ROWS * COLS) {
+                const cell = grid[cur.r][cur.c];
+                cell.color = color;
+                if (cell.isSpellBubble) {
+                    cell.spell = Config.COLOR_TO_SPELL_MAP[color.main] || null;
+                    cell.isSpellBubble = !!cell.spell;
+                }
+                recolored.add(`${cur.r},${cur.c}`);
+                const neigh = this.getNeighborCoords(cur.r, cur.c)
+                    .filter(n => grid[n.r]?.[n.c] && !recolored.has(`${n.r},${n.c}`));
+                const down = neigh.filter(n => n.r > cur.r);
+                const same = neigh.filter(n => n.r === cur.r);
+                if (down.length) cur = down[Math.floor(Math.random() * down.length)];
+                else if (same.length) cur = same[Math.floor(Math.random() * same.length)];
+                else cur = null;
+            }
+        }
     },
 
     findBestSnapSpot(bubble) {

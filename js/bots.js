@@ -208,16 +208,17 @@ export const BotManager = {
                 }
                 break;
             }
-            case "variationCouleur":
-            case "toutesMemeCouleur": {
-                const newColor = Config.BUBBLE_COLORS[Math.floor(Math.random() * Config.BUBBLE_COLORS.length)];
+            case "variationCouleur": {
                 for (let r = 0; r < Config.GRID_ROWS; r++)
                     for (let c = 0; c < Config.GRID_COLS; c++)
-                        if (grid[r][c]) {
-                            grid[r][c].color = spell === "toutesMemeCouleur"
-                                ? (Math.random() < 0.45 ? newColor : grid[r][c].color)
-                                : Config.BUBBLE_COLORS[Math.floor(Math.random() * Config.BUBBLE_COLORS.length)];
-                        }
+                        if (grid[r][c])
+                            grid[r][c].color = Config.BUBBLE_COLORS[Math.floor(Math.random() * Config.BUBBLE_COLORS.length)];
+                break;
+            }
+            case "toutesMemeCouleur": {
+                // 1-2 grappes connectées d'une même couleur (haut → bas)
+                const newColor = Config.BUBBLE_COLORS[Math.floor(Math.random() * Config.BUBBLE_COLORS.length)];
+                GameLogic.recolorConnectedColumns(grid, newColor, 1 + Math.floor(Math.random() * 2));
                 break;
             }
             case "disparitionSorts": {

@@ -638,6 +638,55 @@ export const GameLogic = {
     }
   },
 
+  // Sort gris (toutes même couleur) : recolore `paths` grappes CONNECTÉES de la
+  // même couleur, en descendant du haut vers le bas À TRAVERS les boules
+  // existantes (jamais de gap) → poppable d'un seul coup. Retourne true si
+  // quelque chose a changé.
+  recolorConnectedColumns(grid, color, paths = 2) {
+    const COLS = Config.GRID_COLS, ROWS = Config.GRID_ROWS;
+    const occupiedCols = (r) => {
+      const out = [];
+      for (let c = 0; c < COLS; c++) if (grid[r][c]) out.push(c);
+      return out;
+    };
+    let topRow = -1;
+    for (let r = 0; r < ROWS; r++) { if (occupiedCols(r).length) { topRow = r; break; } }
+    if (topRow < 0) return false;
+
+    const recolored = new Set();
+    let changed = false;
+
+    for (let p = 0; p < paths; p++) {
+      const startCols = occupiedCols(topRow).filter(c => !recolored.has(`${topRow},${c}`));
+      if (!startCols.length) break;
+      let cur = { r: topRow, c: startCols[Math.floor(Math.random() * startCols.length)] };
+
+      let guard = 0;
+      while (cur && guard++ < ROWS * COLS) {
+        const cell = grid[cur.r][cur.c];
+        cell.color = color;
+        // garde la cohérence symbole/couleur si c'était une boule-sort
+        if (cell.isSpellBubble) {
+          cell.spell = Config.COLOR_TO_SPELL_MAP[color.main] || null;
+          cell.isSpellBubble = !!cell.spell;
+        }
+        recolored.add(`${cur.r},${cur.c}`);
+        changed = true;
+
+        // Voisins occupés non encore recolorés : on PRÉFÈRE descendre (r+1),
+        // sinon on traverse latéralement (même rangée) pour contourner un trou
+        const neigh = this.getNeighborCoords(cur.r, cur.c)
+          .filter(n => grid[n.r]?.[n.c] && !recolored.has(`${n.r},${n.c}`));
+        const down = neigh.filter(n => n.r > cur.r);
+        const same = neigh.filter(n => n.r === cur.r);
+        if (down.length) cur = down[Math.floor(Math.random() * down.length)];
+        else if (same.length) cur = same[Math.floor(Math.random() * same.length)];
+        else cur = null;
+      }
+    }
+    return changed;
+  },
+
   // Sort noir (nettoyage) : les `count` boules LES PLUS BASSES, contiguës
   // depuis un côté aléatoire (gauche OU droite) — pas dispersées sur la ligne.
   nettoyageCells(grid, count = 9) {
@@ -809,24 +858,13 @@ export const GameLogic = {
       }
 
       case "toutesMemeCouleur": {
-        // Certaines bulles deviennent de la même couleur
-        const bubbles = [];
-        for (let r = 0; r < Config.GRID_ROWS; r++)
-          for (let c = 0; c < Config.GRID_COLS; c++)
-            if (grid[r][c] && !grid[r][c].isSpellBubble)
-              bubbles.push(grid[r][c]);
-        if (bubbles.length > 0) {
-          const newColor = Config.BUBBLE_COLORS[
-            Math.floor(Math.random() * Config.BUBBLE_COLORS.length)
-          ];
-          // Change 30-60% des bulles
-          const toChange = Math.floor(bubbles.length * (0.3 + Math.random() * 0.3));
-          bubbles.sort(() => 0.5 - Math.random());
-          for (let i = 0; i < toChange; i++) {
-            bubbles[i].color = newColor;
-          }
-          gridChanged = true;
-        }
+        // 1 ou 2 GRAPPES connectées d'une même couleur, du haut jusqu'en bas,
+        // sans coupure → on peut toutes les éclater d'un coup (grosse avalanche)
+        const newColor = Config.BUBBLE_COLORS[
+          Math.floor(Math.random() * Config.BUBBLE_COLORS.length)
+        ];
+        const paths = 1 + Math.floor(Math.random() * 2);
+        if (this.recolorConnectedColumns(grid, newColor, paths)) gridChanged = true;
         break;
       }
 

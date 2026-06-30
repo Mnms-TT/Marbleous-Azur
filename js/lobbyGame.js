@@ -121,12 +121,14 @@ export const LobbyGame = {
 
         window.addEventListener("keydown", (e) => {
             if (!this.isRunning) return;
-            // Ne pas jouer pendant la saisie chat/pseudo
+            // On laisse le chat gérer les touches SEULEMENT si on écrit (champ
+            // non vide). Champ focalisé mais vide → on peut jouer sans recliquer.
             const active = document.activeElement;
-            if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) return;
+            const isField = active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA");
+            if (isField && active.value !== "") return;
 
-            if (e.key === "ArrowLeft") this.keys.left = true;
-            if (e.key === "ArrowRight") this.keys.right = true;
+            if (e.key === "ArrowLeft") { this.keys.left = true; if (isField) e.preventDefault(); }
+            if (e.key === "ArrowRight") { this.keys.right = true; if (isField) e.preventDefault(); }
             if (e.key === "ArrowUp" || e.code === "Space") {
                 e.preventDefault();
                 this.shoot();

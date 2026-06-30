@@ -83,11 +83,16 @@ export const InputHandler = {
   },
 
   handleKeyDown(e) {
-    if (document.activeElement === document.getElementById("chat-input"))
-      return;
+    // Si on est en train d'ÉCRIRE un message (champ chat focalisé ET non vide),
+    // on laisse le chat gérer les touches. Mais si le champ est focalisé mais
+    // VIDE (ex: juste après avoir envoyé un message), les flèches/Espace
+    // contrôlent quand même le canon → plus besoin de recliquer pour rejouer.
+    const chatInput = document.getElementById("chat-input");
+    const chatFocused = document.activeElement === chatInput;
+    if (chatFocused && chatInput && chatInput.value !== "") return;
 
-    if (e.key === "ArrowLeft") Game.keys.left = true;
-    if (e.key === "ArrowRight") Game.keys.right = true;
+    if (e.key === "ArrowLeft") { Game.keys.left = true; if (chatFocused) e.preventDefault(); }
+    if (e.key === "ArrowRight") { Game.keys.right = true; if (chatFocused) e.preventDefault(); }
 
     if (Game.state !== "playing" || !Game.localPlayer?.isAlive) return;
 
@@ -109,9 +114,9 @@ export const InputHandler = {
   handleChat(e) {
     if (e.key === "Enter") {
       const input = e.target;
-      // On rend le focus au jeu après l'envoi : les flèches/Espace remarchent
-      // sans avoir à recliquer (ce qui lançait un sort par mégarde).
-      setTimeout(() => input.blur(), 0);
+      // On NE blur PAS : le focus reste dans le chat pour pouvoir enchaîner les
+      // messages sans recliquer. Le canon répond quand même aux flèches/Espace
+      // tant que le champ est vide (géré dans handleKeyDown).
       const msg = input.value.trim();
       if (msg && Game.localPlayer) {
         if (msg.startsWith("/canon ")) {

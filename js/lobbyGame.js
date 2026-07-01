@@ -31,6 +31,7 @@ export const LobbyGame = {
     spellCastQueue: [],
     spellCastNextAt: 0,
     ANNOUNCE_MS: 2300, // même durée/rythme qu'en salle (UI.ANNOUNCE_MS)
+    IMPACT_MS: 500,    // délai entre l'apparition du bandeau et l'impact réel
     playerName: "Joueur",
     targetFPS: Config.DEFAULT_GAME_FPS, // vitesse du jeu (réglable via /fps 30-300, comme en salle)
     currentRotationSpeed: Config.LAUNCHER_ROTATION_SPEED, // réglable via /canon X
@@ -466,7 +467,13 @@ export const LobbyGame = {
             x: this.canvas.width + p.spellTickers.length * 160,
         });
 
-        this.applySpellEffect(spellName);
+        // Le bandeau s'affiche MAINTENANT, mais l'effet ne touche la grille
+        // qu'après IMPACT_MS : tu vois le sort arriver avant qu'il ne frappe.
+        setTimeout(() => {
+            if (this.isRunning && this.player === p && p.isAlive) {
+                this.applySpellEffect(spellName);
+            }
+        }, this.IMPACT_MS);
         this.spellCastNextAt = Date.now() + this.ANNOUNCE_MS;
     },
 

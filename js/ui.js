@@ -385,17 +385,23 @@ export const UI = {
   spellAnnouncePlaying: false,
   currentAnnounceTimer: null,
   currentAnnounceAnim: null,
+  spellImpactTimer: null,
 
   // Durée d'un bandeau d'annonce. C'est AUSSI le délai de réaction : chaque
-  // sort s'applique au DÉBUT de son bandeau, donc plus la file est longue,
-  // plus tu as de temps pour réagir avant que le dernier ne te touche.
+  // sort s'applique peu après le DÉBUT de son bandeau, donc plus la file est
+  // longue, plus tu as de temps pour réagir avant que le dernier ne te touche.
   ANNOUNCE_MS: 2300,
+
+  // Délai entre l'APPARITION du bandeau et l'IMPACT réel du sort sur ta grille.
+  // Tu vois donc le sort annoncé, puis il te touche ~0,5s plus tard.
+  IMPACT_MS: 500,
 
   // Vide la file d'annonces (changement de manche) : aucun effet en retard
   clearSpellAnnouncements() {
     this.spellAnnounceQueue = [];
     this.spellAnnouncePlaying = false;
     if (this.currentAnnounceTimer) { clearTimeout(this.currentAnnounceTimer); this.currentAnnounceTimer = null; }
+    if (this.spellImpactTimer) { clearTimeout(this.spellImpactTimer); this.spellImpactTimer = null; }
     const slot = document.getElementById("spell-announcement");
     if (slot && Game.state === "playing") slot.innerHTML = "";
   },
@@ -427,18 +433,23 @@ export const UI = {
 
     this.spellAnnouncePlaying = true;
 
-    // L'EFFET du sort se déclenche au DÉBUT de son bandeau — uniquement s'il me
-    // vise ET qu'il vient d'un AUTRE joueur (les sorts sur soi sont déjà
-    // appliqués au lancement). C'est ce qui laisse le temps de réagir.
+    // L'EFFET du sort se déclenche ~IMPACT_MS APRÈS l'apparition de son bandeau
+    // — uniquement s'il me vise ET vient d'un AUTRE joueur (les sorts sur soi
+    // sont déjà appliqués au lancement). Tu vois donc le sort annoncé, puis il
+    // te touche une demi-seconde plus tard : le temps de réagir.
     if (
       next.targetId &&
       Game.localPlayer &&
       next.targetId === Game.localPlayer.id &&
-      next.casterId !== Game.localPlayer.id &&
-      Game.localPlayer.isAlive &&
-      Game.state === "playing"
+      next.casterId !== Game.localPlayer.id
     ) {
-      GameLogic.applySpellEffect(Game.localPlayer, next.spellKey, next.casterName);
+      if (this.spellImpactTimer) clearTimeout(this.spellImpactTimer);
+      this.spellImpactTimer = setTimeout(() => {
+        this.spellImpactTimer = null;
+        if (Game.localPlayer && Game.localPlayer.isAlive && Game.state === "playing") {
+          GameLogic.applySpellEffect(Game.localPlayer, next.spellKey, next.casterName);
+        }
+      }, this.IMPACT_MS);
     }
 
     slot.innerHTML = `

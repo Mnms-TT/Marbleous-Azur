@@ -25,6 +25,12 @@ export const LobbyGame = {
     spellIcons: {},
     intervals: [],
     announcement: null, // { text, until }
+    // File des sorts lancés : comme en salle, chaque effet tombe au DÉBUT de son
+    // bandeau, espacés de ANNOUNCE_MS. Enchaîner plusieurs sorts ne les applique
+    // donc plus tous d'un coup — ils se suivent un par un.
+    spellCastQueue: [],
+    spellCastNextAt: 0,
+    ANNOUNCE_MS: 2300, // même durée/rythme qu'en salle (UI.ANNOUNCE_MS)
     playerName: "Joueur",
     targetFPS: Config.DEFAULT_GAME_FPS, // vitesse du jeu (réglable via /fps 30-300, comme en salle)
     currentRotationSpeed: Config.LAUNCHER_ROTATION_SPEED, // réglable via /canon X
@@ -49,6 +55,8 @@ export const LobbyGame = {
         } catch (e) { /* stockage restreint */ }
         this.lastFrameTime = 0;
         this.accumulator = 0;
+        this.spellCastQueue = [];
+        this.spellCastNextAt = 0;
 
         this.player = {
             launcher: { angle: -Math.PI / 2 },
@@ -204,6 +212,7 @@ export const LobbyGame = {
         if (!p) return;
 
         this.processStatusEffects();
+        this.processSpellQueue();
 
         // Messages de sorts : défilement droite → gauche au-dessus de la ligne
         if (p.spellTickers && p.spellTickers.length) {
@@ -429,10 +438,24 @@ export const LobbyGame = {
         const p = this.player;
         if (!p?.isAlive || !p.spells || p.spells.length === 0) return;
 
-        // FIFO : premier sort ramassé = premier lancé
+        // FIFO : premier sort ramassé = premier lancé. On ne l'applique PAS ici :
+        // il rejoint la file, et son effet tombe au DÉBUT de son bandeau (voir
+        // processSpellQueue). Enchaîner plusieurs sorts les espace au lieu de
+        // tous les appliquer d'un coup — comme en salle.
         const spellName = p.spells.shift();
         this.updateSpellsBar();
+        this.spellCastQueue.push(spellName);
+    },
 
+    // Applique les sorts en file un par un, espacés de ANNOUNCE_MS. Le premier
+    // part quasi tout de suite (spellCastNextAt=0), les suivants attendent la
+    // fin du bandeau précédent → effets échelonnés, pas simultanés.
+    processSpellQueue() {
+        const p = this.player;
+        if (!p?.isAlive) { this.spellCastQueue = []; return; }
+        if (!this.spellCastQueue.length || Date.now() < this.spellCastNextAt) return;
+
+        const spellName = this.spellCastQueue.shift();
         const info = Config.SPELLS[spellName];
         if (info) this.showAnnouncement(info.name);
 
@@ -444,6 +467,7 @@ export const LobbyGame = {
         });
 
         this.applySpellEffect(spellName);
+        this.spellCastNextAt = Date.now() + this.ANNOUNCE_MS;
     },
 
     // Inventaire plein : le sort est perdu — on le dit au joueur
